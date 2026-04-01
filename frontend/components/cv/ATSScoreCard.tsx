@@ -4,9 +4,9 @@ import { ATSScores } from '@/types';
 import { Progress } from '@/components/ui/progress';
 
 function scoreColor(score: number): string {
-  if (score < 50) return 'text-red-600';
-  if (score < 70) return 'text-yellow-600';
-  return 'text-green-600';
+  if (score < 50) return 'text-red-500 dark:text-red-400';
+  if (score < 70) return 'text-yellow-500 dark:text-yellow-400';
+  return 'text-green-500 dark:text-green-400';
 }
 
 function progressColor(score: number): string {
@@ -27,14 +27,14 @@ export default function ATSScoreCard({ scores }: { scores: ATSScores }) {
     <div className="space-y-6">
       <div className="flex items-center gap-8">
         <div className="text-center">
-          <p className="text-sm text-gray-500 mb-1">Current ATS</p>
+          <p className="text-sm text-muted-foreground mb-1">Current ATS</p>
           <p className={`text-4xl font-bold ${scoreColor(scores.current_ats)}`}>
             {scores.current_ats}
           </p>
         </div>
-        <div className="text-2xl text-gray-300">&rarr;</div>
+        <div className="text-2xl text-muted-foreground/50">&rarr;</div>
         <div className="text-center">
-          <p className="text-sm text-gray-500 mb-1">Projected ATS</p>
+          <p className="text-sm text-muted-foreground mb-1">Projected ATS</p>
           <p className={`text-4xl font-bold ${scoreColor(scores.projected_ats)}`}>
             {scores.projected_ats}
           </p>
@@ -45,7 +45,7 @@ export default function ATSScoreCard({ scores }: { scores: ATSScores }) {
         {subScores.map((s) => (
           <div key={s.label} className="space-y-1">
             <div className="flex justify-between text-sm">
-              <span className="text-gray-600">{s.label}</span>
+              <span className="text-muted-foreground">{s.label}</span>
               <span className={`font-medium ${scoreColor(s.value)}`}>{s.value}%</span>
             </div>
             <Progress value={s.value} className={`h-2 ${progressColor(s.value)}`} />

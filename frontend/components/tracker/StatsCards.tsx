@@ -25,7 +25,7 @@ export default function StatsCards({ stats }: { stats: TrackerStats }) {
         {statusConfig.map((s) => (
           <Card key={s.key}>
             <CardContent className="pt-4 pb-3 text-center">
-              <p className="text-xs text-gray-500 uppercase tracking-wide">{s.label}</p>
+              <p className="text-xs text-muted-foreground uppercase tracking-wide">{s.label}</p>
               <p className="text-2xl font-bold mt-1" style={{ color: s.color }}>
                 {stats[s.key]}
               </p>
@@ -37,9 +37,16 @@ export default function StatsCards({ stats }: { stats: TrackerStats }) {
         <div className="h-48">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={chartData}>
-              <XAxis dataKey="name" tick={{ fontSize: 12 }} />
-              <YAxis allowDecimals={false} tick={{ fontSize: 12 }} />
-              <Tooltip />
+              <XAxis dataKey="name" tick={{ fontSize: 12, fill: 'var(--muted-foreground)' }} />
+              <YAxis allowDecimals={false} tick={{ fontSize: 12, fill: 'var(--muted-foreground)' }} />
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: 'var(--card)',
+                  border: '1px solid var(--border)',
+                  color: 'var(--foreground)',
+                  borderRadius: '8px',
+                }}
+              />
               <Bar dataKey="count" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>

@@ -9,7 +9,6 @@ const cors = require('cors');
 const authRoutes = require('./routes/auth');
 const profileRoutes = require('./routes/profile');
 const onboardingRoutes = require('./routes/onboarding');
-const jobSearchRoutes = require('./routes/jobSearch');
 const cvRoutes = require('./routes/cv');
 const jobTrackerRoutes = require('./routes/jobTracker');
 
@@ -34,7 +33,6 @@ app.get('/api/health', (req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/profile', profileRoutes);
 app.use('/api/onboarding', onboardingRoutes);
-app.use('/api/jobs', jobSearchRoutes);
 app.use('/api/cv', cvRoutes);
 app.use('/api/tracker', jobTrackerRoutes);
 

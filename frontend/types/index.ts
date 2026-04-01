@@ -47,24 +47,6 @@ export interface CVRecord {
   created_at: string;
 }
 
-export interface JobSearchResult {
-  title: string;
-  company: string;
-  location: string;
-  type: string;
-  description: string;
-  url: string;
-  logo_url?: string;
-  salary?: string;
-}
-
-export interface SuggestedSite {
-  name: string;
-  url: string;
-  reason: string;
-  is_free: boolean;
-}
-
 export interface ATSScores {
   current_ats: number;
   projected_ats: number;
@@ -80,7 +62,8 @@ export interface CVAnalysisResult {
   rewrite: any;
   final: any;
   scores: ATSScores;
-  download_url: string;
+  download_url: string | null;
+  cv_record_id: string | null;
 }
 
 export interface TrackerStats {
@@ -97,9 +80,3 @@ export interface ApiResponse<T> {
   data?: T;
 }
 
-export interface ChatMessage {
-  role: 'user' | 'assistant';
-  content: string;
-  jobs?: JobSearchResult[];
-  search_performed?: boolean;
-}

@@ -64,20 +64,20 @@ export default function CVUploader({ onResult }: CVUploaderProps) {
       <div
         {...getRootProps()}
         className={`cursor-pointer rounded-lg border-2 border-dashed p-8 text-center transition-colors ${
-          isDragActive ? 'border-gray-900 bg-gray-50' : 'border-gray-300 hover:border-gray-400'
+          isDragActive ? 'border-foreground bg-muted' : 'border-border hover:border-foreground/30'
         }`}
       >
         <input {...getInputProps()} />
         {file ? (
           <div>
-            <p className="font-medium text-gray-900">{file.name}</p>
-            <p className="text-sm text-gray-500 mt-1">{(file.size / 1024).toFixed(0)} KB</p>
-            <p className="text-xs text-gray-400 mt-1">Click or drag to replace</p>
+            <p className="font-medium text-foreground">{file.name}</p>
+            <p className="text-sm text-muted-foreground mt-1">{(file.size / 1024).toFixed(0)} KB</p>
+            <p className="text-xs text-muted-foreground/70 mt-1">Click or drag to replace</p>
           </div>
         ) : (
           <div>
-            <p className="text-gray-600">Drag and drop your CV here, or click to browse</p>
-            <p className="text-sm text-gray-400 mt-1">PDF only, max 5MB</p>
+            <p className="text-muted-foreground">Drag and drop your CV here, or click to browse</p>
+            <p className="text-sm text-muted-foreground/70 mt-1">PDF only, max 5MB</p>
           </div>
         )}
       </div>
@@ -102,12 +102,12 @@ export default function CVUploader({ onResult }: CVUploaderProps) {
             <div
               key={s}
               className={`flex items-center gap-2 text-sm ${
-                i <= step ? 'text-gray-900' : 'text-gray-300'
+                i <= step ? 'text-foreground' : 'text-muted-foreground/40'
               }`}
             >
               <div
                 className={`h-2 w-2 rounded-full ${
-                  i < step ? 'bg-green-500' : i === step ? 'bg-yellow-500 animate-pulse' : 'bg-gray-200'
+                  i < step ? 'bg-green-500' : i === step ? 'bg-yellow-500 animate-pulse' : 'bg-muted'
                 }`}
               />
               {s}

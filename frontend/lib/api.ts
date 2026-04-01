@@ -7,8 +7,6 @@ import {
   TrackerJob,
   CVAnalysisResult,
   CVRecord,
-  JobSearchResult,
-  SuggestedSite,
   TrackerStats,
 } from '@/types';
 
@@ -64,16 +62,6 @@ export const getOnboarding = () =>
 export const saveOnboarding = (data: Partial<Onboarding>) =>
   api.post<{ message: string; onboarding: Onboarding }>('/api/onboarding', data);
 
-// Jobs
-export const searchJobsWithAI = (message: string, conversation_history: any[]) =>
-  api.post<{ ai_message: string; jobs: JobSearchResult[]; search_performed: boolean; search_query: string }>(
-    '/api/jobs/search',
-    { message, conversation_history }
-  );
-
-export const getSuggestedSites = (data: { job_title: string; career_level: string; preferred_locations: string }) =>
-  api.post<{ suggested_sites: SuggestedSite[] }>('/api/jobs/suggested-sites', data);
-
 // CV
 export const analyzeCV = (formData: FormData) =>
   api.post<CVAnalysisResult>('/api/cv/analyze', formData, {
@@ -86,6 +74,19 @@ export const getCVHistory = () =>
 
 export const deleteCV = (cvId: string) =>
   api.delete<{ message: string }>(`/api/cv/${cvId}`);
+
+export const downloadCVPdf = async (cvId: string) => {
+  const res = await api.get(`/api/cv/download/${cvId}`, { responseType: 'blob' });
+  const blob = new Blob([res.data], { type: 'application/pdf' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'cv_optimized.pdf';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+};
 
 // Tracker
 export const getAllTrackerJobs = () =>

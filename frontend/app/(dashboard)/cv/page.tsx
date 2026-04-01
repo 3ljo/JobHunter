@@ -39,7 +39,7 @@ export default function CVPage() {
       {result && (
         <Card>
           <CardContent className="pt-6">
-            <AuditReport result={result} />
+            <AuditReport result={result} cvRecordId={result.cv_record_id} />
           </CardContent>
         </Card>
       )}

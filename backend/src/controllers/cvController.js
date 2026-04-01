@@ -8,6 +8,7 @@ const supabase = require('../services/supabaseClient');
 const { parsePDF } = require('../services/cvParserService');
 const { analyzeCVWithJD } = require('../services/cvAnalyzerService');
 const { generateCVDocx } = require('../services/cvGeneratorService');
+const { generateCVPdfBuffer } = require('../services/cvPdfService');
 
 // Configure multer for PDF uploads (max 5MB)
 const upload = multer({
@@ -28,7 +29,6 @@ const uploadCV = upload.single('cv_file');
 // POST /api/cv/analyze — Full CV analysis pipeline
 const analyzeCV = async (req, res) => {
   let uploadedFilePath = null;
-  let docxPath = null;
 
   try {
     // Handle file upload via multer
@@ -56,37 +56,13 @@ const analyzeCV = async (req, res) => {
     // Stages 2-7: Run the full AI analysis pipeline
     const result = await analyzeCVWithJD(cvText, jobDescription);
 
-    // Generate the optimized DOCX file
-    const docxFileName = `cv_optimized_${req.user.id}_${Date.now()}.docx`;
-    docxPath = path.join(__dirname, '..', '..', 'uploads', docxFileName);
-    await generateCVDocx(result.final.final_cv, docxPath);
-
-    // Upload DOCX to Supabase Storage
-    const docxBuffer = fs.readFileSync(docxPath);
-    const storagePath = `${req.user.id}/${docxFileName}`;
-
-    const { error: uploadError } = await supabase.storage
-      .from('cvs')
-      .upload(storagePath, docxBuffer, {
-        contentType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-        upsert: true,
-      });
-
-    let fileUrl = null;
-    if (!uploadError) {
-      const { data: urlData } = supabase.storage
-        .from('cvs')
-        .getPublicUrl(storagePath);
-      fileUrl = urlData.publicUrl;
-    }
-
-    // Save record to cvs table
+    // Save record to cvs table (no file storage — PDF is generated on-demand)
     const { data: cvRecord, error: dbError } = await supabase
       .from('cvs')
       .insert({
         user_id: req.user.id,
-        file_name: docxFileName,
-        file_url: fileUrl,
+        file_name: `cv_optimized_${Date.now()}.pdf`,
+        file_url: null,
         raw_text: cvText,
         ats_score: result.scores.current_ats,
         ats_feedback: result,
@@ -101,7 +77,7 @@ const analyzeCV = async (req, res) => {
 
     return res.status(200).json({
       ...result,
-      download_url: fileUrl,
+      download_url: null,
       cv_record_id: cvRecord ? cvRecord.id : null,
     });
   } catch (err) {
@@ -111,9 +87,6 @@ const analyzeCV = async (req, res) => {
     // Clean up temp files
     if (uploadedFilePath && fs.existsSync(uploadedFilePath)) {
       fs.unlinkSync(uploadedFilePath);
-    }
-    if (docxPath && fs.existsSync(docxPath)) {
-      fs.unlinkSync(docxPath);
     }
   }
 };
@@ -177,4 +150,41 @@ const deleteCVRecord = async (req, res) => {
   }
 };
 
-module.exports = { analyzeCV, getCVHistory, deleteCVRecord };
+// GET /api/cv/download/:cv_id — Generate and stream PDF on-demand
+const downloadCVPdf = async (req, res) => {
+  const { cv_id } = req.params;
+
+  try {
+    const { data: cv, error } = await supabase
+      .from('cvs')
+      .select('*')
+      .eq('id', cv_id)
+      .eq('user_id', req.user.id)
+      .single();
+
+    if (error || !cv) {
+      return res.status(404).json({ error: 'CV not found' });
+    }
+
+    const feedback = cv.ats_feedback;
+    const finalCV = feedback?.final?.final_cv;
+    if (!finalCV) {
+      return res.status(400).json({ error: 'No rewritten CV data available' });
+    }
+
+    const pdfBuffer = await generateCVPdfBuffer(finalCV);
+
+    res.set({
+      'Content-Type': 'application/pdf',
+      'Content-Disposition': `attachment; filename="cv_optimized.pdf"`,
+      'Content-Length': pdfBuffer.length,
+    });
+
+    return res.send(pdfBuffer);
+  } catch (err) {
+    console.error('PDF generation error:', err.message);
+    return res.status(500).json({ error: 'Failed to generate PDF' });
+  }
+};
+
+module.exports = { analyzeCV, getCVHistory, deleteCVRecord, downloadCVPdf };

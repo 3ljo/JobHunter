@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { getCVHistory, deleteCV } from '@/lib/api';
+import { getCVHistory, deleteCV, downloadCVPdf } from '@/lib/api';
 import { CVRecord } from '@/types';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import toast from 'react-hot-toast';
@@ -34,58 +34,95 @@ export default function CVHistory() {
     }
   };
 
+  const handleDownload = async (id: string) => {
+    try {
+      await downloadCVPdf(id);
+    } catch {
+      toast.error('Failed to download PDF');
+    }
+  };
+
   if (loading) return <LoadingSpinner className="mt-4" />;
-  if (cvs.length === 0) return <p className="text-sm text-gray-500">No CV analyses yet.</p>;
+  if (cvs.length === 0) return <p className="text-sm text-muted-foreground">No CV analyses yet.</p>;
 
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="border-b text-left text-gray-500">
-            <th className="pb-2 font-medium">Date</th>
-            <th className="pb-2 font-medium">File</th>
-            <th className="pb-2 font-medium">ATS Score</th>
-            <th className="pb-2 font-medium">Projected</th>
-            <th className="pb-2 font-medium">Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {cvs.map((cv) => (
-            <tr key={cv.id} className="border-b last:border-0">
-              <td className="py-3 text-gray-500">
-                {new Date(cv.created_at).toLocaleDateString()}
-              </td>
-              <td className="py-3 text-gray-900 font-medium">{cv.file_name}</td>
-              <td className="py-3">{cv.ats_score}</td>
-              <td className="py-3">{cv.projected_score}</td>
-              <td className="py-3 flex gap-2">
-                {cv.download_url && (
+    <>
+      {/* Desktop table */}
+      <div className="hidden md:block overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b text-left text-muted-foreground">
+              <th className="pb-2 font-medium">Date</th>
+              <th className="pb-2 font-medium">File</th>
+              <th className="pb-2 font-medium">ATS Score</th>
+              <th className="pb-2 font-medium">Projected</th>
+              <th className="pb-2 font-medium">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {cvs.map((cv) => (
+              <tr key={cv.id} className="border-b last:border-0">
+                <td className="py-3 text-muted-foreground">
+                  {new Date(cv.created_at).toLocaleDateString()}
+                </td>
+                <td className="py-3 text-foreground font-medium">{cv.file_name}</td>
+                <td className="py-3">{cv.ats_score}</td>
+                <td className="py-3">{cv.projected_score}</td>
+                <td className="py-3 flex gap-2">
+                  <Button size="sm" variant="outline" onClick={() => handleDownload(cv.id)}>
+                    Download PDF
+                  </Button>
                   <Button
                     size="sm"
                     variant="outline"
-                    onClick={() => {
-                      const url = cv.download_url.startsWith('http')
-                        ? cv.download_url
-                        : `${process.env.NEXT_PUBLIC_API_URL}${cv.download_url}`;
-                      window.open(url, '_blank');
-                    }}
+                    className="text-red-500 hover:text-red-600"
+                    onClick={() => handleDelete(cv.id)}
                   >
-                    Download
+                    Delete
                   </Button>
-                )}
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="text-red-600 hover:text-red-700"
-                  onClick={() => handleDelete(cv.id)}
-                >
-                  Delete
-                </Button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Mobile cards */}
+      <div className="md:hidden space-y-3">
+        {cvs.map((cv) => (
+          <div key={cv.id} className="rounded-lg border border-border p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <p className="text-sm font-medium text-foreground truncate">{cv.file_name}</p>
+              <span className="text-xs text-muted-foreground shrink-0 ml-2">
+                {new Date(cv.created_at).toLocaleDateString()}
+              </span>
+            </div>
+            <div className="flex gap-4">
+              <div>
+                <p className="text-xs text-muted-foreground">ATS Score</p>
+                <p className="text-lg font-bold text-foreground">{cv.ats_score}</p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Projected</p>
+                <p className="text-lg font-bold text-foreground">{cv.projected_score}</p>
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <Button size="sm" variant="outline" className="flex-1" onClick={() => handleDownload(cv.id)}>
+                Download
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                className="text-red-500 hover:text-red-600"
+                onClick={() => handleDelete(cv.id)}
+              >
+                Delete
+              </Button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </>
   );
 }
