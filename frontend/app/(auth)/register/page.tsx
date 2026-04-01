@@ -7,10 +7,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Progress } from '@/components/ui/progress';
 import { registerUser, loginUser } from '@/lib/api';
 import { useAuthStore } from '@/store/authStore';
 import toast from 'react-hot-toast';
+import { Briefcase, Mail, Lock, ShieldCheck } from 'lucide-react';
 
 function getPasswordStrength(password: string): number {
   let score = 0;
@@ -72,73 +72,89 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4">
-      <Card className="w-full max-w-md">
-        <CardHeader className="text-center">
-          <div className="mx-auto mb-2 flex h-10 w-10 items-center justify-center rounded-lg bg-gray-900 text-white text-lg font-bold">
-            JH
-          </div>
-          <CardTitle className="text-2xl">Create account</CardTitle>
-          <CardDescription>Get started with JobHunter</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="you@example.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-              />
+    <div className="flex min-h-screen items-center justify-center bg-background px-4">
+      <div className="w-full max-w-md">
+        <Card className="border-border/50 shadow-lg">
+          <CardHeader className="text-center pb-2">
+            <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-primary text-primary-foreground">
+              <Briefcase className="h-6 w-6" />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
-              <Input
-                id="password"
-                type="password"
-                placeholder="At least 6 characters"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-              />
-              {password && (
-                <div className="space-y-1">
-                  <div className="h-2 w-full rounded-full bg-gray-100 overflow-hidden">
-                    <div
-                      className={`h-full rounded-full transition-all ${getStrengthColor(strength)}`}
-                      style={{ width: `${strength}%` }}
-                    />
-                  </div>
-                  <p className="text-xs text-gray-500">{getStrengthLabel(strength)}</p>
+            <CardTitle className="text-2xl font-bold tracking-tight">Create account</CardTitle>
+            <CardDescription className="text-muted-foreground">
+              Get started with JobHunter
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="email">Email</Label>
+                <div className="relative">
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    id="email"
+                    type="email"
+                    placeholder="you@example.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="pl-9 h-10"
+                    required
+                  />
                 </div>
-              )}
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="password">Password</Label>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    id="password"
+                    type="password"
+                    placeholder="At least 6 characters"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="pl-9 h-10"
+                    required
+                  />
+                </div>
+                {password && (
+                  <div className="space-y-1">
+                    <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
+                      <div
+                        className={`h-full rounded-full transition-all ${getStrengthColor(strength)}`}
+                        style={{ width: `${strength}%` }}
+                      />
+                    </div>
+                    <p className="text-xs text-muted-foreground">{getStrengthLabel(strength)}</p>
+                  </div>
+                )}
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="confirm">Confirm Password</Label>
+                <div className="relative">
+                  <ShieldCheck className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    id="confirm"
+                    type="password"
+                    placeholder="Confirm your password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    className="pl-9 h-10"
+                    required
+                  />
+                </div>
+              </div>
+              <Button type="submit" className="w-full h-10 text-sm font-semibold" disabled={loading}>
+                {loading ? 'Creating account...' : 'Create Account'}
+              </Button>
+            </form>
+            <div className="mt-6 text-center text-sm text-muted-foreground">
+              Already have an account?{' '}
+              <Link href="/login" className="text-foreground hover:underline font-medium">
+                Sign in
+              </Link>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="confirm">Confirm Password</Label>
-              <Input
-                id="confirm"
-                type="password"
-                placeholder="Confirm your password"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                required
-              />
-            </div>
-            <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? 'Creating account...' : 'Create Account'}
-            </Button>
-          </form>
-          <div className="mt-4 text-center text-sm text-gray-500">
-            Already have an account?{' '}
-            <Link href="/login" className="text-gray-900 hover:underline font-medium">
-              Sign in
-            </Link>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

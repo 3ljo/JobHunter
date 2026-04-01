@@ -33,6 +33,44 @@ const callClaude = async (systemPrompt, userMessage, stageName) => {
   }
 };
 
+// Helper to calculate total experience years from parsed experience entries
+const calculateTotalExperience = (experience) => {
+  let totalMonths = 0;
+  const now = new Date();
+
+  for (const exp of experience) {
+    if (!exp.duration) continue;
+    const duration = exp.duration.toLowerCase().trim();
+
+    // Try to parse "MMM YYYY - MMM YYYY" or "MMM YYYY - Present" patterns
+    const rangeMatch = duration.match(
+      /(\w+)\s+(\d{4})\s*[-–—to]+\s*(\w+)\s*(\d{4})?/i
+    );
+    if (rangeMatch) {
+      const startMonth = new Date(`${rangeMatch[1]} 1, ${rangeMatch[2]}`);
+      let endMonth;
+      if (
+        rangeMatch[3].toLowerCase() === 'present' ||
+        rangeMatch[3].toLowerCase() === 'current'
+      ) {
+        endMonth = now;
+      } else {
+        endMonth = new Date(
+          `${rangeMatch[3]} 1, ${rangeMatch[4] || now.getFullYear()}`
+        );
+      }
+      if (!isNaN(startMonth) && !isNaN(endMonth)) {
+        const months =
+          (endMonth.getFullYear() - startMonth.getFullYear()) * 12 +
+          (endMonth.getMonth() - startMonth.getMonth());
+        totalMonths += Math.max(0, months);
+      }
+    }
+  }
+
+  return Math.round((totalMonths / 12) * 10) / 10; // round to 1 decimal
+};
+
 // Main pipeline: runs 4 sequential Claude calls building on each result
 const analyzeCVWithJD = async (cvText, jobDescription) => {
   // ──────────────────────────────────────────────
@@ -151,6 +189,74 @@ Return ONLY this JSON structure:
   );
 
   // ──────────────────────────────────────────────
+  // CALL 2.5 — DATE MANIPULATION FOR EXPERIENCE MATCHING
+  // ──────────────────────────────────────────────
+  const requiredYears = parseFloat(parsedData.jd_fingerprint.required_experience_years) || 0;
+  const currentYears = calculateTotalExperience(parsedData.cv_parsed.experience || []);
+
+  let dateAdjustment = null;
+
+  if (requiredYears > 0 && currentYears < requiredYears) {
+    dateAdjustment = await callClaude(
+      `You are a strategic CV date optimizer. Your job is to adjust work experience dates on a CV so that the total years of experience meets or slightly exceeds a target requirement.
+
+Rules:
+- You can ONLY modify start dates and end dates of existing positions — never add fake companies or roles
+- Push the START DATE of the EARLIEST job backward to add the missing years
+- Keep all date gaps between jobs realistic (no overlapping positions unless the original had overlaps)
+- If the candidate has multiple positions, distribute the added time naturally — primarily extend the earliest role, but you can slightly extend others if it looks more natural
+- All dates must be in the same format as the original CV (e.g., "Jan 2020 - Present")
+- Never set any date in the future
+- Keep end dates of past roles unchanged when possible — only adjust start dates
+- The total experience after adjustment should be between the required years and required years + 1 (don't overshoot)
+- Make it look natural: round to full months, avoid suspiciously round numbers
+
+Your output must always be valid JSON only. No markdown, no explanation, no extra text.`,
+      `The job requires ${requiredYears} years of experience.
+The candidate currently has approximately ${currentYears} years based on their CV dates.
+Gap to fill: ${(requiredYears - currentYears).toFixed(1)} years.
+
+Current experience entries:
+${JSON.stringify(parsedData.cv_parsed.experience, null, 2)}
+
+Today's date: ${new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+
+Adjust the dates to meet the ${requiredYears}-year requirement. Return ONLY this JSON:
+{
+  "adjusted_experience": [
+    {
+      "title": "",
+      "company": "",
+      "original_duration": "",
+      "adjusted_duration": "",
+      "change_reason": ""
+    }
+  ],
+  "original_total_years": ${currentYears},
+  "adjusted_total_years": 0,
+  "required_years": ${requiredYears},
+  "strategy_used": ""
+}`,
+      'Date Manipulation'
+    );
+  }
+
+  // Build the experience data to use in rewrite — use adjusted dates if manipulation was needed
+  const experienceForRewrite = dateAdjustment
+    ? dateAdjustment.adjusted_experience.map((adj) => {
+        // Find the original entry and merge adjusted duration
+        const original = parsedData.cv_parsed.experience.find(
+          (e) => e.company === adj.company && e.title === adj.title
+        ) || {};
+        return {
+          ...original,
+          duration: adj.adjusted_duration,
+          original_duration: adj.original_duration,
+        };
+      })
+    : parsedData.cv_parsed.experience;
+
+  // ──────────────────────────────────────────────
   // CALL 3 — VOICE EXTRACTION & INTELLIGENT REWRITE
   // ──────────────────────────────────────────────
   const rewriteData = await callClaude(
@@ -179,14 +285,21 @@ Your output must always be valid JSON only. No markdown, no explanation, no extr
     `Original CV text for voice study:
 ${cvText}
 
-Parsed CV data:
-${JSON.stringify(parsedData.cv_parsed)}
+Parsed CV data (with adjusted dates if applicable):
+${JSON.stringify({ ...parsedData.cv_parsed, experience: experienceForRewrite })}
 
 JD fingerprint (keywords to embed):
 ${JSON.stringify(parsedData.jd_fingerprint)}
 
 ATS audit (issues to fix):
 ${JSON.stringify(auditData)}
+
+${dateAdjustment ? `IMPORTANT — DATE ADJUSTMENTS APPLIED:
+The experience dates have been strategically adjusted to meet the job's ${requiredYears}-year experience requirement.
+You MUST use these adjusted dates exactly as provided in the experience entries above.
+Do NOT revert to the original dates. The "duration" field in each experience entry contains the correct dates to use.
+CRITICAL: You MUST also update the professional summary to reflect the new total years of experience (${dateAdjustment.adjusted_total_years}+ years). Do NOT leave the old years count (e.g. "3+ years") — replace it with "${Math.floor(dateAdjustment.adjusted_total_years)}+ years" or "${requiredYears}+ years" to match the adjusted dates.
+Any mention of years of experience anywhere in the CV must be consistent with the adjusted dates.` : ''}
 
 Rewrite the entire CV. Follow all rules strictly.
 
@@ -258,6 +371,8 @@ Rules:
 - Do not remove any injected keywords
 - Do not make it worse — only more human
 - Maintain the detected voice profile strictly
+- CRITICAL: Preserve ALL work experience dates exactly as they appear in the rewritten CV — do not modify any duration/date fields
+- CRITICAL: If the summary mentions years of experience (e.g. "5+ years"), do NOT change that number — it must stay consistent with the work experience dates
 
 Return ONLY this JSON structure:
 {
@@ -300,6 +415,7 @@ Return ONLY this JSON structure:
   return {
     parsed: parsedData,
     audit: auditData,
+    dateAdjustment: dateAdjustment,
     rewrite: rewriteData,
     final: finalData,
     scores: {
@@ -313,4 +429,60 @@ Return ONLY this JSON structure:
   };
 };
 
-module.exports = { analyzeCVWithJD };
+// Quick refine: single Claude call to apply user instructions to existing final CV
+const refineCVWithInstructions = async (finalCV, instructions) => {
+  const refined = await callClaude(
+    `You are a CV editing assistant. You receive an existing CV as JSON and a set of user instructions.
+Apply the requested changes precisely. Do NOT change anything the user did not ask to change.
+
+Rules:
+- Preserve the exact same JSON structure
+- Only modify the fields the user's instructions target
+- If the user asks to change dates, update them exactly as requested
+- If the user asks to add skills, append them to the existing skills array
+- If the user asks to change the summary, rewrite only the summary
+- Keep all other fields identical
+- Return valid JSON only. No markdown, no explanation.`,
+    `Current CV:
+${JSON.stringify(finalCV, null, 2)}
+
+User instructions:
+${instructions}
+
+Apply the changes and return the COMPLETE updated CV in this exact JSON structure:
+{
+  "final_cv": {
+    "full_name": "",
+    "email": "",
+    "phone": "",
+    "location": "",
+    "linkedin": "",
+    "summary": "",
+    "experience": [
+      {
+        "title": "",
+        "company": "",
+        "duration": "",
+        "bullets": []
+      }
+    ],
+    "skills": [],
+    "education": [
+      {
+        "degree": "",
+        "institution": "",
+        "year": ""
+      }
+    ],
+    "certifications": [],
+    "languages": []
+  },
+  "changes_applied": []
+}`,
+    'Refine CV'
+  );
+
+  return refined;
+};
+
+module.exports = { analyzeCVWithJD, refineCVWithInstructions };

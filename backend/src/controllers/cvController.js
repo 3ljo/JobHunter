@@ -6,7 +6,7 @@ const fs = require('fs');
 const multer = require('multer');
 const supabase = require('../services/supabaseClient');
 const { parsePDF } = require('../services/cvParserService');
-const { analyzeCVWithJD } = require('../services/cvAnalyzerService');
+const { analyzeCVWithJD, refineCVWithInstructions } = require('../services/cvAnalyzerService');
 const { generateCVDocx } = require('../services/cvGeneratorService');
 const { generateCVPdfBuffer } = require('../services/cvPdfService');
 
@@ -65,6 +65,7 @@ const analyzeCV = async (req, res) => {
         file_url: null,
         raw_text: cvText,
         ats_score: result.scores.current_ats,
+        projected_score: result.scores.projected_ats || null,
         ats_feedback: result,
         is_generated: false,
       })
@@ -187,4 +188,99 @@ const downloadCVPdf = async (req, res) => {
   }
 };
 
-module.exports = { analyzeCV, getCVHistory, deleteCVRecord, downloadCVPdf };
+// GET /api/cv/preview/:cv_id — Generate and stream PDF inline for preview
+const previewCVPdf = async (req, res) => {
+  const { cv_id } = req.params;
+
+  try {
+    const { data: cv, error } = await supabase
+      .from('cvs')
+      .select('*')
+      .eq('id', cv_id)
+      .eq('user_id', req.user.id)
+      .single();
+
+    if (error || !cv) {
+      return res.status(404).json({ error: 'CV not found' });
+    }
+
+    const feedback = cv.ats_feedback;
+    const finalCV = feedback?.final?.final_cv;
+    if (!finalCV) {
+      return res.status(400).json({ error: 'No rewritten CV data available' });
+    }
+
+    const pdfBuffer = await generateCVPdfBuffer(finalCV);
+
+    res.set({
+      'Content-Type': 'application/pdf',
+      'Content-Disposition': `inline; filename="cv_preview.pdf"`,
+      'Content-Length': pdfBuffer.length,
+    });
+
+    return res.send(pdfBuffer);
+  } catch (err) {
+    console.error('PDF preview error:', err.message);
+    return res.status(500).json({ error: 'Failed to generate PDF preview' });
+  }
+};
+
+// POST /api/cv/refine — Apply quick AI edits to an existing CV
+const refineCV = async (req, res) => {
+  try {
+    const { cv_id, instructions } = req.body;
+
+    if (!cv_id || !instructions) {
+      return res.status(400).json({ error: 'cv_id and instructions are required' });
+    }
+
+    // Fetch the CV record and verify ownership
+    const { data: cv, error: fetchError } = await supabase
+      .from('cvs')
+      .select('*')
+      .eq('id', cv_id)
+      .eq('user_id', req.user.id)
+      .single();
+
+    if (fetchError || !cv) {
+      return res.status(404).json({ error: 'CV not found' });
+    }
+
+    const currentFinalCV = cv.ats_feedback?.final?.final_cv;
+    if (!currentFinalCV) {
+      return res.status(400).json({ error: 'No CV data to refine' });
+    }
+
+    // Single Claude call to apply changes
+    const refined = await refineCVWithInstructions(currentFinalCV, instructions);
+
+    // Update the final_cv in ats_feedback
+    const updatedFeedback = {
+      ...cv.ats_feedback,
+      final: {
+        ...cv.ats_feedback.final,
+        final_cv: refined.final_cv,
+      },
+    };
+
+    const { error: updateError } = await supabase
+      .from('cvs')
+      .update({ ats_feedback: updatedFeedback })
+      .eq('id', cv_id)
+      .eq('user_id', req.user.id);
+
+    if (updateError) {
+      return res.status(400).json({ error: updateError.message });
+    }
+
+    return res.status(200).json({
+      final_cv: refined.final_cv,
+      changes_applied: refined.changes_applied || [],
+    });
+  } catch (err) {
+    console.error('CV refine error:', err.message);
+    return res.status(500).json({ error: err.message || 'CV refinement failed' });
+  }
+};
+
+module.exports = { analyzeCV, getCVHistory, deleteCVRecord, downloadCVPdf, previewCVPdf, refineCV };

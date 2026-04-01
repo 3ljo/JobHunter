@@ -88,6 +88,18 @@ export const downloadCVPdf = async (cvId: string) => {
   URL.revokeObjectURL(url);
 };
 
+export const previewCVPdf = async (cvId: string): Promise<string> => {
+  const res = await api.get(`/api/cv/preview/${cvId}`, { responseType: 'blob' });
+  const blob = new Blob([res.data], { type: 'application/pdf' });
+  return URL.createObjectURL(blob);
+};
+
+export const refineCV = (cvId: string, instructions: string) =>
+  api.post<{ final_cv: any; changes_applied: string[] }>('/api/cv/refine', {
+    cv_id: cvId,
+    instructions,
+  }, { timeout: 60000 });
+
 // Tracker
 export const getAllTrackerJobs = () =>
   api.get<{ jobs: TrackerJob[] }>('/api/tracker');

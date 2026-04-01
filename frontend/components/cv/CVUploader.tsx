@@ -61,35 +61,37 @@ export default function CVUploader({ onResult }: CVUploaderProps) {
 
   return (
     <div className="space-y-4">
-      <div
-        {...getRootProps()}
-        className={`cursor-pointer rounded-lg border-2 border-dashed p-8 text-center transition-colors ${
-          isDragActive ? 'border-foreground bg-muted' : 'border-border hover:border-foreground/30'
-        }`}
-      >
-        <input {...getInputProps()} />
-        {file ? (
-          <div>
-            <p className="font-medium text-foreground">{file.name}</p>
-            <p className="text-sm text-muted-foreground mt-1">{(file.size / 1024).toFixed(0)} KB</p>
-            <p className="text-xs text-muted-foreground/70 mt-1">Click or drag to replace</p>
-          </div>
-        ) : (
-          <div>
-            <p className="text-muted-foreground">Drag and drop your CV here, or click to browse</p>
-            <p className="text-sm text-muted-foreground/70 mt-1">PDF only, max 5MB</p>
-          </div>
-        )}
-      </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div
+          {...getRootProps()}
+          className={`cursor-pointer rounded-lg border-2 border-dashed p-8 text-center transition-colors flex items-center justify-center ${
+            isDragActive ? 'border-foreground bg-muted' : 'border-border hover:border-foreground/30'
+          }`}
+        >
+          <input {...getInputProps()} />
+          {file ? (
+            <div>
+              <p className="font-medium text-foreground">{file.name}</p>
+              <p className="text-sm text-muted-foreground mt-1">{(file.size / 1024).toFixed(0)} KB</p>
+              <p className="text-xs text-muted-foreground/70 mt-1">Click or drag to replace</p>
+            </div>
+          ) : (
+            <div>
+              <p className="text-muted-foreground">Drag and drop your CV here, or click to browse</p>
+              <p className="text-sm text-muted-foreground/70 mt-1">PDF only, max 5MB</p>
+            </div>
+          )}
+        </div>
 
-      <div className="space-y-2">
-        <Label>Job Description</Label>
-        <textarea
-          className="flex min-h-[120px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          placeholder="Paste the full job description here..."
-          value={jobDescription}
-          onChange={(e) => setJobDescription(e.target.value)}
-        />
+        <div className="space-y-2">
+          <Label>Job Description</Label>
+          <textarea
+            className="flex min-h-[160px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            placeholder="Paste the full job description here..."
+            value={jobDescription}
+            onChange={(e) => setJobDescription(e.target.value)}
+          />
+        </div>
       </div>
 
       <Button onClick={handleAnalyze} disabled={loading || !file} className="w-full">
