@@ -5,9 +5,10 @@ import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { refineCV } from '@/lib/api';
 import toast from 'react-hot-toast';
+import { Sparkles } from 'lucide-react';
 
 interface QuickEditBoxProps {
-  cvRecordId: string;
+  cvRecordId: string | null;
   onRefine: (updatedFinalCV: any) => void;
 }
 
@@ -16,7 +17,7 @@ export default function QuickEditBox({ cvRecordId, onRefine }: QuickEditBoxProps
   const [refining, setRefining] = useState(false);
 
   const handleRefine = async () => {
-    if (!text.trim()) return;
+    if (!text.trim() || !cvRecordId) return;
     setRefining(true);
     try {
       const res = await refineCV(cvRecordId, text.trim());
@@ -31,22 +32,30 @@ export default function QuickEditBox({ cvRecordId, onRefine }: QuickEditBoxProps
   };
 
   return (
-    <div className="rounded-xl border border-border bg-card p-4 space-y-3">
-      <h4 className="text-sm font-medium text-foreground">Quick Edit with AI</h4>
+    <div className="space-y-2">
+      <div className="flex items-center gap-1.5">
+        <Sparkles className="h-3.5 w-3.5 text-muted-foreground" />
+        <span className="text-xs font-medium text-muted-foreground">Quick Edit</span>
+      </div>
       <Textarea
-        placeholder='e.g. "Change summary to 5 years experience", "Add Kubernetes to skills", "Remove the second job"...'
+        placeholder="Tell AI what to change..."
         value={text}
-        onChange={(e) => setText(e.target.value)}
-        rows={2}
-        className="resize-none"
+        onChange={(e) => {
+          setText(e.target.value);
+          e.target.style.height = 'auto';
+          e.target.style.height = e.target.scrollHeight + 'px';
+        }}
+        rows={1}
+        className="resize-none text-xs overflow-hidden min-h-0"
         disabled={refining}
       />
       <Button
         onClick={handleRefine}
-        disabled={refining || !text.trim()}
+        disabled={refining || !text.trim() || !cvRecordId}
+        size="sm"
         className="w-full"
       >
-        {refining ? 'Applying...' : 'Apply Changes'}
+        {refining ? 'Applying...' : 'Apply'}
       </Button>
     </div>
   );

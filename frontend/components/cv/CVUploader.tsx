@@ -3,10 +3,11 @@
 import { useState, useCallback } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { analyzeCV } from '@/lib/api';
 import { CVAnalysisResult } from '@/types';
 import toast from 'react-hot-toast';
+import { Upload, FileText, X } from 'lucide-react';
 
 const steps = ['Parsing CV...', 'Auditing ATS...', 'Rewriting...', 'Humanizing...', 'Done'];
 
@@ -61,54 +62,70 @@ export default function CVUploader({ onResult }: CVUploaderProps) {
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      {/* File upload — compact */}
+      {!file ? (
         <div
           {...getRootProps()}
-          className={`cursor-pointer rounded-lg border-2 border-dashed p-8 text-center transition-colors flex items-center justify-center ${
+          className={`cursor-pointer rounded-lg border border-dashed px-4 py-3 transition-colors flex items-center gap-3 ${
             isDragActive ? 'border-foreground bg-muted' : 'border-border hover:border-foreground/30'
           }`}
         >
           <input {...getInputProps()} />
-          {file ? (
-            <div>
-              <p className="font-medium text-foreground">{file.name}</p>
-              <p className="text-sm text-muted-foreground mt-1">{(file.size / 1024).toFixed(0)} KB</p>
-              <p className="text-xs text-muted-foreground/70 mt-1">Click or drag to replace</p>
-            </div>
-          ) : (
-            <div>
-              <p className="text-muted-foreground">Drag and drop your CV here, or click to browse</p>
-              <p className="text-sm text-muted-foreground/70 mt-1">PDF only, max 5MB</p>
-            </div>
-          )}
+          <Upload className="h-4 w-4 text-muted-foreground shrink-0" />
+          <div>
+            <p className="text-sm text-muted-foreground">
+              {isDragActive ? 'Drop your CV here' : 'Upload CV'}
+            </p>
+            <p className="text-xs text-muted-foreground/60">PDF, max 5MB</p>
+          </div>
         </div>
-
-        <div className="space-y-2">
-          <Label>Job Description</Label>
-          <textarea
-            className="flex min-h-[160px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            placeholder="Paste the full job description here..."
-            value={jobDescription}
-            onChange={(e) => setJobDescription(e.target.value)}
-          />
+      ) : (
+        <div className="flex items-center gap-3 rounded-lg border border-border px-4 py-3">
+          <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium text-foreground truncate">{file.name}</p>
+            <p className="text-xs text-muted-foreground">{(file.size / 1024).toFixed(0)} KB</p>
+          </div>
+          <button
+            onClick={(e) => { e.stopPropagation(); setFile(null); }}
+            className="text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
         </div>
-      </div>
+      )}
 
+      {/* Job description */}
+      <Textarea
+        placeholder="Paste the job description here..."
+        value={jobDescription}
+        onChange={(e) => {
+          setJobDescription(e.target.value);
+          e.target.style.height = 'auto';
+          e.target.style.height = e.target.scrollHeight + 'px';
+        }}
+        rows={4}
+        className="overflow-hidden"
+        disabled={loading}
+      />
+
+      {/* Analyze button */}
       <Button onClick={handleAnalyze} disabled={loading || !file} className="w-full">
         {loading ? 'Analyzing...' : 'Analyze CV'}
       </Button>
 
+      {/* Progress steps */}
       {loading && (
-        <div className="space-y-2 pt-2">
+        <div className="flex items-center gap-3 flex-wrap pt-1">
           {steps.map((s, i) => (
             <div
               key={s}
-              className={`flex items-center gap-2 text-sm ${
-                i <= step ? 'text-foreground' : 'text-muted-foreground/40'
+              className={`flex items-center gap-1.5 text-xs ${
+                i <= step ? 'text-foreground' : 'text-muted-foreground/30'
               }`}
             >
               <div
-                className={`h-2 w-2 rounded-full ${
+                className={`h-1.5 w-1.5 rounded-full ${
                   i < step ? 'bg-green-500' : i === step ? 'bg-yellow-500 animate-pulse' : 'bg-muted'
                 }`}
               />

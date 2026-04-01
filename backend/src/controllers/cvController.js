@@ -57,23 +57,36 @@ const analyzeCV = async (req, res) => {
     const result = await analyzeCVWithJD(cvText, jobDescription);
 
     // Save record to cvs table (no file storage — PDF is generated on-demand)
-    const { data: cvRecord, error: dbError } = await supabase
+    const insertData = {
+      user_id: req.user.id,
+      file_name: `cv_optimized_${Date.now()}.pdf`,
+      file_url: null,
+      raw_text: cvText,
+      ats_score: result.scores.current_ats,
+      projected_score: result.scores.projected_ats || null,
+      ats_feedback: result,
+      is_generated: false,
+    };
+
+    let { data: cvRecord, error: dbError } = await supabase
       .from('cvs')
-      .insert({
-        user_id: req.user.id,
-        file_name: `cv_optimized_${Date.now()}.pdf`,
-        file_url: null,
-        raw_text: cvText,
-        ats_score: result.scores.current_ats,
-        projected_score: result.scores.projected_ats || null,
-        ats_feedback: result,
-        is_generated: false,
-      })
+      .insert(insertData)
       .select()
       .single();
 
+    // Retry without projected_score if column doesn't exist
     if (dbError) {
-      console.error('DB save error:', dbError.message);
+      console.error('DB save error (retrying without projected_score):', dbError.message);
+      const { projected_score, ...fallbackData } = insertData;
+      const fallback = await supabase
+        .from('cvs')
+        .insert(fallbackData)
+        .select()
+        .single();
+      cvRecord = fallback.data;
+      if (fallback.error) {
+        console.error('DB save fallback error:', fallback.error.message);
+      }
     }
 
     return res.status(200).json({

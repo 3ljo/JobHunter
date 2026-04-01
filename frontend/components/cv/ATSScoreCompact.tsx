@@ -24,33 +24,24 @@ export default function ATSScoreCompact({ scores }: { scores: ATSScores }) {
   ];
 
   return (
-    <div className="space-y-4">
-      {/* Main scores */}
-      <div className="flex items-center justify-center gap-4">
-        <div className="text-center">
-          <p className="text-xs text-muted-foreground">Current</p>
-          <p className={`text-2xl font-bold ${scoreColor(scores.current_ats)}`}>
-            {scores.current_ats}
-          </p>
-        </div>
-        <span className="text-lg text-muted-foreground/40">&rarr;</span>
-        <div className="text-center">
-          <p className="text-xs text-muted-foreground">Projected</p>
-          <p className={`text-2xl font-bold ${scoreColor(scores.projected_ats)}`}>
-            {scores.projected_ats}
-          </p>
-        </div>
+    <div className="space-y-3">
+      <div className="flex items-baseline justify-center gap-3">
+        <span className={`text-3xl font-bold tracking-tight ${scoreColor(scores.current_ats)}`}>
+          {scores.current_ats}
+        </span>
+        <span className="text-muted-foreground/30 text-sm">&rarr;</span>
+        <span className={`text-3xl font-bold tracking-tight ${scoreColor(scores.projected_ats)}`}>
+          {scores.projected_ats}
+        </span>
       </div>
-
-      {/* Sub-scores */}
-      <div className="space-y-2">
+      <div className="grid grid-cols-2 gap-x-4 gap-y-2">
         {subScores.map((s) => (
           <div key={s.label} className="space-y-0.5">
-            <div className="flex justify-between text-xs">
+            <div className="flex justify-between text-[11px]">
               <span className="text-muted-foreground">{s.label}</span>
               <span className={`font-medium ${scoreColor(s.value)}`}>{s.value}%</span>
             </div>
-            <Progress value={s.value} className={`h-1.5 ${progressColor(s.value)}`} />
+            <Progress value={s.value} className={`h-1 ${progressColor(s.value)}`} />
           </div>
         ))}
       </div>
