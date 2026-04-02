@@ -29,13 +29,25 @@ const tabColors: Record<string, string> = {
   rejected: 'text-red-400 bg-red-500/15',
 };
 
+const TRACKER_UI_KEY = 'tracker_ui_state';
+
+function loadTrackerUI() {
+  if (typeof window === 'undefined') return null;
+  try {
+    const s = sessionStorage.getItem(TRACKER_UI_KEY);
+    return s ? JSON.parse(s) : null;
+  } catch {
+    return null;
+  }
+}
+
 export default function TrackerPage() {
   const [jobs, setJobs] = useState<TrackerJob[]>([]);
   const [stats, setStats] = useState<TrackerStats | null>(null);
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
-  const [view, setView] = useState<'table' | 'kanban'>('table');
+  const [search, setSearch] = useState(() => loadTrackerUI()?.search ?? '');
+  const [statusFilter, setStatusFilter] = useState(() => loadTrackerUI()?.statusFilter ?? 'all');
+  const [view, setView] = useState<'table' | 'kanban'>(() => loadTrackerUI()?.view ?? 'table');
 
   const load = useCallback(async () => {
     try {
@@ -50,6 +62,11 @@ export default function TrackerPage() {
   }, []);
 
   useEffect(() => { load(); }, [load]);
+
+  // Persist UI preferences across tab switches
+  useEffect(() => {
+    sessionStorage.setItem(TRACKER_UI_KEY, JSON.stringify({ search, statusFilter, view }));
+  }, [search, statusFilter, view]);
 
   const filteredJobs = useMemo(() => {
     let result = jobs;

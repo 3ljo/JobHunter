@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -10,6 +10,7 @@ import toast from 'react-hot-toast';
 import { Upload, FileText, X, Sparkles, Check } from 'lucide-react';
 
 const steps = ['Parsing CV...', 'Auditing ATS...', 'Rewriting...', 'Humanizing...', 'Done'];
+const CV_UPLOAD_JD_KEY = 'cv_upload_job_description';
 
 interface CVUploadProps {
   onResult: (result: CVAnalysisResult) => void;
@@ -17,9 +18,16 @@ interface CVUploadProps {
 
 export default function CVUpload({ onResult }: CVUploadProps) {
   const [file, setFile] = useState<File | null>(null);
-  const [jobDescription, setJobDescription] = useState('');
+  const [jobDescription, setJobDescription] = useState(() => {
+    if (typeof window === 'undefined') return '';
+    return sessionStorage.getItem(CV_UPLOAD_JD_KEY) || '';
+  });
   const [loading, setLoading] = useState(false);
   const [step, setStep] = useState(0);
+
+  useEffect(() => {
+    sessionStorage.setItem(CV_UPLOAD_JD_KEY, jobDescription);
+  }, [jobDescription]);
 
   const onDrop = useCallback((accepted: File[]) => {
     if (accepted.length > 0) setFile(accepted[0]);

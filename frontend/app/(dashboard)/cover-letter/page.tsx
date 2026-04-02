@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -15,15 +15,32 @@ const tones = [
   { key: 'friendly', label: 'Friendly' },
 ];
 
+const CL_PAGE_KEY = 'cover_letter_page_state';
+
+function loadSaved() {
+  if (typeof window === 'undefined') return null;
+  try {
+    const s = sessionStorage.getItem(CL_PAGE_KEY);
+    return s ? JSON.parse(s) : null;
+  } catch {
+    return null;
+  }
+}
+
 export default function CoverLetterPage() {
   const [file, setFile] = useState<File | null>(null);
-  const [jobDescription, setJobDescription] = useState('');
-  const [tone, setTone] = useState('balanced');
-  const [result, setResult] = useState('');
+  const [jobDescription, setJobDescription] = useState(() => loadSaved()?.jobDescription ?? '');
+  const [tone, setTone] = useState(() => loadSaved()?.tone ?? 'balanced');
+  const [result, setResult] = useState(() => loadSaved()?.result ?? '');
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
   const [refineInput, setRefineInput] = useState('');
   const [refining, setRefining] = useState(false);
+
+  // Persist state across tab switches
+  useEffect(() => {
+    sessionStorage.setItem(CL_PAGE_KEY, JSON.stringify({ jobDescription, tone, result }));
+  }, [jobDescription, tone, result]);
 
   const onDrop = useCallback((accepted: File[]) => {
     if (accepted.length > 0) setFile(accepted[0]);
