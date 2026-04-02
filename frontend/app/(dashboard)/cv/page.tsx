@@ -8,11 +8,10 @@ import QuickEditBox from '@/components/cv/QuickEditBox';
 import ScoreRing from '@/components/cv/ScoreRing';
 import AnalysisSidebar from '@/components/cv/AnalysisSidebar';
 import { downloadCVPdf, generateCoverLetter } from '@/lib/api';
-import { CVAnalysisResult } from '@/types';
+import { useCVAnalysisStore } from '@/store/cvAnalysisStore';
 import toast from 'react-hot-toast';
 import { Download, RotateCcw, ArrowRight, FileSearch, TrendingUp, FileSignature, Sparkles, Copy, Check, X, Wand2, Send } from 'lucide-react';
 
-const STORAGE_KEY = 'cv_analysis_result';
 const CL_STORAGE_KEY = 'cv_cover_letter_state';
 
 const tones = [
@@ -32,15 +31,7 @@ function loadCLState() {
 }
 
 export default function CVPage() {
-  const [result, setResult] = useState<CVAnalysisResult | null>(() => {
-    if (typeof window === 'undefined') return null;
-    try {
-      const saved = sessionStorage.getItem(STORAGE_KEY);
-      return saved ? JSON.parse(saved) : null;
-    } catch {
-      return null;
-    }
-  });
+  const { result, setResult, reset: resetAnalysis, loading: analysisLoading, step: analysisStep, steps: analysisSteps } = useCVAnalysisStore();
   const [downloading, setDownloading] = useState(false);
 
   // Cover letter state — restored from sessionStorage
@@ -51,14 +42,6 @@ export default function CVPage() {
   const [clCopied, setCLCopied] = useState(false);
   const [clRefineInput, setCLRefineInput] = useState('');
   const [clRefining, setCLRefining] = useState(false);
-
-  useEffect(() => {
-    if (result) {
-      sessionStorage.setItem(STORAGE_KEY, JSON.stringify(result));
-    } else {
-      sessionStorage.removeItem(STORAGE_KEY);
-    }
-  }, [result]);
 
   // Persist cover letter state
   useEffect(() => {
@@ -87,7 +70,7 @@ export default function CVPage() {
   };
 
   const handleReset = () => {
-    setResult(null);
+    resetAnalysis();
     setShowCL(false);
     setCLResult('');
     sessionStorage.removeItem(CL_STORAGE_KEY);
@@ -148,7 +131,7 @@ export default function CVPage() {
 
   const finalCV = result?.final?.final_cv;
 
-  // Upload phase
+  // Upload phase (or analysis in progress)
   if (!result) {
     return (
       <div className="flex flex-col items-center pt-8 md:pt-20">
@@ -157,13 +140,49 @@ export default function CVPage() {
             <FileSearch className="h-6 w-6 text-violet-400" />
           </div>
           <h1 className="text-3xl md:text-4xl font-bold text-foreground tracking-tight">
-            Analyze Your CV
+            {analysisLoading ? 'Analyzing Your CV' : 'Analyze Your CV'}
           </h1>
           <p className="text-muted-foreground mt-3 text-base max-w-md mx-auto leading-relaxed">
-            Upload your CV and paste a job description to get an AI-powered ATS analysis.
+            {analysisLoading
+              ? 'Your analysis is in progress. Feel free to browse other tabs — it won\'t be interrupted.'
+              : 'Upload your CV and paste a job description to get an AI-powered ATS analysis.'}
           </p>
         </div>
-        <CVUpload onResult={setResult} />
+        {analysisLoading ? (
+          <div className="w-full max-w-2xl mx-auto">
+            <div className="rounded-2xl border border-border bg-card/70 p-5">
+              <div className="space-y-3">
+                {analysisSteps.map((s, i) => (
+                  <div
+                    key={s}
+                    className={`flex items-center gap-3 text-sm transition-all duration-300 ${
+                      i <= analysisStep ? 'text-foreground/90' : 'text-muted-foreground/40'
+                    }`}
+                  >
+                    <div className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full transition-all duration-300 ${
+                      i < analysisStep
+                        ? 'bg-violet-500/20 text-violet-400'
+                        : i === analysisStep
+                        ? 'bg-violet-500/15 ring-2 ring-violet-500/30'
+                        : 'bg-muted/50'
+                    }`}>
+                      {i < analysisStep ? (
+                        <Check className="h-3 w-3" />
+                      ) : i === analysisStep ? (
+                        <div className="h-2 w-2 rounded-full bg-violet-400 animate-pulse" />
+                      ) : (
+                        <div className="h-1.5 w-1.5 rounded-full bg-muted-foreground/40" />
+                      )}
+                    </div>
+                    <span className="font-medium">{s}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        ) : (
+          <CVUpload />
+        )}
       </div>
     );
   }

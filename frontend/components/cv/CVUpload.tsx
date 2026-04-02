@@ -4,26 +4,20 @@ import { useState, useCallback, useEffect } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { analyzeCV } from '@/lib/api';
-import { CVAnalysisResult } from '@/types';
+import { useCVAnalysisStore } from '@/store/cvAnalysisStore';
 import toast from 'react-hot-toast';
 import { Upload, FileText, X, Sparkles, Check } from 'lucide-react';
 
-const steps = ['Parsing CV...', 'Auditing ATS...', 'Rewriting...', 'Humanizing...', 'Done'];
 const CV_UPLOAD_JD_KEY = 'cv_upload_job_description';
 
-interface CVUploadProps {
-  onResult: (result: CVAnalysisResult) => void;
-}
-
-export default function CVUpload({ onResult }: CVUploadProps) {
+export default function CVUpload() {
   const [file, setFile] = useState<File | null>(null);
   const [jobDescription, setJobDescription] = useState(() => {
     if (typeof window === 'undefined') return '';
     return sessionStorage.getItem(CV_UPLOAD_JD_KEY) || '';
   });
-  const [loading, setLoading] = useState(false);
-  const [step, setStep] = useState(0);
+
+  const { loading, step, steps, startAnalysis } = useCVAnalysisStore();
 
   useEffect(() => {
     sessionStorage.setItem(CV_UPLOAD_JD_KEY, jobDescription);
@@ -40,39 +34,10 @@ export default function CVUpload({ onResult }: CVUploadProps) {
     multiple: false,
   });
 
-  const handleAnalyze = async () => {
+  const handleAnalyze = () => {
     if (!file) { toast.error('Please upload a CV'); return; }
     if (!jobDescription.trim()) { toast.error('Please enter a job description'); return; }
-
-    setLoading(true);
-    setStep(0);
-
-    const interval = setInterval(() => {
-      setStep((s) => (s < steps.length - 2 ? s + 1 : s));
-    }, 3000);
-
-    try {
-      const formData = new FormData();
-      formData.append('cv_file', file);
-      formData.append('job_description', jobDescription);
-      const res = await analyzeCV(formData);
-      setStep(steps.length - 1);
-      clearInterval(interval);
-      // Store inputs for cover letter reuse
-      sessionStorage.setItem('cl_job_description', jobDescription);
-      if (res.data?.parsed?.raw_text) {
-        sessionStorage.setItem('cl_cv_text', res.data.parsed.raw_text);
-      } else if (res.data?.final?.final_cv) {
-        sessionStorage.setItem('cl_cv_text', JSON.stringify(res.data.final.final_cv));
-      }
-      onResult(res.data);
-      toast.success('CV analysis complete!');
-    } catch (err: any) {
-      clearInterval(interval);
-      toast.error(err.response?.data?.error || 'Analysis failed');
-    } finally {
-      setLoading(false);
-    }
+    startAnalysis(file, jobDescription);
   };
 
   return (
