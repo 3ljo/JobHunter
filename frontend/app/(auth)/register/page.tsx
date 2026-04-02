@@ -6,11 +6,10 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { registerUser, loginUser } from '@/lib/api';
 import { useAuthStore } from '@/store/authStore';
 import toast from 'react-hot-toast';
-import { FileSearch, Mail, Lock, ShieldCheck } from 'lucide-react';
+import { Mail, Lock, ShieldCheck, ArrowRight, Check } from 'lucide-react';
 
 function getPasswordStrength(password: string): number {
   let score = 0;
@@ -32,7 +31,14 @@ function getStrengthColor(score: number): string {
   if (score <= 25) return 'bg-red-500';
   if (score <= 50) return 'bg-yellow-500';
   if (score <= 75) return 'bg-violet-500';
-  return 'bg-green-500';
+  return 'bg-emerald-500';
+}
+
+function getStrengthTextColor(score: number): string {
+  if (score <= 25) return 'text-red-400';
+  if (score <= 50) return 'text-yellow-400';
+  if (score <= 75) return 'text-violet-400';
+  return 'text-emerald-400';
 }
 
 export default function RegisterPage() {
@@ -71,89 +77,192 @@ export default function RegisterPage() {
     }
   };
 
+  const passwordsMatch = confirmPassword.length > 0 && password === confirmPassword;
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-4">
-      <div className="w-full max-w-md">
-        <Card className="border-zinc-800 bg-zinc-900/80 shadow-2xl shadow-violet-500/5">
-          <CardHeader className="text-center pb-2">
-            <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-violet-600">
-              <FileSearch className="h-6 w-6 text-white" />
+    <div className="relative flex min-h-screen overflow-hidden bg-zinc-950">
+      {/* Ambient glow effects */}
+      <div className="pointer-events-none absolute inset-0">
+        <div className="absolute -right-40 -top-40 h-[500px] w-[500px] rounded-full bg-violet-600/15 blur-[120px]" />
+        <div className="absolute -bottom-20 left-0 h-[400px] w-[400px] rounded-full bg-fuchsia-500/10 blur-[100px]" />
+        <div className="absolute left-1/3 top-1/2 h-[300px] w-[300px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-violet-500/5 blur-[80px]" />
+      </div>
+
+      {/* Left panel - form */}
+      <div className="relative flex w-full items-center justify-center px-6 lg:w-1/2">
+        <div className="absolute right-0 top-[10%] hidden h-[80%] w-px bg-gradient-to-b from-transparent via-zinc-800 to-transparent lg:block" />
+
+        <div className="w-full max-w-sm">
+          {/* Mobile logo */}
+          <div className="mb-10 flex items-center gap-3 lg:hidden">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500 to-fuchsia-600">
+              <span className="text-sm font-black text-white leading-none tracking-tighter">JH</span>
             </div>
-            <CardTitle className="text-2xl font-bold tracking-tight text-white">Create account</CardTitle>
-            <CardDescription className="text-zinc-400">
-              Get started with JobHunter
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="email" className="text-zinc-300">Email</Label>
-                <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-500" />
-                  <Input
-                    id="email"
-                    type="email"
-                    placeholder="you@example.com"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="pl-9 h-10 bg-zinc-800/50 border-zinc-700 focus:border-violet-500/50 focus:ring-violet-500/20"
-                    required
-                  />
-                </div>
+            <span className="text-lg font-semibold text-white tracking-tight">JobHunter</span>
+          </div>
+
+          <div className="mb-8">
+            <h2 className="text-2xl font-bold tracking-tight text-white">
+              Create your account
+            </h2>
+            <p className="mt-2 text-sm text-zinc-500">
+              Start optimizing your job applications today
+            </p>
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-5">
+            <div className="space-y-1.5">
+              <Label htmlFor="email" className="text-xs font-medium uppercase tracking-wider text-zinc-500">
+                Email
+              </Label>
+              <div className="group relative">
+                <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-600 transition-colors group-focus-within:text-violet-400" />
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="you@example.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="h-11 rounded-xl border-zinc-800 bg-zinc-900/50 pl-10 text-sm text-white placeholder:text-zinc-600 transition-all focus:border-violet-500/40 focus:bg-zinc-900 focus:ring-1 focus:ring-violet-500/20"
+                  required
+                />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="password" className="text-zinc-300">Password</Label>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-500" />
-                  <Input
-                    id="password"
-                    type="password"
-                    placeholder="At least 6 characters"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="pl-9 h-10 bg-zinc-800/50 border-zinc-700 focus:border-violet-500/50 focus:ring-violet-500/20"
-                    required
-                  />
-                </div>
-                {password && (
-                  <div className="space-y-1">
-                    <div className="h-1.5 w-full rounded-full bg-zinc-800 overflow-hidden">
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="password" className="text-xs font-medium uppercase tracking-wider text-zinc-500">
+                Password
+              </Label>
+              <div className="group relative">
+                <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-600 transition-colors group-focus-within:text-violet-400" />
+                <Input
+                  id="password"
+                  type="password"
+                  placeholder="At least 6 characters"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="h-11 rounded-xl border-zinc-800 bg-zinc-900/50 pl-10 text-sm text-white placeholder:text-zinc-600 transition-all focus:border-violet-500/40 focus:bg-zinc-900 focus:ring-1 focus:ring-violet-500/20"
+                  required
+                />
+              </div>
+              {password && (
+                <div className="space-y-1.5 pt-1">
+                  <div className="flex gap-1">
+                    {[25, 50, 75, 100].map((threshold) => (
                       <div
-                        className={`h-full rounded-full transition-all ${getStrengthColor(strength)}`}
-                        style={{ width: `${strength}%` }}
+                        key={threshold}
+                        className={`h-1 flex-1 rounded-full transition-all duration-300 ${
+                          strength >= threshold ? getStrengthColor(strength) : 'bg-zinc-800'
+                        }`}
                       />
-                    </div>
-                    <p className="text-xs text-zinc-500">{getStrengthLabel(strength)}</p>
+                    ))}
                   </div>
+                  <p className={`text-xs ${getStrengthTextColor(strength)}`}>
+                    {getStrengthLabel(strength)}
+                  </p>
+                </div>
+              )}
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="confirm" className="text-xs font-medium uppercase tracking-wider text-zinc-500">
+                Confirm Password
+              </Label>
+              <div className="group relative">
+                <ShieldCheck className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-600 transition-colors group-focus-within:text-violet-400" />
+                <Input
+                  id="confirm"
+                  type="password"
+                  placeholder="Confirm your password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  className="h-11 rounded-xl border-zinc-800 bg-zinc-900/50 pl-10 pr-10 text-sm text-white placeholder:text-zinc-600 transition-all focus:border-violet-500/40 focus:bg-zinc-900 focus:ring-1 focus:ring-violet-500/20"
+                  required
+                />
+                {passwordsMatch && (
+                  <Check className="absolute right-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-emerald-400" />
                 )}
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="confirm" className="text-zinc-300">Confirm Password</Label>
-                <div className="relative">
-                  <ShieldCheck className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-500" />
-                  <Input
-                    id="confirm"
-                    type="password"
-                    placeholder="Confirm your password"
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    className="pl-9 h-10 bg-zinc-800/50 border-zinc-700 focus:border-violet-500/50 focus:ring-violet-500/20"
-                    required
-                  />
-                </div>
-              </div>
-              <Button type="submit" className="w-full h-10 text-sm font-semibold bg-violet-600 hover:bg-violet-500 text-white" disabled={loading}>
-                {loading ? 'Creating account...' : 'Create Account'}
-              </Button>
-            </form>
-            <div className="mt-6 text-center text-sm text-zinc-500">
-              Already have an account?{' '}
-              <Link href="/login" className="text-violet-400 hover:text-violet-300 font-medium transition-colors">
-                Sign in
-              </Link>
             </div>
-          </CardContent>
-        </Card>
+
+            <Button
+              type="submit"
+              className="group relative mt-2 h-11 w-full rounded-xl bg-violet-600 text-sm font-semibold text-white transition-all hover:bg-violet-500 hover:shadow-lg hover:shadow-violet-500/25 active:scale-[0.98]"
+              disabled={loading}
+            >
+              {loading ? (
+                <span className="flex items-center gap-2">
+                  <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                  Creating account...
+                </span>
+              ) : (
+                <span className="flex items-center justify-center gap-2">
+                  Create Account
+                  <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+                </span>
+              )}
+            </Button>
+          </form>
+
+          <p className="mt-8 text-center text-sm text-zinc-600">
+            Already have an account?{' '}
+            <Link href="/login" className="font-medium text-violet-400 transition-colors hover:text-violet-300">
+              Sign in
+            </Link>
+          </p>
+        </div>
+      </div>
+
+      {/* Right panel - branding */}
+      <div className="relative hidden w-1/2 lg:flex lg:flex-col lg:justify-between p-12">
+        <div className="absolute inset-0 opacity-[0.03]" style={{
+          backgroundImage: 'linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)',
+          backgroundSize: '60px 60px',
+        }} />
+
+        <div className="relative z-10">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500 to-fuchsia-600">
+              <span className="text-sm font-black text-white leading-none tracking-tighter">JH</span>
+            </div>
+            <span className="text-lg font-semibold text-white tracking-tight">JobHunter</span>
+          </div>
+        </div>
+
+        <div className="relative z-10 max-w-md">
+          <h1 className="text-4xl font-bold leading-tight tracking-tight text-white">
+            Your career journey{' '}
+            <span className="bg-gradient-to-r from-violet-400 to-fuchsia-400 bg-clip-text text-transparent">
+              starts here.
+            </span>
+          </h1>
+          <p className="mt-4 text-base leading-relaxed text-zinc-400">
+            Join thousands of job seekers who use AI-powered insights
+            to craft the perfect CV and land interviews faster.
+          </p>
+
+          {/* Social proof */}
+          <div className="mt-8 flex items-center gap-6">
+            <div>
+              <p className="text-2xl font-bold text-white">10K+</p>
+              <p className="text-xs text-zinc-500">CVs Analyzed</p>
+            </div>
+            <div className="h-8 w-px bg-zinc-800" />
+            <div>
+              <p className="text-2xl font-bold text-white">85%</p>
+              <p className="text-xs text-zinc-500">Score Improvement</p>
+            </div>
+            <div className="h-8 w-px bg-zinc-800" />
+            <div>
+              <p className="text-2xl font-bold text-white">3x</p>
+              <p className="text-xs text-zinc-500">More Interviews</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="relative z-10">
+          <p className="text-sm text-zinc-600">&copy; {new Date().getFullYear()} JobHunter</p>
+        </div>
       </div>
     </div>
   );

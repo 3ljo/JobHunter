@@ -26,7 +26,7 @@ const getAllJobs = async (req, res) => {
 
 // POST — Add a new job to the tracker
 const addJob = async (req, res) => {
-  const { company_name, job_title, job_url, status, notes } = req.body;
+  const { company_name, job_title, job_url, status, notes, applied_at } = req.body;
 
   if (!company_name || !job_title) {
     return res.status(400).json({ error: 'company_name and job_title are required' });
@@ -47,6 +47,7 @@ const addJob = async (req, res) => {
         job_url: job_url || null,
         status: jobStatus,
         notes: notes || null,
+        applied_at: applied_at || new Date().toISOString(),
       })
       .select()
       .single();
@@ -64,7 +65,7 @@ const addJob = async (req, res) => {
 // PUT — Update an existing tracked job
 const updateJob = async (req, res) => {
   const { job_id } = req.params;
-  const { company_name, job_title, job_url, status, notes } = req.body;
+  const { company_name, job_title, job_url, status, notes, applied_at } = req.body;
 
   if (status && !VALID_STATUSES.includes(status)) {
     return res.status(400).json({ error: `Status must be one of: ${VALID_STATUSES.join(', ')}` });
@@ -90,6 +91,7 @@ const updateJob = async (req, res) => {
     if (job_url !== undefined) updates.job_url = job_url;
     if (status !== undefined) updates.status = status;
     if (notes !== undefined) updates.notes = notes;
+    if (applied_at !== undefined) updates.applied_at = applied_at;
 
     const { data, error } = await supabase
       .from('job_tracker')

@@ -116,4 +116,18 @@ export const deleteTrackerJob = (jobId: string) =>
 export const getTrackerStats = () =>
   api.get<{ stats: TrackerStats }>('/api/tracker/stats');
 
+// Cover Letter
+export const generateCoverLetter = (data: {
+  cv_text: string;
+  job_description: string;
+  company_name?: string;
+  job_title?: string;
+  tone?: string;
+}) =>
+  api.post<{ cover_letter: string }>('/api/cover-letter/generate', data, { timeout: 60000 });
+
+// Password
+export const changePassword = (newPassword: string) =>
+  api.post<{ message: string }>('/api/auth/change-password', { new_password: newPassword });
+
 export default api;

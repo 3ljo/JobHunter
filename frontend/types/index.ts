@@ -33,6 +33,7 @@ export interface TrackerJob {
   job_url: string;
   status: 'applied' | 'interview' | 'offer' | 'rejected' | 'saved';
   notes: string;
+  applied_at: string;
   created_at: string;
   updated_at?: string;
 }

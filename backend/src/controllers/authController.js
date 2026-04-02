@@ -103,4 +103,27 @@ const getMe = async (req, res) => {
   return res.status(200).json({ user: req.user });
 };
 
-module.exports = { register, login, forgotPassword, getMe, validate };
+// Change password for authenticated user
+const changePassword = async (req, res) => {
+  const { new_password } = req.body;
+
+  if (!new_password || new_password.length < 6) {
+    return res.status(400).json({ error: 'Password must be at least 6 characters' });
+  }
+
+  try {
+    const { error } = await supabase.auth.admin.updateUserById(req.user.id, {
+      password: new_password,
+    });
+
+    if (error) {
+      return res.status(400).json({ error: error.message });
+    }
+
+    return res.status(200).json({ message: 'Password updated successfully' });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+};
+
+module.exports = { register, login, forgotPassword, getMe, changePassword, validate };

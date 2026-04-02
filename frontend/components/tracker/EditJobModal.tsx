@@ -13,6 +13,7 @@ import { Label } from '@/components/ui/label';
 import { updateTrackerJob } from '@/lib/api';
 import { TrackerJob } from '@/types';
 import toast from 'react-hot-toast';
+import { Check } from 'lucide-react';
 
 interface EditJobModalProps {
   job: TrackerJob | null;
@@ -28,12 +29,14 @@ export default function EditJobModal({ job, open, onClose, onUpdated }: EditJobM
     job_title: string;
     job_url: string;
     status: 'applied' | 'interview' | 'offer' | 'rejected' | 'saved';
+    applied_at: string;
     notes: string;
   }>({
     company_name: '',
     job_title: '',
     job_url: '',
     status: 'saved',
+    applied_at: '',
     notes: '',
   });
 
@@ -44,6 +47,7 @@ export default function EditJobModal({ job, open, onClose, onUpdated }: EditJobM
         job_title: job.job_title,
         job_url: job.job_url || '',
         status: job.status,
+        applied_at: job.applied_at ? job.applied_at.split('T')[0] : '',
         notes: job.notes || '',
       });
     }
@@ -74,25 +78,39 @@ export default function EditJobModal({ job, open, onClose, onUpdated }: EditJobM
         <DialogHeader>
           <DialogTitle>Edit Application</DialogTitle>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <Label>Company Name</Label>
-            <Input value={form.company_name} onChange={(e) => update('company_name', e.target.value)} required />
+        <form onSubmit={handleSubmit} className="space-y-4 pt-2">
+          <div className="space-y-1.5">
+            <Label className="text-xs font-medium uppercase tracking-wider text-zinc-500">Company Name</Label>
+            <Input
+              value={form.company_name}
+              onChange={(e) => update('company_name', e.target.value)}
+              className="h-10 rounded-xl border-zinc-800 bg-zinc-900/50 text-sm text-white placeholder:text-zinc-600 focus:border-violet-500/40 focus:ring-1 focus:ring-violet-500/20"
+              required
+            />
           </div>
-          <div className="space-y-2">
-            <Label>Job Title</Label>
-            <Input value={form.job_title} onChange={(e) => update('job_title', e.target.value)} required />
+          <div className="space-y-1.5">
+            <Label className="text-xs font-medium uppercase tracking-wider text-zinc-500">Job Title</Label>
+            <Input
+              value={form.job_title}
+              onChange={(e) => update('job_title', e.target.value)}
+              className="h-10 rounded-xl border-zinc-800 bg-zinc-900/50 text-sm text-white placeholder:text-zinc-600 focus:border-violet-500/40 focus:ring-1 focus:ring-violet-500/20"
+              required
+            />
           </div>
-          <div className="space-y-2">
-            <Label>Job URL</Label>
-            <Input value={form.job_url} onChange={(e) => update('job_url', e.target.value)} />
+          <div className="space-y-1.5">
+            <Label className="text-xs font-medium uppercase tracking-wider text-zinc-500">Job URL</Label>
+            <Input
+              value={form.job_url}
+              onChange={(e) => update('job_url', e.target.value)}
+              className="h-10 rounded-xl border-zinc-800 bg-zinc-900/50 text-sm text-white placeholder:text-zinc-600 focus:border-violet-500/40 focus:ring-1 focus:ring-violet-500/20"
+            />
           </div>
-          <div className="space-y-2">
-            <Label>Status</Label>
+          <div className="space-y-1.5">
+            <Label className="text-xs font-medium uppercase tracking-wider text-zinc-500">Status</Label>
             <select
               value={form.status}
               onChange={(e) => update('status', e.target.value)}
-              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+              className="flex h-10 w-full rounded-xl border border-zinc-800 bg-zinc-900/50 px-3 py-2 text-sm text-white transition-all focus:border-violet-500/40 focus:outline-none focus:ring-1 focus:ring-violet-500/20"
             >
               <option value="saved">Saved</option>
               <option value="applied">Applied</option>
@@ -101,16 +119,39 @@ export default function EditJobModal({ job, open, onClose, onUpdated }: EditJobM
               <option value="rejected">Rejected</option>
             </select>
           </div>
-          <div className="space-y-2">
-            <Label>Notes</Label>
+          <div className="space-y-1.5">
+            <Label className="text-xs font-medium uppercase tracking-wider text-zinc-500">Date Applied</Label>
+            <Input
+              type="date"
+              value={form.applied_at}
+              onChange={(e) => update('applied_at', e.target.value)}
+              className="h-10 rounded-xl border-zinc-800 bg-zinc-900/50 text-sm text-white focus:border-violet-500/40 focus:ring-1 focus:ring-violet-500/20 [color-scheme:dark]"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs font-medium uppercase tracking-wider text-zinc-500">Notes</Label>
             <textarea
               value={form.notes}
               onChange={(e) => update('notes', e.target.value)}
-              className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className="flex min-h-[80px] w-full rounded-xl border border-zinc-800 bg-zinc-900/50 px-3 py-2.5 text-sm text-white placeholder:text-zinc-600 transition-all focus:border-violet-500/40 focus:outline-none focus:ring-1 focus:ring-violet-500/20 resize-none"
             />
           </div>
-          <Button type="submit" className="w-full" disabled={loading}>
-            {loading ? 'Saving...' : 'Save Changes'}
+          <Button
+            type="submit"
+            className="group w-full h-10 rounded-xl bg-violet-600 hover:bg-violet-500 text-sm font-semibold text-white transition-all hover:shadow-lg hover:shadow-violet-500/20 active:scale-[0.98]"
+            disabled={loading}
+          >
+            {loading ? (
+              <span className="flex items-center gap-2">
+                <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                Saving...
+              </span>
+            ) : (
+              <span className="flex items-center justify-center gap-2">
+                <Check className="h-4 w-4" />
+                Save Changes
+              </span>
+            )}
           </Button>
         </form>
       </DialogContent>

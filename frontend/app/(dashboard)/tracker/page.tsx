@@ -1,18 +1,41 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import StatsCards from '@/components/tracker/StatsCards';
 import JobTrackerTable from '@/components/tracker/JobTrackerTable';
 import AddJobModal from '@/components/tracker/AddJobModal';
 import { getAllTrackerJobs, getTrackerStats } from '@/lib/api';
 import { TrackerJob, TrackerStats } from '@/types';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
-import { Kanban } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Kanban, Search, LayoutGrid, List } from 'lucide-react';
+import KanbanBoard from '@/components/tracker/KanbanBoard';
+
+const statusTabs = [
+  { key: 'all', label: 'All' },
+  { key: 'saved', label: 'Saved' },
+  { key: 'applied', label: 'Applied' },
+  { key: 'interview', label: 'Interview' },
+  { key: 'offer', label: 'Offer' },
+  { key: 'rejected', label: 'Rejected' },
+];
+
+const tabColors: Record<string, string> = {
+  all: 'text-white bg-zinc-800',
+  saved: 'text-zinc-300 bg-zinc-700/40',
+  applied: 'text-blue-400 bg-blue-500/15',
+  interview: 'text-amber-400 bg-amber-500/15',
+  offer: 'text-emerald-400 bg-emerald-500/15',
+  rejected: 'text-red-400 bg-red-500/15',
+};
 
 export default function TrackerPage() {
   const [jobs, setJobs] = useState<TrackerJob[]>([]);
   const [stats, setStats] = useState<TrackerStats | null>(null);
   const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [view, setView] = useState<'table' | 'kanban'>('table');
 
   const load = useCallback(async () => {
     try {
@@ -28,26 +51,114 @@ export default function TrackerPage() {
 
   useEffect(() => { load(); }, [load]);
 
-  if (loading) return <LoadingSpinner className="mt-20" />;
+  const filteredJobs = useMemo(() => {
+    let result = jobs;
+    if (statusFilter !== 'all') {
+      result = result.filter((j) => j.status === statusFilter);
+    }
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      result = result.filter(
+        (j) =>
+          j.company_name.toLowerCase().includes(q) ||
+          j.job_title.toLowerCase().includes(q)
+      );
+    }
+    return result;
+  }, [jobs, statusFilter, search]);
+
+  if (loading) return <LoadingSpinner className="mt-32" />;
 
   return (
     <div className="space-y-6">
+      {/* Header */}
       <div className="flex items-center justify-between">
-        <div>
-          <div className="flex items-center gap-3 mb-1">
-            <Kanban className="h-5 w-5 text-violet-400" />
-            <h1 className="text-2xl font-bold text-white">Job Tracker</h1>
+        <div className="flex items-center gap-3">
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-violet-500/10 ring-1 ring-violet-500/20">
+            <Kanban className="h-4 w-4 text-violet-400" />
           </div>
-          <p className="text-zinc-400 text-sm">Track your job applications.</p>
+          <div>
+            <h1 className="text-xl font-bold text-white tracking-tight">Job Tracker</h1>
+            <p className="text-zinc-500 text-xs">Track and manage your applications</p>
+          </div>
         </div>
         <AddJobModal onAdded={load} />
       </div>
 
       {stats && <StatsCards stats={stats} />}
 
-      <div className="rounded-xl bg-zinc-900/50 border border-white/[0.06] p-5">
-        <JobTrackerTable jobs={jobs} onRefresh={load} />
+      {/* Search + Filter + View Toggle */}
+      <div className="space-y-3">
+        <div className="flex items-center gap-3">
+          {/* Search */}
+          <div className="relative flex-1 max-w-xs">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-600" />
+            <Input
+              placeholder="Search company or title..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="h-9 rounded-lg border-zinc-800 bg-zinc-900/50 pl-9 text-sm text-white placeholder:text-zinc-600 focus:border-violet-500/40 focus:ring-1 focus:ring-violet-500/20"
+            />
+          </div>
+
+          {/* View toggle */}
+          <div className="flex items-center rounded-lg bg-zinc-900/50 p-0.5">
+            <button
+              onClick={() => setView('table')}
+              className={`flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium transition-all ${
+                view === 'table' ? 'bg-zinc-800 text-white shadow-sm' : 'text-zinc-500 hover:text-zinc-300'
+              }`}
+            >
+              <List className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Table</span>
+            </button>
+            <button
+              onClick={() => setView('kanban')}
+              className={`flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium transition-all ${
+                view === 'kanban' ? 'bg-zinc-800 text-white shadow-sm' : 'text-zinc-500 hover:text-zinc-300'
+              }`}
+            >
+              <LayoutGrid className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Board</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Status filter tabs */}
+        {view === 'table' && (
+          <div className="flex items-center gap-1.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            {statusTabs.map((tab) => {
+              const isActive = statusFilter === tab.key;
+              const count = tab.key === 'all' ? jobs.length : jobs.filter((j) => j.status === tab.key).length;
+              return (
+                <button
+                  key={tab.key}
+                  onClick={() => setStatusFilter(tab.key)}
+                  className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-all whitespace-nowrap ${
+                    isActive
+                      ? tabColors[tab.key]
+                      : 'text-zinc-600 hover:text-zinc-400 hover:bg-zinc-900/50'
+                  }`}
+                >
+                  {tab.label}
+                  <span className={`tabular-nums ${isActive ? 'opacity-70' : 'opacity-50'}`}>
+                    {count}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        )}
       </div>
+
+      {/* Content */}
+      {view === 'table' ? (
+        <div className="rounded-2xl border border-white/[0.06] bg-zinc-900/40 overflow-hidden">
+          <JobTrackerTable jobs={filteredJobs} onRefresh={load} />
+        </div>
+      ) : (
+        <KanbanBoard jobs={jobs} onRefresh={load} />
+      )}
     </div>
   );
 }

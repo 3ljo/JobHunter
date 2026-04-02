@@ -6,16 +6,19 @@ import CVUpload from '@/components/cv/CVUpload';
 import CVPreview from '@/components/cv/CVPreview';
 import QuickEditBox from '@/components/cv/QuickEditBox';
 import ScoreRing from '@/components/cv/ScoreRing';
-import SkillBars from '@/components/cv/SkillBars';
-import KeywordChips from '@/components/cv/KeywordChips';
-import SuggestionCards from '@/components/cv/SuggestionCards';
 import AnalysisSidebar from '@/components/cv/AnalysisSidebar';
-import { downloadCVPdf } from '@/lib/api';
+import { downloadCVPdf, generateCoverLetter } from '@/lib/api';
 import { CVAnalysisResult } from '@/types';
 import toast from 'react-hot-toast';
-import { Download, RotateCcw, ArrowRight, FileSearch } from 'lucide-react';
+import { Download, RotateCcw, ArrowRight, FileSearch, TrendingUp, FileSignature, Sparkles, Copy, Check, X, Wand2, Send } from 'lucide-react';
 
 const STORAGE_KEY = 'cv_analysis_result';
+
+const tones = [
+  { key: 'balanced', label: 'Balanced' },
+  { key: 'formal', label: 'Formal' },
+  { key: 'friendly', label: 'Friendly' },
+];
 
 export default function CVPage() {
   const [result, setResult] = useState<CVAnalysisResult | null>(() => {
@@ -28,6 +31,15 @@ export default function CVPage() {
     }
   });
   const [downloading, setDownloading] = useState(false);
+
+  // Cover letter state
+  const [showCL, setShowCL] = useState(false);
+  const [clTone, setCLTone] = useState('balanced');
+  const [clResult, setCLResult] = useState('');
+  const [clLoading, setCLLoading] = useState(false);
+  const [clCopied, setCLCopied] = useState(false);
+  const [clRefineInput, setCLRefineInput] = useState('');
+  const [clRefining, setCLRefining] = useState(false);
 
   useEffect(() => {
     if (result) {
@@ -60,24 +72,77 @@ export default function CVPage() {
 
   const handleReset = () => {
     setResult(null);
+    setShowCL(false);
+    setCLResult('');
+  };
+
+  const handleGenerateCL = async () => {
+    const cvText = sessionStorage.getItem('cl_cv_text') || '';
+    const jd = sessionStorage.getItem('cl_job_description') || '';
+    if (!cvText || !jd) {
+      toast.error('Missing CV or job description data');
+      return;
+    }
+    setCLLoading(true);
+    try {
+      const res = await generateCoverLetter({ cv_text: cvText, job_description: jd, tone: clTone });
+      setCLResult(res.data.cover_letter);
+      toast.success('Cover letter generated!');
+    } catch (err: any) {
+      toast.error(err.response?.data?.error || 'Failed to generate');
+    } finally {
+      setCLLoading(false);
+    }
+  };
+
+  const handleRefineCL = async () => {
+    if (!clRefineInput.trim() || !clResult) return;
+    setCLRefining(true);
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/cover-letter/refine`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${localStorage.getItem('auth_token')}`,
+        },
+        body: JSON.stringify({ cover_letter: clResult, instructions: clRefineInput }),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || 'Failed to refine');
+      }
+      const data = await res.json();
+      setCLResult(data.cover_letter);
+      setCLRefineInput('');
+      toast.success('Cover letter updated!');
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to refine');
+    } finally {
+      setCLRefining(false);
+    }
+  };
+
+  const handleCopyCL = async () => {
+    await navigator.clipboard.writeText(clResult);
+    setCLCopied(true);
+    toast.success('Copied to clipboard');
+    setTimeout(() => setCLCopied(false), 2000);
   };
 
   const finalCV = result?.final?.final_cv;
 
-  // Upload phase — hero layout
+  // Upload phase
   if (!result) {
     return (
-      <div className="flex flex-col items-center pt-8 md:pt-16">
-        <div className="text-center mb-10">
-          <div className="flex items-center justify-center gap-3 mb-4">
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-violet-600/15">
-              <FileSearch className="h-6 w-6 text-violet-400" />
-            </div>
+      <div className="flex flex-col items-center pt-8 md:pt-20">
+        <div className="text-center mb-12">
+          <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-violet-500/10 ring-1 ring-violet-500/20">
+            <FileSearch className="h-6 w-6 text-violet-400" />
           </div>
           <h1 className="text-3xl md:text-4xl font-bold text-white tracking-tight">
             Analyze Your CV
           </h1>
-          <p className="text-zinc-400 mt-3 text-lg max-w-md mx-auto">
+          <p className="text-zinc-500 mt-3 text-base max-w-md mx-auto leading-relaxed">
             Upload your CV and paste a job description to get an AI-powered ATS analysis.
           </p>
         </div>
@@ -86,77 +151,180 @@ export default function CVPage() {
     );
   }
 
-  // Results phase — two-column layout
+  const scoreDelta = result.scores.projected_ats - result.scores.current_ats;
+
+  // Results phase
   return (
     <div className="space-y-6">
-      {/* Top bar — scores + actions */}
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-6 rounded-2xl bg-zinc-900/50 border border-white/[0.06] p-6">
-        <div className="flex items-center gap-6">
-          <ScoreRing score={result.scores.current_ats} label="Current" size={100} />
-          <ArrowRight className="h-5 w-5 text-zinc-600" />
-          <ScoreRing score={result.scores.projected_ats} label="Projected" size={100} />
-        </div>
-        <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleDownload}
-            disabled={downloading}
-            className="gap-2 border-zinc-700 text-zinc-300 hover:bg-zinc-800 hover:text-white"
-          >
-            <Download className="h-4 w-4" />
-            Download PDF
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleReset}
-            className="gap-2 text-zinc-400 hover:text-white"
-          >
-            <RotateCcw className="h-4 w-4" />
-            New Analysis
-          </Button>
+      {/* Top bar */}
+      <div className="rounded-2xl border border-white/[0.06] bg-zinc-900/40 overflow-hidden">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-6 p-6">
+          <div className="flex items-center gap-8">
+            <ScoreRing score={result.scores.current_ats} label="Current" size={100} />
+            <div className="flex flex-col items-center gap-1">
+              <ArrowRight className="h-5 w-5 text-zinc-700" />
+              {scoreDelta > 0 && (
+                <span className="flex items-center gap-0.5 text-xs font-medium text-emerald-400">
+                  <TrendingUp className="h-3 w-3" />
+                  +{scoreDelta}
+                </span>
+              )}
+            </div>
+            <ScoreRing score={result.scores.projected_ats} label="Projected" size={100} />
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleDownload}
+              disabled={downloading}
+              className="gap-2 rounded-xl border-zinc-800 text-zinc-400 hover:bg-zinc-800 hover:text-white transition-all"
+            >
+              <Download className="h-4 w-4" />
+              {downloading ? 'Downloading...' : 'Download PDF'}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => { setShowCL(true); setCLResult(''); }}
+              className="gap-2 rounded-xl border-zinc-800 text-zinc-400 hover:bg-zinc-800 hover:text-white transition-all"
+            >
+              <FileSignature className="h-4 w-4" />
+              Cover Letter
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleReset}
+              className="gap-2 rounded-xl text-zinc-500 hover:text-white"
+            >
+              <RotateCcw className="h-4 w-4" />
+              New Analysis
+            </Button>
+          </div>
         </div>
       </div>
 
-      {/* Two-column grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_400px] gap-6">
-        {/* Left — analysis breakdown */}
-        <div className="space-y-6">
-          {/* Skill bars */}
-          <div className="rounded-2xl bg-zinc-900/50 border border-white/[0.06] p-6">
-            <h3 className="text-sm font-medium text-zinc-300 mb-4">Score Breakdown</h3>
-            <SkillBars scores={result.scores} />
-          </div>
-
-          {/* Keywords */}
-          <div className="rounded-2xl bg-zinc-900/50 border border-white/[0.06] p-6">
-            <KeywordChips keywordAnalysis={result.audit?.keyword_analysis} />
-          </div>
-
-          {/* Suggestions */}
-          {result.audit?.top_5_quick_wins && (
-            <div className="rounded-2xl bg-zinc-900/50 border border-white/[0.06] p-6">
-              <SuggestionCards suggestions={result.audit.top_5_quick_wins} />
+      {/* Cover Letter Panel */}
+      {showCL && (
+        <div className="rounded-2xl border border-violet-500/15 bg-violet-500/[0.03] overflow-hidden">
+          <div className="flex items-center justify-between px-6 py-4 border-b border-violet-500/10">
+            <div className="flex items-center gap-2.5">
+              <FileSignature className="h-4 w-4 text-violet-400" />
+              <h3 className="text-sm font-semibold text-white">Cover Letter Generator</h3>
             </div>
-          )}
+            <button
+              onClick={() => setShowCL(false)}
+              className="flex h-7 w-7 items-center justify-center rounded-lg text-zinc-500 hover:text-white hover:bg-zinc-800 transition-all"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+          <div className="p-6">
+            {!clResult ? (
+              <div className="flex items-center gap-4 flex-wrap">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-zinc-500 uppercase tracking-wider font-medium">Tone</span>
+                  {tones.map((t) => (
+                    <button
+                      key={t.key}
+                      onClick={() => setCLTone(t.key)}
+                      disabled={clLoading}
+                      className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-all ${
+                        clTone === t.key
+                          ? 'bg-violet-500/15 text-violet-400 ring-1 ring-violet-500/30'
+                          : 'text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800/50'
+                      }`}
+                    >
+                      {t.label}
+                    </button>
+                  ))}
+                </div>
+                <Button
+                  onClick={handleGenerateCL}
+                  disabled={clLoading}
+                  className="gap-2 rounded-xl bg-violet-600 hover:bg-violet-500 text-white text-sm font-semibold hover:shadow-lg hover:shadow-violet-500/20 transition-all active:scale-[0.98] ml-auto"
+                >
+                  {clLoading ? (
+                    <span className="flex items-center gap-2">
+                      <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                      Generating...
+                    </span>
+                  ) : (
+                    <>
+                      <Sparkles className="h-4 w-4" />
+                      Generate
+                    </>
+                  )}
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div className="flex items-center gap-2">
+                  <Button
+                    onClick={handleCopyCL}
+                    size="sm"
+                    className="gap-2 rounded-xl bg-violet-600 hover:bg-violet-500 text-white transition-all"
+                  >
+                    {clCopied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+                    {clCopied ? 'Copied!' : 'Copy'}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCLResult('')}
+                    className="gap-2 rounded-xl border-zinc-800 text-zinc-400 hover:bg-zinc-800 hover:text-white transition-all"
+                  >
+                    <RotateCcw className="h-3.5 w-3.5" />
+                    Regenerate
+                  </Button>
+                </div>
+                <p className="text-sm text-zinc-200 leading-relaxed whitespace-pre-wrap">{clResult}</p>
+                {/* Refine */}
+                <div className="flex gap-2 mt-4 pt-4 border-t border-white/[0.06]">
+                  <input
+                    type="text"
+                    value={clRefineInput}
+                    onChange={(e) => setCLRefineInput(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter' && !clRefining) handleRefineCL(); }}
+                    placeholder="e.g. Make it shorter, more confident..."
+                    className="flex-1 h-9 rounded-lg border border-zinc-800 bg-zinc-950/50 px-3 text-sm text-white placeholder:text-zinc-600 focus:border-violet-500/40 focus:outline-none focus:ring-1 focus:ring-violet-500/20 transition-all"
+                    disabled={clRefining}
+                  />
+                  <Button
+                    onClick={handleRefineCL}
+                    disabled={clRefining || !clRefineInput.trim()}
+                    size="sm"
+                    className="h-9 rounded-lg bg-violet-600 hover:bg-violet-500 text-white px-3"
+                  >
+                    {clRefining ? (
+                      <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                    ) : (
+                      <Send className="h-3.5 w-3.5" />
+                    )}
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
-          {/* Detailed Issues & Changes */}
-          <div className="rounded-2xl bg-zinc-900/50 border border-white/[0.06] p-6">
-            <AnalysisSidebar audit={result.audit} rewrite={result.rewrite} />
+      {/* Two-column grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_420px] gap-6">
+        <div className="space-y-4">
+          <div className="sticky top-20">
+            <div className="max-h-[calc(100vh-220px)] overflow-y-auto rounded-2xl border border-white/[0.06] bg-zinc-900/40 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              <CVPreview cv={finalCV} />
+            </div>
           </div>
         </div>
 
-        {/* Right — CV preview + Quick Edit */}
-        <div className="space-y-4">
-          <div className="sticky top-24">
-            <div className="max-h-[calc(100vh-220px)] overflow-y-auto rounded-2xl border border-white/[0.06]">
-              <CVPreview cv={finalCV} />
-            </div>
-            <div className="mt-4">
-              <QuickEditBox cvRecordId={result.cv_record_id} onRefine={handleRefine} />
-            </div>
+        <div className="space-y-6">
+          <div className="rounded-2xl border border-white/[0.06] bg-zinc-900/40 p-6">
+            <AnalysisSidebar audit={result.audit} rewrite={result.rewrite} />
           </div>
+          <QuickEditBox cvRecordId={result.cv_record_id} onRefine={handleRefine} />
         </div>
       </div>
     </div>

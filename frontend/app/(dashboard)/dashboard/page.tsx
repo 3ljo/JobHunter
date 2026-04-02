@@ -8,7 +8,7 @@ import { useAuthStore } from '@/store/authStore';
 import { getTrackerStats, getAllTrackerJobs, getCVHistory } from '@/lib/api';
 import { TrackerStats, TrackerJob } from '@/types';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
-import { Briefcase, Calendar, Trophy, FileText, FileSearch, Plus, Sparkles } from 'lucide-react';
+import { Briefcase, Calendar, Trophy, FileText, FileSearch, Plus, Sparkles, ArrowRight, TrendingUp } from 'lucide-react';
 
 const statusStyles: Record<string, string> = {
   applied: 'bg-blue-500/15 text-blue-400',
@@ -20,11 +20,11 @@ const statusStyles: Record<string, string> = {
 
 const statIcons = [Briefcase, Calendar, Trophy, FileText];
 
-const statColors = [
-  'text-blue-400 bg-blue-500/10',
-  'text-amber-400 bg-amber-500/10',
-  'text-emerald-400 bg-emerald-500/10',
-  'text-violet-400 bg-violet-500/10',
+const statAccents = [
+  { text: 'text-blue-400', bg: 'bg-blue-500/10', border: 'border-blue-500/10' },
+  { text: 'text-amber-400', bg: 'bg-amber-500/10', border: 'border-amber-500/10' },
+  { text: 'text-emerald-400', bg: 'bg-emerald-500/10', border: 'border-emerald-500/10' },
+  { text: 'text-violet-400', bg: 'bg-violet-500/10', border: 'border-violet-500/10' },
 ];
 
 export default function DashboardPage() {
@@ -54,7 +54,7 @@ export default function DashboardPage() {
     load();
   }, []);
 
-  if (loading) return <LoadingSpinner className="mt-20" />;
+  if (loading) return <LoadingSpinner className="mt-32" />;
 
   const statCards = [
     { label: 'Applications', value: stats?.total || 0 },
@@ -70,41 +70,48 @@ export default function DashboardPage() {
       {/* Header */}
       <div>
         <h2 className="text-2xl font-bold tracking-tight text-white">
-          Welcome back, {firstName}
+          Welcome back, <span className="bg-gradient-to-r from-violet-400 to-fuchsia-400 bg-clip-text text-transparent">{firstName}</span>
         </h2>
-        <p className="text-zinc-400 mt-1">Here&apos;s your job search at a glance.</p>
+        <p className="text-zinc-500 mt-1 text-sm">Here&apos;s your job search at a glance.</p>
       </div>
 
       {/* Hero CTA */}
-      <Link href="/cv" className="block">
-        <div className="rounded-2xl bg-gradient-to-r from-violet-600/20 via-violet-500/10 to-transparent border border-violet-500/20 p-6 hover:border-violet-500/30 transition-colors">
-          <div className="flex items-center gap-4">
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-violet-600/20">
-              <Sparkles className="h-6 w-6 text-violet-400" />
+      <Link href="/cv" className="group block">
+        <div className="relative overflow-hidden rounded-2xl border border-violet-500/20 bg-gradient-to-r from-violet-600/15 via-violet-500/5 to-transparent p-6 transition-all hover:border-violet-500/30 hover:shadow-lg hover:shadow-violet-500/5">
+          <div className="absolute -right-10 -top-10 h-40 w-40 rounded-full bg-violet-500/10 blur-[60px] transition-all group-hover:bg-violet-500/15" />
+          <div className="relative flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-violet-500/15 ring-1 ring-violet-500/20">
+                <Sparkles className="h-5 w-5 text-violet-400" />
+              </div>
+              <div>
+                <h3 className="text-base font-semibold text-white">Analyze Your CV</h3>
+                <p className="text-zinc-500 text-sm">Get AI-powered ATS scoring and optimization suggestions</p>
+              </div>
             </div>
-            <div>
-              <h3 className="text-lg font-semibold text-white">Analyze Your CV</h3>
-              <p className="text-zinc-400 text-sm">Get AI-powered ATS scoring and optimization suggestions</p>
-            </div>
+            <ArrowRight className="h-5 w-5 text-zinc-600 transition-all group-hover:text-violet-400 group-hover:translate-x-1" />
           </div>
         </div>
       </Link>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         {statCards.map((card, i) => {
           const Icon = statIcons[i];
+          const accent = statAccents[i];
           return (
-            <div key={card.label} className="rounded-xl bg-zinc-900/50 border border-white/[0.06] p-5">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-zinc-400">{card.label}</p>
-                  <p className="text-3xl font-bold tracking-tight text-white mt-2">{card.value}</p>
+            <div
+              key={card.label}
+              className={`group rounded-2xl border border-white/[0.06] bg-zinc-900/40 p-5 transition-all hover:border-white/[0.1] hover:bg-zinc-900/60`}
+            >
+              <div className="flex items-center justify-between mb-3">
+                <div className={`flex h-9 w-9 items-center justify-center rounded-xl ${accent.bg}`}>
+                  <Icon className={`h-4 w-4 ${accent.text}`} />
                 </div>
-                <div className={`flex h-11 w-11 items-center justify-center rounded-xl ${statColors[i]}`}>
-                  <Icon className="h-5 w-5" />
-                </div>
+                <TrendingUp className="h-3.5 w-3.5 text-zinc-700 transition-colors group-hover:text-zinc-500" />
               </div>
+              <p className="text-3xl font-bold tracking-tight text-white">{card.value}</p>
+              <p className="text-xs font-medium text-zinc-500 mt-1">{card.label}</p>
             </div>
           );
         })}
@@ -113,13 +120,13 @@ export default function DashboardPage() {
       {/* Quick Actions */}
       <div className="flex flex-wrap gap-3">
         <Link href="/cv">
-          <Button className="gap-2 bg-violet-600 hover:bg-violet-500 text-white">
+          <Button className="gap-2 rounded-xl bg-violet-600 hover:bg-violet-500 text-white hover:shadow-lg hover:shadow-violet-500/20 transition-all">
             <FileSearch className="h-4 w-4" />
             Analyze CV
           </Button>
         </Link>
         <Link href="/tracker">
-          <Button variant="outline" className="gap-2 border-zinc-700 text-zinc-300 hover:bg-zinc-800 hover:text-white">
+          <Button variant="outline" className="gap-2 rounded-xl border-zinc-800 text-zinc-400 hover:bg-zinc-900 hover:text-white hover:border-zinc-700 transition-all">
             <Plus className="h-4 w-4" />
             Add Application
           </Button>
@@ -127,51 +134,55 @@ export default function DashboardPage() {
       </div>
 
       {/* Recent Applications */}
-      <div className="rounded-xl bg-zinc-900/50 border border-white/[0.06]">
-        <div className="flex items-center justify-between p-5 pb-3">
-          <h3 className="text-base font-semibold text-white">Recent Applications</h3>
+      <div className="rounded-2xl border border-white/[0.06] bg-zinc-900/40 overflow-hidden">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-white/[0.04]">
+          <h3 className="text-sm font-semibold text-white">Recent Applications</h3>
           {recentJobs.length > 0 && (
             <Link href="/tracker">
-              <Button variant="ghost" size="sm" className="text-xs text-zinc-400 hover:text-white">
+              <Button variant="ghost" size="sm" className="text-xs text-zinc-500 hover:text-white gap-1">
                 View all
+                <ArrowRight className="h-3 w-3" />
               </Button>
             </Link>
           )}
         </div>
-        <div className="px-5 pb-5">
+        <div className="p-2">
           {recentJobs.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-12 text-center">
-              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-zinc-800 mb-4">
-                <Briefcase className="h-6 w-6 text-zinc-500" />
+            <div className="flex flex-col items-center justify-center py-16 text-center">
+              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-zinc-800/50 mb-4">
+                <Briefcase className="h-6 w-6 text-zinc-600" />
               </div>
-              <p className="text-sm font-medium text-zinc-300">No applications yet</p>
-              <p className="text-sm text-zinc-500 mt-1">Start tracking your job search to see progress here.</p>
-              <Link href="/tracker" className="mt-4">
-                <Button size="sm" variant="outline" className="border-zinc-700 text-zinc-300">Track your first application</Button>
+              <p className="text-sm font-medium text-zinc-400">No applications yet</p>
+              <p className="text-xs text-zinc-600 mt-1 max-w-[240px]">Start tracking your job search to see your progress here.</p>
+              <Link href="/tracker" className="mt-5">
+                <Button size="sm" className="rounded-xl gap-2 bg-violet-600 hover:bg-violet-500 text-white text-xs">
+                  <Plus className="h-3.5 w-3.5" />
+                  Track your first application
+                </Button>
               </Link>
             </div>
           ) : (
-            <div className="space-y-2">
+            <div className="space-y-0.5">
               {recentJobs.map((job) => (
                 <div
                   key={job.id}
-                  className="flex items-center justify-between rounded-lg border border-white/[0.04] p-4 transition-colors hover:bg-white/[0.02]"
+                  className="flex items-center justify-between rounded-xl px-4 py-3 transition-colors hover:bg-white/[0.02]"
                 >
-                  <div className="flex items-center gap-4 min-w-0">
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-zinc-800 text-sm font-bold text-zinc-400">
+                  <div className="flex items-center gap-3.5 min-w-0">
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-zinc-800/80 text-sm font-bold text-zinc-500 ring-1 ring-white/[0.04]">
                       {job.company_name?.charAt(0)?.toUpperCase() || 'C'}
                     </div>
                     <div className="min-w-0">
                       <p className="text-sm font-medium text-zinc-200 truncate">{job.company_name}</p>
-                      <p className="text-sm text-zinc-500 truncate">{job.job_title}</p>
+                      <p className="text-xs text-zinc-600 truncate">{job.job_title}</p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-4 shrink-0">
-                    <Badge variant="secondary" className={statusStyles[job.status]}>
+                  <div className="flex items-center gap-3 shrink-0">
+                    <Badge variant="secondary" className={`text-[11px] ${statusStyles[job.status]}`}>
                       {job.status}
                     </Badge>
-                    <span className="text-xs text-zinc-500 hidden sm:block">
-                      {new Date(job.created_at).toLocaleDateString()}
+                    <span className="text-[11px] text-zinc-600 hidden sm:block tabular-nums">
+                      {new Date(job.applied_at).toLocaleDateString()}
                     </span>
                   </div>
                 </div>

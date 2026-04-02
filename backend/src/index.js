@@ -11,6 +11,7 @@ const profileRoutes = require('./routes/profile');
 const onboardingRoutes = require('./routes/onboarding');
 const cvRoutes = require('./routes/cv');
 const jobTrackerRoutes = require('./routes/jobTracker');
+const coverLetterRoutes = require('./routes/coverLetter');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -35,6 +36,7 @@ app.use('/api/profile', profileRoutes);
 app.use('/api/onboarding', onboardingRoutes);
 app.use('/api/cv', cvRoutes);
 app.use('/api/tracker', jobTrackerRoutes);
+app.use('/api/cover-letter', coverLetterRoutes);
 
 // Global error handler
 app.use((err, req, res, next) => {

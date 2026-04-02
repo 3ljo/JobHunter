@@ -6,11 +6,10 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { loginUser } from '@/lib/api';
 import { useAuthStore } from '@/store/authStore';
 import toast from 'react-hot-toast';
-import { FileSearch, Mail, Lock } from 'lucide-react';
+import { Mail, Lock, ArrowRight } from 'lucide-react';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -37,92 +36,156 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-4">
-      <div className="w-full max-w-md">
-        <Card className="border-zinc-800 bg-zinc-900/80 shadow-2xl shadow-violet-500/5">
-          <CardHeader className="text-center pb-2">
-            <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-violet-600">
-              <FileSearch className="h-6 w-6 text-white" />
-            </div>
-            <CardTitle className="text-2xl font-bold tracking-tight text-white">Welcome back</CardTitle>
-            <CardDescription className="text-zinc-400">
-              Sign in to your JobHunter account
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="email" className="text-zinc-300">Email</Label>
-                <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-500" />
-                  <Input
-                    id="email"
-                    type="email"
-                    placeholder="you@example.com"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="pl-9 h-10 bg-zinc-800/50 border-zinc-700 focus:border-violet-500/50 focus:ring-violet-500/20"
-                    required
-                  />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="password" className="text-zinc-300">Password</Label>
-                  <Link
-                    href="/forgot-password"
-                    className="text-xs text-violet-400 hover:text-violet-300 transition-colors"
-                  >
-                    Forgot password?
-                  </Link>
-                </div>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-500" />
-                  <Input
-                    id="password"
-                    type="password"
-                    placeholder="Enter your password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="pl-9 h-10 bg-zinc-800/50 border-zinc-700 focus:border-violet-500/50 focus:ring-violet-500/20"
-                    required
-                  />
-                </div>
-              </div>
-              <Button type="submit" className="w-full h-10 text-sm font-semibold bg-violet-600 hover:bg-violet-500 text-white" disabled={loading}>
-                {loading ? 'Signing in...' : 'Sign In'}
-              </Button>
-            </form>
+    <div className="relative flex min-h-screen overflow-hidden bg-zinc-950">
+      {/* Ambient glow effects */}
+      <div className="pointer-events-none absolute inset-0">
+        <div className="absolute -left-40 -top-40 h-[500px] w-[500px] rounded-full bg-violet-600/15 blur-[120px]" />
+        <div className="absolute -bottom-20 right-0 h-[400px] w-[400px] rounded-full bg-violet-500/10 blur-[100px]" />
+        <div className="absolute left-1/2 top-1/2 h-[300px] w-[300px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-fuchsia-500/5 blur-[80px]" />
+      </div>
 
-            {/* Divider */}
-            <div className="relative my-6">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-zinc-800" />
-              </div>
-              <div className="relative flex justify-center text-xs">
-                <span className="bg-zinc-900/80 px-3 text-zinc-500">or</span>
+      {/* Left panel - branding */}
+      <div className="relative hidden w-1/2 lg:flex lg:flex-col lg:justify-between p-12">
+        {/* Decorative grid */}
+        <div className="absolute inset-0 opacity-[0.03]" style={{
+          backgroundImage: 'linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)',
+          backgroundSize: '60px 60px',
+        }} />
+
+        <div className="relative z-10">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500 to-fuchsia-600">
+              <span className="text-sm font-black text-white leading-none tracking-tighter">JH</span>
+            </div>
+            <span className="text-lg font-semibold text-white tracking-tight">JobHunter</span>
+          </div>
+        </div>
+
+        <div className="relative z-10 max-w-md">
+          <h1 className="text-4xl font-bold leading-tight tracking-tight text-white">
+            Land your dream job with{' '}
+            <span className="bg-gradient-to-r from-violet-400 to-fuchsia-400 bg-clip-text text-transparent">
+              AI-powered
+            </span>{' '}
+            precision.
+          </h1>
+          <p className="mt-4 text-base leading-relaxed text-zinc-400">
+            Analyze, refine, and tailor your CV to match any job description.
+            Stand out from the crowd with intelligent insights.
+          </p>
+
+          {/* Feature pills */}
+          <div className="mt-8 flex flex-wrap gap-2">
+            {['CV Analysis', 'Smart Matching', 'ATS Optimization'].map((feature) => (
+              <span
+                key={feature}
+                className="rounded-full border border-zinc-800 bg-zinc-900/60 px-3.5 py-1.5 text-xs font-medium text-zinc-400"
+              >
+                {feature}
+              </span>
+            ))}
+          </div>
+        </div>
+
+        <div className="relative z-10">
+          <p className="text-sm text-zinc-600">&copy; {new Date().getFullYear()} JobHunter</p>
+        </div>
+      </div>
+
+      {/* Right panel - form */}
+      <div className="relative flex w-full items-center justify-center px-6 lg:w-1/2">
+        {/* Subtle border on the left */}
+        <div className="absolute left-0 top-[10%] hidden h-[80%] w-px bg-gradient-to-b from-transparent via-zinc-800 to-transparent lg:block" />
+
+        <div className="w-full max-w-sm">
+          {/* Mobile logo */}
+          <div className="mb-10 flex items-center gap-3 lg:hidden">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500 to-fuchsia-600">
+              <span className="text-sm font-black text-white leading-none tracking-tighter">JH</span>
+            </div>
+            <span className="text-lg font-semibold text-white tracking-tight">JobHunter</span>
+          </div>
+
+          <div className="mb-8">
+            <h2 className="text-2xl font-bold tracking-tight text-white">
+              Welcome back
+            </h2>
+            <p className="mt-2 text-sm text-zinc-500">
+              Enter your credentials to access your account
+            </p>
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-5">
+            <div className="space-y-1.5">
+              <Label htmlFor="email" className="text-xs font-medium uppercase tracking-wider text-zinc-500">
+                Email
+              </Label>
+              <div className="group relative">
+                <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-600 transition-colors group-focus-within:text-violet-400" />
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="you@example.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="h-11 rounded-xl border-zinc-800 bg-zinc-900/50 pl-10 text-sm text-white placeholder:text-zinc-600 transition-all focus:border-violet-500/40 focus:bg-zinc-900 focus:ring-1 focus:ring-violet-500/20"
+                  required
+                />
               </div>
             </div>
 
-            {/* Google OAuth placeholder */}
-            <Button variant="outline" className="w-full h-10 gap-2 border-zinc-700 text-zinc-300 hover:bg-zinc-800 hover:text-white" disabled>
-              <svg className="h-4 w-4" viewBox="0 0 24 24">
-                <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/>
-                <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
-                <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
-                <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
-              </svg>
-              Continue with Google
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <Label htmlFor="password" className="text-xs font-medium uppercase tracking-wider text-zinc-500">
+                  Password
+                </Label>
+                <Link
+                  href="/forgot-password"
+                  className="text-xs text-zinc-600 transition-colors hover:text-violet-400"
+                >
+                  Forgot?
+                </Link>
+              </div>
+              <div className="group relative">
+                <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-600 transition-colors group-focus-within:text-violet-400" />
+                <Input
+                  id="password"
+                  type="password"
+                  placeholder="Enter your password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="h-11 rounded-xl border-zinc-800 bg-zinc-900/50 pl-10 text-sm text-white placeholder:text-zinc-600 transition-all focus:border-violet-500/40 focus:bg-zinc-900 focus:ring-1 focus:ring-violet-500/20"
+                  required
+                />
+              </div>
+            </div>
+
+            <Button
+              type="submit"
+              className="group relative mt-2 h-11 w-full rounded-xl bg-violet-600 text-sm font-semibold text-white transition-all hover:bg-violet-500 hover:shadow-lg hover:shadow-violet-500/25 active:scale-[0.98]"
+              disabled={loading}
+            >
+              {loading ? (
+                <span className="flex items-center gap-2">
+                  <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                  Signing in...
+                </span>
+              ) : (
+                <span className="flex items-center justify-center gap-2">
+                  Sign In
+                  <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+                </span>
+              )}
             </Button>
+          </form>
 
-            <div className="mt-6 text-center text-sm text-zinc-500">
-              Don&apos;t have an account?{' '}
-              <Link href="/register" className="text-violet-400 hover:text-violet-300 font-medium transition-colors">
-                Create one
-              </Link>
-            </div>
-          </CardContent>
-        </Card>
+          <p className="mt-8 text-center text-sm text-zinc-600">
+            Don&apos;t have an account?{' '}
+            <Link href="/register" className="font-medium text-violet-400 transition-colors hover:text-violet-300">
+              Create one
+            </Link>
+          </p>
+        </div>
       </div>
     </div>
   );
