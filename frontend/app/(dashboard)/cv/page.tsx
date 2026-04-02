@@ -1,18 +1,17 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import CVUpload from '@/components/cv/CVUpload';
 import CVPreview from '@/components/cv/CVPreview';
 import QuickEditBox from '@/components/cv/QuickEditBox';
 import ScoreRing from '@/components/cv/ScoreRing';
 import AnalysisSidebar from '@/components/cv/AnalysisSidebar';
-import { downloadCVPdf, generateCoverLetter } from '@/lib/api';
+import { downloadCVPdf } from '@/lib/api';
 import { useCVAnalysisStore } from '@/store/cvAnalysisStore';
+import { useCoverLetterStore } from '@/store/coverLetterStore';
 import toast from 'react-hot-toast';
 import { Download, RotateCcw, ArrowRight, FileSearch, TrendingUp, FileSignature, Sparkles, Copy, Check, X, Wand2, Send } from 'lucide-react';
-
-const CL_STORAGE_KEY = 'cv_cover_letter_state';
 
 const tones = [
   { key: 'balanced', label: 'Balanced' },
@@ -20,33 +19,26 @@ const tones = [
   { key: 'friendly', label: 'Friendly' },
 ];
 
-function loadCLState() {
-  if (typeof window === 'undefined') return null;
-  try {
-    const saved = sessionStorage.getItem(CL_STORAGE_KEY);
-    return saved ? JSON.parse(saved) : null;
-  } catch {
-    return null;
-  }
-}
-
 export default function CVPage() {
   const { result, setResult, reset: resetAnalysis, loading: analysisLoading, step: analysisStep, steps: analysisSteps } = useCVAnalysisStore();
   const [downloading, setDownloading] = useState(false);
 
-  // Cover letter state — restored from sessionStorage
-  const [showCL, setShowCL] = useState(() => loadCLState()?.showCL ?? false);
-  const [clTone, setCLTone] = useState(() => loadCLState()?.clTone ?? 'balanced');
-  const [clResult, setCLResult] = useState(() => loadCLState()?.clResult ?? '');
-  const [clLoading, setCLLoading] = useState(false);
+  // Cover letter state from store (persists across tab switches)
+  const {
+    inlineResult: clResult,
+    inlineLoading: clLoading,
+    inlineTone: clTone,
+    inlineRefining: clRefining,
+    setInlineTone: setCLTone,
+    generateInline,
+    refineInline,
+    setInlineResult: setCLResult,
+    resetInline,
+  } = useCoverLetterStore();
+
+  const [showCL, setShowCL] = useState(() => !!clResult);
   const [clCopied, setCLCopied] = useState(false);
   const [clRefineInput, setCLRefineInput] = useState('');
-  const [clRefining, setCLRefining] = useState(false);
-
-  // Persist cover letter state
-  useEffect(() => {
-    sessionStorage.setItem(CL_STORAGE_KEY, JSON.stringify({ showCL, clTone, clResult }));
-  }, [showCL, clTone, clResult]);
 
   const handleRefine = (updatedFinalCV: any) => {
     if (!result) return;
@@ -72,8 +64,7 @@ export default function CVPage() {
   const handleReset = () => {
     resetAnalysis();
     setShowCL(false);
-    setCLResult('');
-    sessionStorage.removeItem(CL_STORAGE_KEY);
+    resetInline();
   };
 
   const handleGenerateCL = async () => {
@@ -83,43 +74,13 @@ export default function CVPage() {
       toast.error('Missing CV or job description data');
       return;
     }
-    setCLLoading(true);
-    try {
-      const res = await generateCoverLetter({ cv_text: cvText, job_description: jd, tone: clTone });
-      setCLResult(res.data.cover_letter);
-      toast.success('Cover letter generated!');
-    } catch (err: any) {
-      toast.error(err.response?.data?.error || 'Failed to generate');
-    } finally {
-      setCLLoading(false);
-    }
+    await generateInline(cvText, jd, clTone);
   };
 
   const handleRefineCL = async () => {
     if (!clRefineInput.trim() || !clResult) return;
-    setCLRefining(true);
-    try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/cover-letter/refine`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('auth_token')}`,
-        },
-        body: JSON.stringify({ cover_letter: clResult, instructions: clRefineInput }),
-      });
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error || 'Failed to refine');
-      }
-      const data = await res.json();
-      setCLResult(data.cover_letter);
-      setCLRefineInput('');
-      toast.success('Cover letter updated!');
-    } catch (err: any) {
-      toast.error(err.message || 'Failed to refine');
-    } finally {
-      setCLRefining(false);
-    }
+    await refineInline(clResult, clRefineInput);
+    setCLRefineInput('');
   };
 
   const handleCopyCL = async () => {
@@ -242,7 +203,7 @@ export default function CVPage() {
       </div>
 
       {/* Cover Letter Panel */}
-      {showCL && (
+      {(showCL || clLoading) && (
         <div className="rounded-2xl border border-violet-500/20 bg-violet-50 dark:bg-violet-500/[0.03] overflow-hidden">
           <div className="flex items-center justify-between px-6 py-4 border-b border-violet-500/15 dark:border-violet-500/10">
             <div className="flex items-center gap-2.5">

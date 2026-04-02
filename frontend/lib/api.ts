@@ -124,7 +124,21 @@ export const generateCoverLetter = (data: {
   job_title?: string;
   tone?: string;
 }) =>
-  api.post<{ cover_letter: string }>('/api/cover-letter/generate', data, { timeout: 60000 });
+  api.post<{ cover_letter: string }>('/api/cover-letter/generate', data, { timeout: 120000 });
+
+export const generateFromPdf = (file: File, jobDescription: string, tone: string) => {
+  const formData = new FormData();
+  formData.append('cv_file', file);
+  formData.append('job_description', jobDescription);
+  formData.append('tone', tone);
+  return api.post<{ cover_letter: string }>('/api/cover-letter/generate-from-pdf', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+    timeout: 120000,
+  });
+};
+
+export const refineCoverLetter = (data: { cover_letter: string; instructions: string }) =>
+  api.post<{ cover_letter: string }>('/api/cover-letter/refine', data, { timeout: 60000 });
 
 // Password
 export const changePassword = (newPassword: string) =>

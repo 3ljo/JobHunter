@@ -65,8 +65,12 @@ const generateCoverLetter = async (req, res) => {
 
     return res.status(200).json({ cover_letter: response.content[0].text });
   } catch (err) {
-    console.error('Cover letter generation error:', err.message);
-    return res.status(500).json({ error: 'Failed to generate cover letter' });
+    console.error('Cover letter generation error:', err.message, err.status || '');
+    const message = err.status === 401 ? 'AI service authentication error — check API key'
+      : err.status === 429 ? 'AI rate limit reached — please try again in a moment'
+      : err.status === 529 ? 'AI service is temporarily overloaded — please retry'
+      : `Failed to generate cover letter: ${err.message}`;
+    return res.status(500).json({ error: message });
   }
 };
 
@@ -104,8 +108,12 @@ const generateFromPdf = async (req, res) => {
 
     return res.status(200).json({ cover_letter: response.content[0].text });
   } catch (err) {
-    console.error('Cover letter PDF generation error:', err.message);
-    return res.status(500).json({ error: err.message || 'Failed to generate cover letter' });
+    console.error('Cover letter PDF generation error:', err.message, err.status || '');
+    const message = err.status === 401 ? 'AI service authentication error — check API key'
+      : err.status === 429 ? 'AI rate limit reached — please try again in a moment'
+      : err.status === 529 ? 'AI service is temporarily overloaded — please retry'
+      : `Failed to generate cover letter: ${err.message}`;
+    return res.status(500).json({ error: message });
   } finally {
     if (uploadedFilePath && fs.existsSync(uploadedFilePath)) {
       fs.unlinkSync(uploadedFilePath);
@@ -135,8 +143,12 @@ const refineCoverLetter = async (req, res) => {
 
     return res.status(200).json({ cover_letter: response.content[0].text });
   } catch (err) {
-    console.error('Cover letter refine error:', err.message);
-    return res.status(500).json({ error: 'Failed to refine cover letter' });
+    console.error('Cover letter refine error:', err.message, err.status || '');
+    const message = err.status === 401 ? 'AI service authentication error — check API key'
+      : err.status === 429 ? 'AI rate limit reached — please try again in a moment'
+      : err.status === 529 ? 'AI service is temporarily overloaded — please retry'
+      : `Failed to refine cover letter: ${err.message}`;
+    return res.status(500).json({ error: message });
   }
 };
 

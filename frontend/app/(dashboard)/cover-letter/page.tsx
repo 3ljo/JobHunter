@@ -1,11 +1,11 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { generateCoverLetter } from '@/lib/api';
+import { useCoverLetterStore } from '@/store/coverLetterStore';
 import toast from 'react-hot-toast';
 import { FileSignature, Copy, Check, Sparkles, RotateCcw, Upload, FileText, X, Wand2, Send } from 'lucide-react';
 
@@ -15,32 +15,23 @@ const tones = [
   { key: 'friendly', label: 'Friendly' },
 ];
 
-const CL_PAGE_KEY = 'cover_letter_page_state';
-
-function loadSaved() {
-  if (typeof window === 'undefined') return null;
-  try {
-    const s = sessionStorage.getItem(CL_PAGE_KEY);
-    return s ? JSON.parse(s) : null;
-  } catch {
-    return null;
-  }
-}
-
 export default function CoverLetterPage() {
+  const {
+    pageResult: result,
+    pageLoading: loading,
+    pageTone: tone,
+    pageRefining: refining,
+    pageJobDescription: jobDescription,
+    setPageTone: setTone,
+    setPageJobDescription: setJobDescription,
+    generateFromPdf,
+    refinePage,
+    setPageResult: setResult,
+  } = useCoverLetterStore();
+
   const [file, setFile] = useState<File | null>(null);
-  const [jobDescription, setJobDescription] = useState(() => loadSaved()?.jobDescription ?? '');
-  const [tone, setTone] = useState(() => loadSaved()?.tone ?? 'balanced');
-  const [result, setResult] = useState(() => loadSaved()?.result ?? '');
-  const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
   const [refineInput, setRefineInput] = useState('');
-  const [refining, setRefining] = useState(false);
-
-  // Persist state across tab switches
-  useEffect(() => {
-    sessionStorage.setItem(CL_PAGE_KEY, JSON.stringify({ jobDescription, tone, result }));
-  }, [jobDescription, tone, result]);
 
   const onDrop = useCallback((accepted: File[]) => {
     if (accepted.length > 0) setFile(accepted[0]);
@@ -56,36 +47,7 @@ export default function CoverLetterPage() {
   const handleGenerate = async () => {
     if (!file) { toast.error('Please upload your CV'); return; }
     if (!jobDescription.trim()) { toast.error('Paste the job description'); return; }
-
-    setLoading(true);
-    try {
-      // Read PDF as text via the backend
-      const formData = new FormData();
-      formData.append('cv_file', file);
-      formData.append('job_description', jobDescription);
-      formData.append('tone', tone);
-
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/cover-letter/generate-from-pdf`, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('auth_token')}`,
-        },
-        body: formData,
-      });
-
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error || 'Failed to generate');
-      }
-
-      const data = await res.json();
-      setResult(data.cover_letter);
-      toast.success('Cover letter generated!');
-    } catch (err: any) {
-      toast.error(err.message || 'Failed to generate');
-    } finally {
-      setLoading(false);
-    }
+    await generateFromPdf(file, jobDescription, tone);
   };
 
   const handleCopy = async () => {
@@ -97,29 +59,8 @@ export default function CoverLetterPage() {
 
   const handleRefine = async () => {
     if (!refineInput.trim() || !result) return;
-    setRefining(true);
-    try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/cover-letter/refine`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('auth_token')}`,
-        },
-        body: JSON.stringify({ cover_letter: result, instructions: refineInput }),
-      });
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error || 'Failed to refine');
-      }
-      const data = await res.json();
-      setResult(data.cover_letter);
-      setRefineInput('');
-      toast.success('Cover letter updated!');
-    } catch (err: any) {
-      toast.error(err.message || 'Failed to refine');
-    } finally {
-      setRefining(false);
-    }
+    await refinePage(result, refineInput);
+    setRefineInput('');
   };
 
   const ready = !!file && jobDescription.trim().length > 0;
@@ -241,6 +182,16 @@ export default function CoverLetterPage() {
               )}
             </Button>
           </div>
+
+          {/* Loading indicator when generation is in progress */}
+          {loading && (
+            <div className="rounded-2xl border border-violet-500/20 bg-violet-50 dark:bg-violet-500/[0.03] p-8 text-center">
+              <div className="flex flex-col items-center gap-3">
+                <span className="h-8 w-8 animate-spin rounded-full border-3 border-violet-500/30 border-t-violet-500" />
+                <p className="text-sm text-muted-foreground">Generating your cover letter... Feel free to browse other tabs.</p>
+              </div>
+            </div>
+          )}
         </div>
       ) : (
         <div className="space-y-4">
