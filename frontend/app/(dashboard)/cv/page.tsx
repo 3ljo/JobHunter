@@ -13,12 +13,23 @@ import toast from 'react-hot-toast';
 import { Download, RotateCcw, ArrowRight, FileSearch, TrendingUp, FileSignature, Sparkles, Copy, Check, X, Wand2, Send } from 'lucide-react';
 
 const STORAGE_KEY = 'cv_analysis_result';
+const CL_STORAGE_KEY = 'cv_cover_letter_state';
 
 const tones = [
   { key: 'balanced', label: 'Balanced' },
   { key: 'formal', label: 'Formal' },
   { key: 'friendly', label: 'Friendly' },
 ];
+
+function loadCLState() {
+  if (typeof window === 'undefined') return null;
+  try {
+    const saved = sessionStorage.getItem(CL_STORAGE_KEY);
+    return saved ? JSON.parse(saved) : null;
+  } catch {
+    return null;
+  }
+}
 
 export default function CVPage() {
   const [result, setResult] = useState<CVAnalysisResult | null>(() => {
@@ -32,10 +43,10 @@ export default function CVPage() {
   });
   const [downloading, setDownloading] = useState(false);
 
-  // Cover letter state
-  const [showCL, setShowCL] = useState(false);
-  const [clTone, setCLTone] = useState('balanced');
-  const [clResult, setCLResult] = useState('');
+  // Cover letter state — restored from sessionStorage
+  const [showCL, setShowCL] = useState(() => loadCLState()?.showCL ?? false);
+  const [clTone, setCLTone] = useState(() => loadCLState()?.clTone ?? 'balanced');
+  const [clResult, setCLResult] = useState(() => loadCLState()?.clResult ?? '');
   const [clLoading, setCLLoading] = useState(false);
   const [clCopied, setCLCopied] = useState(false);
   const [clRefineInput, setCLRefineInput] = useState('');
@@ -48,6 +59,11 @@ export default function CVPage() {
       sessionStorage.removeItem(STORAGE_KEY);
     }
   }, [result]);
+
+  // Persist cover letter state
+  useEffect(() => {
+    sessionStorage.setItem(CL_STORAGE_KEY, JSON.stringify({ showCL, clTone, clResult }));
+  }, [showCL, clTone, clResult]);
 
   const handleRefine = (updatedFinalCV: any) => {
     if (!result) return;
@@ -74,6 +90,7 @@ export default function CVPage() {
     setResult(null);
     setShowCL(false);
     setCLResult('');
+    sessionStorage.removeItem(CL_STORAGE_KEY);
   };
 
   const handleGenerateCL = async () => {
@@ -186,7 +203,7 @@ export default function CVPage() {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => { setShowCL(true); setCLResult(''); }}
+              onClick={() => setShowCL(true)}
               className="gap-2 rounded-xl border-border text-muted-foreground hover:bg-accent hover:text-foreground transition-all"
             >
               <FileSignature className="h-4 w-4" />
@@ -207,11 +224,11 @@ export default function CVPage() {
 
       {/* Cover Letter Panel */}
       {showCL && (
-        <div className="rounded-2xl border border-violet-500/15 bg-violet-500/[0.03] overflow-hidden">
-          <div className="flex items-center justify-between px-6 py-4 border-b border-violet-500/10">
+        <div className="rounded-2xl border border-violet-500/20 bg-violet-50 dark:bg-violet-500/[0.03] overflow-hidden">
+          <div className="flex items-center justify-between px-6 py-4 border-b border-violet-500/15 dark:border-violet-500/10">
             <div className="flex items-center gap-2.5">
-              <FileSignature className="h-4 w-4 text-violet-400" />
-              <h3 className="text-sm font-semibold text-white">Cover Letter Generator</h3>
+              <FileSignature className="h-4 w-4 text-violet-500 dark:text-violet-400" />
+              <h3 className="text-sm font-semibold text-foreground">Cover Letter Generator</h3>
             </div>
             <button
               onClick={() => setShowCL(false)}
