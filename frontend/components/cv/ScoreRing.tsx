@@ -36,7 +36,7 @@ export default function ScoreRing({ score, label, size = 120, strokeWidth = 8, c
           fill="none"
           stroke="currentColor"
           strokeWidth={strokeWidth}
-          className="text-zinc-800"
+          className="text-border"
         />
         {/* Progress arc */}
         <circle
@@ -52,8 +52,8 @@ export default function ScoreRing({ score, label, size = 120, strokeWidth = 8, c
         />
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <span className="text-2xl font-bold text-white">{score}</span>
-        {label && <span className="text-[11px] text-zinc-400 mt-0.5">{label}</span>}
+        <span className="text-2xl font-bold text-foreground">{score}</span>
+        {label && <span className="text-[11px] text-muted-foreground mt-0.5">{label}</span>}
       </div>
     </div>
   );

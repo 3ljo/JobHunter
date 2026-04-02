@@ -29,10 +29,10 @@ export default function SkillBars({ scores }: { scores: ATSScores }) {
         return (
           <div key={bar.key}>
             <div className="flex justify-between text-sm mb-1.5">
-              <span className="text-zinc-400">{bar.label}</span>
-              <span className="font-medium text-white">{value}%</span>
+              <span className="text-muted-foreground">{bar.label}</span>
+              <span className="font-medium text-foreground">{value}%</span>
             </div>
-            <div className="h-2 rounded-full bg-zinc-800 overflow-hidden">
+            <div className="h-2 rounded-full bg-muted overflow-hidden">
               <div
                 className={`h-full rounded-full ${barColor} transition-all duration-700 ease-out`}
                 style={{

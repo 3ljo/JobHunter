@@ -80,7 +80,7 @@ export default function RegisterPage() {
   const passwordsMatch = confirmPassword.length > 0 && password === confirmPassword;
 
   return (
-    <div className="relative flex min-h-screen overflow-hidden bg-zinc-950">
+    <div className="relative flex min-h-screen overflow-hidden bg-background">
       {/* Ambient glow effects */}
       <div className="pointer-events-none absolute inset-0">
         <div className="absolute -right-40 -top-40 h-[500px] w-[500px] rounded-full bg-violet-600/15 blur-[120px]" />
@@ -90,7 +90,7 @@ export default function RegisterPage() {
 
       {/* Left panel - form */}
       <div className="relative flex w-full items-center justify-center px-6 lg:w-1/2">
-        <div className="absolute right-0 top-[10%] hidden h-[80%] w-px bg-gradient-to-b from-transparent via-zinc-800 to-transparent lg:block" />
+        <div className="absolute right-0 top-[10%] hidden h-[80%] w-px bg-gradient-to-b from-transparent via-border to-transparent lg:block" />
 
         <div className="w-full max-w-sm">
           {/* Mobile logo */}
@@ -98,50 +98,50 @@ export default function RegisterPage() {
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500 to-fuchsia-600">
               <span className="text-sm font-black text-white leading-none tracking-tighter">JH</span>
             </div>
-            <span className="text-lg font-semibold text-white tracking-tight">JobHunter</span>
+            <span className="text-lg font-semibold text-foreground tracking-tight">JobHunter</span>
           </div>
 
           <div className="mb-8">
-            <h2 className="text-2xl font-bold tracking-tight text-white">
+            <h2 className="text-2xl font-bold tracking-tight text-foreground">
               Create your account
             </h2>
-            <p className="mt-2 text-sm text-zinc-500">
+            <p className="mt-2 text-sm text-muted-foreground">
               Start optimizing your job applications today
             </p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-5">
             <div className="space-y-1.5">
-              <Label htmlFor="email" className="text-xs font-medium uppercase tracking-wider text-zinc-500">
+              <Label htmlFor="email" className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
                 Email
               </Label>
               <div className="group relative">
-                <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-600 transition-colors group-focus-within:text-violet-400" />
+                <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/60 transition-colors group-focus-within:text-violet-400" />
                 <Input
                   id="email"
                   type="email"
                   placeholder="you@example.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="h-11 rounded-xl border-zinc-800 bg-zinc-900/50 pl-10 text-sm text-white placeholder:text-zinc-600 transition-all focus:border-violet-500/40 focus:bg-zinc-900 focus:ring-1 focus:ring-violet-500/20"
+                  className="h-11 rounded-xl border-border bg-card pl-10 text-sm text-foreground placeholder:text-muted-foreground/60 transition-all focus:border-violet-500/40 focus:bg-card focus:ring-1 focus:ring-violet-500/20"
                   required
                 />
               </div>
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="password" className="text-xs font-medium uppercase tracking-wider text-zinc-500">
+              <Label htmlFor="password" className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
                 Password
               </Label>
               <div className="group relative">
-                <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-600 transition-colors group-focus-within:text-violet-400" />
+                <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/60 transition-colors group-focus-within:text-violet-400" />
                 <Input
                   id="password"
                   type="password"
                   placeholder="At least 6 characters"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="h-11 rounded-xl border-zinc-800 bg-zinc-900/50 pl-10 text-sm text-white placeholder:text-zinc-600 transition-all focus:border-violet-500/40 focus:bg-zinc-900 focus:ring-1 focus:ring-violet-500/20"
+                  className="h-11 rounded-xl border-border bg-card pl-10 text-sm text-foreground placeholder:text-muted-foreground/60 transition-all focus:border-violet-500/40 focus:bg-card focus:ring-1 focus:ring-violet-500/20"
                   required
                 />
               </div>
@@ -152,7 +152,7 @@ export default function RegisterPage() {
                       <div
                         key={threshold}
                         className={`h-1 flex-1 rounded-full transition-all duration-300 ${
-                          strength >= threshold ? getStrengthColor(strength) : 'bg-zinc-800'
+                          strength >= threshold ? getStrengthColor(strength) : 'bg-muted'
                         }`}
                       />
                     ))}
@@ -165,18 +165,18 @@ export default function RegisterPage() {
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="confirm" className="text-xs font-medium uppercase tracking-wider text-zinc-500">
+              <Label htmlFor="confirm" className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
                 Confirm Password
               </Label>
               <div className="group relative">
-                <ShieldCheck className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-600 transition-colors group-focus-within:text-violet-400" />
+                <ShieldCheck className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/60 transition-colors group-focus-within:text-violet-400" />
                 <Input
                   id="confirm"
                   type="password"
                   placeholder="Confirm your password"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
-                  className="h-11 rounded-xl border-zinc-800 bg-zinc-900/50 pl-10 pr-10 text-sm text-white placeholder:text-zinc-600 transition-all focus:border-violet-500/40 focus:bg-zinc-900 focus:ring-1 focus:ring-violet-500/20"
+                  className="h-11 rounded-xl border-border bg-card pl-10 pr-10 text-sm text-foreground placeholder:text-muted-foreground/60 transition-all focus:border-violet-500/40 focus:bg-card focus:ring-1 focus:ring-violet-500/20"
                   required
                 />
                 {passwordsMatch && (
@@ -204,7 +204,7 @@ export default function RegisterPage() {
             </Button>
           </form>
 
-          <p className="mt-8 text-center text-sm text-zinc-600">
+          <p className="mt-8 text-center text-sm text-muted-foreground/60">
             Already have an account?{' '}
             <Link href="/login" className="font-medium text-violet-400 transition-colors hover:text-violet-300">
               Sign in
@@ -225,18 +225,18 @@ export default function RegisterPage() {
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500 to-fuchsia-600">
               <span className="text-sm font-black text-white leading-none tracking-tighter">JH</span>
             </div>
-            <span className="text-lg font-semibold text-white tracking-tight">JobHunter</span>
+            <span className="text-lg font-semibold text-foreground tracking-tight">JobHunter</span>
           </div>
         </div>
 
         <div className="relative z-10 max-w-md">
-          <h1 className="text-4xl font-bold leading-tight tracking-tight text-white">
+          <h1 className="text-4xl font-bold leading-tight tracking-tight text-foreground">
             Your career journey{' '}
             <span className="bg-gradient-to-r from-violet-400 to-fuchsia-400 bg-clip-text text-transparent">
               starts here.
             </span>
           </h1>
-          <p className="mt-4 text-base leading-relaxed text-zinc-400">
+          <p className="mt-4 text-base leading-relaxed text-muted-foreground">
             Join thousands of job seekers who use AI-powered insights
             to craft the perfect CV and land interviews faster.
           </p>
@@ -244,24 +244,24 @@ export default function RegisterPage() {
           {/* Social proof */}
           <div className="mt-8 flex items-center gap-6">
             <div>
-              <p className="text-2xl font-bold text-white">10K+</p>
-              <p className="text-xs text-zinc-500">CVs Analyzed</p>
+              <p className="text-2xl font-bold text-foreground">10K+</p>
+              <p className="text-xs text-muted-foreground">CVs Analyzed</p>
             </div>
-            <div className="h-8 w-px bg-zinc-800" />
+            <div className="h-8 w-px bg-border" />
             <div>
-              <p className="text-2xl font-bold text-white">85%</p>
-              <p className="text-xs text-zinc-500">Score Improvement</p>
+              <p className="text-2xl font-bold text-foreground">85%</p>
+              <p className="text-xs text-muted-foreground">Score Improvement</p>
             </div>
-            <div className="h-8 w-px bg-zinc-800" />
+            <div className="h-8 w-px bg-border" />
             <div>
-              <p className="text-2xl font-bold text-white">3x</p>
-              <p className="text-xs text-zinc-500">More Interviews</p>
+              <p className="text-2xl font-bold text-foreground">3x</p>
+              <p className="text-xs text-muted-foreground">More Interviews</p>
             </div>
           </div>
         </div>
 
         <div className="relative z-10">
-          <p className="text-sm text-zinc-600">&copy; {new Date().getFullYear()} JobHunter</p>
+          <p className="text-sm text-muted-foreground/60">&copy; {new Date().getFullYear()} JobHunter</p>
         </div>
       </div>
     </div>

@@ -10,7 +10,7 @@ import toast from 'react-hot-toast';
 import { Pencil, Trash2, ExternalLink, GripVertical, MessageSquare, X } from 'lucide-react';
 
 const columns = [
-  { key: 'saved', label: 'Saved', color: 'border-zinc-600', dot: 'bg-zinc-500' },
+  { key: 'saved', label: 'Saved', color: 'border-border', dot: 'bg-muted-foreground' },
   { key: 'applied', label: 'Applied', color: 'border-blue-500/40', dot: 'bg-blue-400' },
   { key: 'interview', label: 'Interview', color: 'border-amber-500/40', dot: 'bg-amber-400' },
   { key: 'offer', label: 'Offer', color: 'border-emerald-500/40', dot: 'bg-emerald-400' },
@@ -83,26 +83,26 @@ export default function KanbanBoard({ jobs, onRefresh }: KanbanBoardProps) {
           return (
             <div
               key={col.key}
-              className={`min-w-0 rounded-2xl border bg-zinc-900/30 flex flex-col transition-all ${
+              className={`min-w-0 rounded-2xl border bg-card/60 flex flex-col transition-all ${
                 isDragOver
-                  ? `${col.color} bg-zinc-900/60`
-                  : 'border-white/[0.06]'
+                  ? `${col.color} bg-card/90`
+                  : 'border-border'
               }`}
               onDragOver={(e) => handleDragOver(e, col.key)}
               onDragLeave={handleDragLeave}
               onDrop={(e) => handleDrop(e, col.key)}
             >
               {/* Column header */}
-              <div className="flex items-center gap-2 px-4 py-3 border-b border-white/[0.04]">
+              <div className="flex items-center gap-2 px-4 py-3 border-b border-border/50">
                 <div className={`h-2 w-2 rounded-full ${col.dot}`} />
-                <span className="text-xs font-semibold text-zinc-300 uppercase tracking-wider">{col.label}</span>
-                <span className="ml-auto text-[11px] text-zinc-600 tabular-nums">{colJobs.length}</span>
+                <span className="text-xs font-semibold text-foreground/80 uppercase tracking-wider">{col.label}</span>
+                <span className="ml-auto text-[11px] text-muted-foreground/60 tabular-nums">{colJobs.length}</span>
               </div>
 
               {/* Cards */}
               <div className="flex-1 p-2 space-y-2 min-h-[120px] overflow-y-auto max-h-[calc(100vh-380px)] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                 {colJobs.length === 0 && (
-                  <div className="flex items-center justify-center h-20 text-[11px] text-zinc-700">
+                  <div className="flex items-center justify-center h-20 text-[11px] text-muted-foreground/40">
                     Drop here
                   </div>
                 )}
@@ -112,20 +112,20 @@ export default function KanbanBoard({ jobs, onRefresh }: KanbanBoardProps) {
                     draggable
                     onDragStart={(e) => handleDragStart(e, job)}
                     onDragEnd={() => { setDraggedJob(null); setDragOverCol(null); }}
-                    className={`group rounded-xl border border-white/[0.04] bg-zinc-950/50 p-3 cursor-grab active:cursor-grabbing transition-all hover:border-white/[0.08] hover:bg-zinc-950/80 ${
+                    className={`group rounded-xl border border-border/50 bg-background/50 p-3 cursor-grab active:cursor-grabbing transition-all hover:border-white/[0.08] hover:bg-background/80 ${
                       draggedJob?.id === job.id ? 'opacity-40' : ''
                     }`}
                   >
                     <div className="flex items-start justify-between gap-2 mb-2">
                       <div className="min-w-0">
-                        <p className="text-sm font-medium text-zinc-200 truncate">{job.company_name}</p>
-                        <p className="text-xs text-zinc-500 truncate">{job.job_title}</p>
+                        <p className="text-sm font-medium text-foreground/90 truncate">{job.company_name}</p>
+                        <p className="text-xs text-muted-foreground truncate">{job.job_title}</p>
                       </div>
-                      <GripVertical className="h-3.5 w-3.5 text-zinc-700 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
+                      <GripVertical className="h-3.5 w-3.5 text-muted-foreground/40 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
                     </div>
 
                     <div className="flex items-center justify-between">
-                      <span className="text-[11px] text-zinc-600 tabular-nums">
+                      <span className="text-[11px] text-muted-foreground/60 tabular-nums">
                         {new Date(job.applied_at).toLocaleDateString()}
                       </span>
                       <div className="flex items-center gap-0.5">
@@ -134,7 +134,7 @@ export default function KanbanBoard({ jobs, onRefresh }: KanbanBoardProps) {
                             href={job.job_url}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="flex h-6 w-6 items-center justify-center rounded-md text-zinc-500 hover:text-violet-400 hover:bg-zinc-800 transition-all"
+                            className="flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground hover:text-violet-400 hover:bg-accent transition-all"
                             onClick={(e) => e.stopPropagation()}
                           >
                             <ExternalLink className="h-3 w-3" />
@@ -143,20 +143,20 @@ export default function KanbanBoard({ jobs, onRefresh }: KanbanBoardProps) {
                         {job.notes && (
                           <button
                             onClick={() => setNoteJob(job)}
-                            className="flex h-6 w-6 items-center justify-center rounded-md text-zinc-500 hover:text-violet-400 hover:bg-zinc-800 transition-all"
+                            className="flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground hover:text-violet-400 hover:bg-accent transition-all"
                           >
                             <MessageSquare className="h-3 w-3" />
                           </button>
                         )}
                         <button
                           onClick={() => setEditJob(job)}
-                          className="flex h-6 w-6 items-center justify-center rounded-md text-zinc-500 hover:text-white hover:bg-zinc-800 transition-all"
+                          className="flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-all"
                         >
                           <Pencil className="h-3 w-3" />
                         </button>
                         <button
                           onClick={() => handleDelete(job.id)}
-                          className="flex h-6 w-6 items-center justify-center rounded-md text-zinc-500 hover:text-red-400 hover:bg-zinc-800 transition-all"
+                          className="flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground hover:text-red-400 hover:bg-accent transition-all"
                         >
                           <Trash2 className="h-3 w-3" />
                         </button>
@@ -174,20 +174,20 @@ export default function KanbanBoard({ jobs, onRefresh }: KanbanBoardProps) {
       {noteJob && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => setNoteJob(null)}>
           <div
-            className="relative w-full max-w-md max-h-[50vh] mx-4 rounded-2xl border border-white/[0.06] bg-zinc-950 shadow-2xl flex flex-col overflow-hidden"
+            className="relative w-full max-w-md max-h-[50vh] mx-4 rounded-2xl border border-border bg-background shadow-2xl flex flex-col overflow-hidden"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between p-5 pb-3 shrink-0">
               <div>
-                <h3 className="text-sm font-semibold text-white">{noteJob.company_name}</h3>
-                <p className="text-xs text-zinc-500">{noteJob.job_title}</p>
+                <h3 className="text-sm font-semibold text-foreground">{noteJob.company_name}</h3>
+                <p className="text-xs text-muted-foreground">{noteJob.job_title}</p>
               </div>
-              <button onClick={() => setNoteJob(null)} className="flex h-8 w-8 items-center justify-center rounded-lg text-zinc-500 hover:text-white hover:bg-zinc-800 transition-all">
+              <button onClick={() => setNoteJob(null)} className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-all">
                 <X className="h-4 w-4" />
               </button>
             </div>
             <div className="px-5 pb-5 overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-              <p className="text-sm text-zinc-300 leading-relaxed whitespace-pre-wrap">{noteJob.notes}</p>
+              <p className="text-sm text-foreground/80 leading-relaxed whitespace-pre-wrap">{noteJob.notes}</p>
             </div>
           </div>
         </div>

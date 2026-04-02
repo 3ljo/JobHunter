@@ -27,7 +27,7 @@ export default function StatsCards({ stats }: { stats: TrackerStats }) {
           return (
             <div
               key={s.key}
-              className="group rounded-2xl border border-white/[0.06] bg-zinc-900/40 p-4 transition-all hover:border-white/[0.1] hover:bg-zinc-900/60"
+              className="group rounded-2xl border border-border bg-card/70 p-4 transition-all hover:border-border hover:bg-card/90"
             >
               <div className="flex items-center justify-between mb-2">
                 <div
@@ -37,15 +37,15 @@ export default function StatsCards({ stats }: { stats: TrackerStats }) {
                   <Icon className="h-3.5 w-3.5" style={{ color: s.color }} />
                 </div>
               </div>
-              <p className="text-2xl font-bold tabular-nums text-white">{stats[s.key]}</p>
-              <p className="text-[11px] uppercase tracking-wider text-zinc-600 mt-0.5">{s.label}</p>
+              <p className="text-2xl font-bold tabular-nums text-foreground">{stats[s.key]}</p>
+              <p className="text-[11px] uppercase tracking-wider text-muted-foreground/60 mt-0.5">{s.label}</p>
             </div>
           );
         })}
       </div>
       {stats.total > 0 && (
-        <div className="rounded-2xl border border-white/[0.06] bg-zinc-900/40 p-5">
-          <h3 className="text-xs font-medium uppercase tracking-wider text-zinc-500 mb-4">Applications Overview</h3>
+        <div className="rounded-2xl border border-border bg-card/70 p-5">
+          <h3 className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-4">Applications Overview</h3>
           <div className="h-48">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={chartData}>

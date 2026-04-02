@@ -21,8 +21,8 @@ const statusTabs = [
 ];
 
 const tabColors: Record<string, string> = {
-  all: 'text-white bg-zinc-800',
-  saved: 'text-zinc-300 bg-zinc-700/40',
+  all: 'text-foreground bg-muted',
+  saved: 'text-foreground/80 bg-muted-foreground/20',
   applied: 'text-blue-400 bg-blue-500/15',
   interview: 'text-amber-400 bg-amber-500/15',
   offer: 'text-emerald-400 bg-emerald-500/15',
@@ -78,8 +78,8 @@ export default function TrackerPage() {
             <Kanban className="h-4 w-4 text-violet-400" />
           </div>
           <div>
-            <h1 className="text-xl font-bold text-white tracking-tight">Job Tracker</h1>
-            <p className="text-zinc-500 text-xs">Track and manage your applications</p>
+            <h1 className="text-xl font-bold text-foreground tracking-tight">Job Tracker</h1>
+            <p className="text-muted-foreground text-xs">Track and manage your applications</p>
           </div>
         </div>
         <AddJobModal onAdded={load} />
@@ -92,21 +92,21 @@ export default function TrackerPage() {
         <div className="flex items-center gap-3">
           {/* Search */}
           <div className="relative flex-1 max-w-xs">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-600" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/60" />
             <Input
               placeholder="Search company or title..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="h-9 rounded-lg border-zinc-800 bg-zinc-900/50 pl-9 text-sm text-white placeholder:text-zinc-600 focus:border-violet-500/40 focus:ring-1 focus:ring-violet-500/20"
+              className="h-9 rounded-lg border-border bg-card/80 pl-9 text-sm text-foreground placeholder:text-muted-foreground/50 focus:border-violet-500/40 focus:ring-1 focus:ring-violet-500/20"
             />
           </div>
 
           {/* View toggle */}
-          <div className="flex items-center rounded-lg bg-zinc-900/50 p-0.5">
+          <div className="flex items-center rounded-lg bg-card/80 p-0.5">
             <button
               onClick={() => setView('table')}
               className={`flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium transition-all ${
-                view === 'table' ? 'bg-zinc-800 text-white shadow-sm' : 'text-zinc-500 hover:text-zinc-300'
+                view === 'table' ? 'bg-muted text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground/80'
               }`}
             >
               <List className="h-3.5 w-3.5" />
@@ -115,7 +115,7 @@ export default function TrackerPage() {
             <button
               onClick={() => setView('kanban')}
               className={`flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium transition-all ${
-                view === 'kanban' ? 'bg-zinc-800 text-white shadow-sm' : 'text-zinc-500 hover:text-zinc-300'
+                view === 'kanban' ? 'bg-muted text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground/80'
               }`}
             >
               <LayoutGrid className="h-3.5 w-3.5" />
@@ -137,7 +137,7 @@ export default function TrackerPage() {
                   className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-all whitespace-nowrap ${
                     isActive
                       ? tabColors[tab.key]
-                      : 'text-zinc-600 hover:text-zinc-400 hover:bg-zinc-900/50'
+                      : 'text-muted-foreground/60 hover:text-muted-foreground hover:bg-card/80'
                   }`}
                 >
                   {tab.label}
@@ -153,7 +153,7 @@ export default function TrackerPage() {
 
       {/* Content */}
       {view === 'table' ? (
-        <div className="rounded-2xl border border-white/[0.06] bg-zinc-900/40 overflow-hidden">
+        <div className="rounded-2xl border border-border bg-card/70 overflow-hidden">
           <JobTrackerTable jobs={filteredJobs} onRefresh={load} />
         </div>
       ) : (

@@ -76,7 +76,7 @@ export default function CVUpload({ onResult }: CVUploadProps) {
           className={`group cursor-pointer rounded-2xl border-2 border-dashed p-14 transition-all text-center ${
             isDragActive
               ? 'border-violet-500 bg-violet-500/5 shadow-[0_0_40px_-10px_rgba(139,92,246,0.15)]'
-              : 'border-zinc-800 hover:border-zinc-600 hover:bg-white/[0.01]'
+              : 'border-border hover:border-border hover:bg-white/[0.01]'
           }`}
         >
           <input {...getInputProps()} />
@@ -84,30 +84,30 @@ export default function CVUpload({ onResult }: CVUploadProps) {
             <div className={`flex h-16 w-16 items-center justify-center rounded-2xl transition-all ${
               isDragActive
                 ? 'bg-violet-500/15 ring-1 ring-violet-500/30 scale-110'
-                : 'bg-zinc-800/60 ring-1 ring-white/[0.04] group-hover:bg-zinc-800 group-hover:ring-white/[0.08]'
+                : 'bg-muted/60 ring-1 ring-border group-hover:bg-muted group-hover:ring-white/[0.08]'
             }`}>
-              <Upload className={`h-7 w-7 transition-colors ${isDragActive ? 'text-violet-400' : 'text-zinc-500 group-hover:text-zinc-400'}`} />
+              <Upload className={`h-7 w-7 transition-colors ${isDragActive ? 'text-violet-400' : 'text-muted-foreground group-hover:text-muted-foreground'}`} />
             </div>
             <div>
-              <p className="text-base font-medium text-zinc-300">
+              <p className="text-base font-medium text-foreground/80">
                 {isDragActive ? 'Drop your CV here' : 'Drop your CV here or click to browse'}
               </p>
-              <p className="text-sm text-zinc-600 mt-1.5">PDF format, max 5MB</p>
+              <p className="text-sm text-muted-foreground/60 mt-1.5">PDF format, max 5MB</p>
             </div>
           </div>
         </div>
       ) : (
-        <div className="flex items-center gap-4 rounded-2xl border border-zinc-800 bg-zinc-900/40 px-5 py-4 transition-all">
+        <div className="flex items-center gap-4 rounded-2xl border border-border bg-card/70 px-5 py-4 transition-all">
           <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-violet-500/10 ring-1 ring-violet-500/20">
             <FileText className="h-5 w-5 text-violet-400" />
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-zinc-200 truncate">{file.name}</p>
-            <p className="text-xs text-zinc-600 mt-0.5">{(file.size / 1024).toFixed(0)} KB</p>
+            <p className="text-sm font-medium text-foreground/90 truncate">{file.name}</p>
+            <p className="text-xs text-muted-foreground/60 mt-0.5">{(file.size / 1024).toFixed(0)} KB</p>
           </div>
           <button
             onClick={(e) => { e.stopPropagation(); setFile(null); }}
-            className="flex h-8 w-8 items-center justify-center rounded-lg text-zinc-600 hover:text-zinc-300 hover:bg-zinc-800 transition-all"
+            className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground/60 hover:text-foreground/80 hover:bg-accent transition-all"
           >
             <X className="h-4 w-4" />
           </button>
@@ -116,13 +116,13 @@ export default function CVUpload({ onResult }: CVUploadProps) {
 
       {/* Job description */}
       <div className="space-y-2">
-        <label className="block text-xs font-medium uppercase tracking-wider text-zinc-500">Job Description</label>
+        <label className="block text-xs font-medium uppercase tracking-wider text-muted-foreground">Job Description</label>
         <Textarea
           placeholder="Paste the job description you're targeting..."
           value={jobDescription}
           onChange={(e) => setJobDescription(e.target.value)}
           rows={5}
-          className="rounded-xl bg-zinc-900/40 border-zinc-800 focus:border-violet-500/40 focus:ring-1 focus:ring-violet-500/20 resize-none text-sm placeholder:text-zinc-600 transition-all max-h-[200px] overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          className="rounded-xl bg-card/70 border-border focus:border-violet-500/40 focus:ring-1 focus:ring-violet-500/20 resize-none text-sm placeholder:text-muted-foreground/50 transition-all max-h-[200px] overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
           disabled={loading}
         />
       </div>
@@ -148,13 +148,13 @@ export default function CVUpload({ onResult }: CVUploadProps) {
 
       {/* Progress steps */}
       {loading && (
-        <div className="rounded-2xl border border-white/[0.06] bg-zinc-900/40 p-5">
+        <div className="rounded-2xl border border-border bg-card/70 p-5">
           <div className="space-y-3">
             {steps.map((s, i) => (
               <div
                 key={s}
                 className={`flex items-center gap-3 text-sm transition-all duration-300 ${
-                  i <= step ? 'text-zinc-200' : 'text-zinc-700'
+                  i <= step ? 'text-foreground/90' : 'text-muted-foreground/40'
                 }`}
               >
                 <div className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full transition-all duration-300 ${
@@ -162,14 +162,14 @@ export default function CVUpload({ onResult }: CVUploadProps) {
                     ? 'bg-violet-500/20 text-violet-400'
                     : i === step
                     ? 'bg-violet-500/15 ring-2 ring-violet-500/30'
-                    : 'bg-zinc-800/50'
+                    : 'bg-muted/50'
                 }`}>
                   {i < step ? (
                     <Check className="h-3 w-3" />
                   ) : i === step ? (
                     <div className="h-2 w-2 rounded-full bg-violet-400 animate-pulse" />
                   ) : (
-                    <div className="h-1.5 w-1.5 rounded-full bg-zinc-700" />
+                    <div className="h-1.5 w-1.5 rounded-full bg-muted-foreground/40" />
                   )}
                 </div>
                 <span className="font-medium">{s}</span>

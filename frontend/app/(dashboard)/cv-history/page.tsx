@@ -12,8 +12,8 @@ export default function CVHistoryPage() {
             <History className="h-4 w-4 text-violet-400" />
           </div>
           <div>
-            <h1 className="text-xl font-bold text-white tracking-tight">CV History</h1>
-            <p className="text-zinc-500 text-xs">View your past CV analyses and scores</p>
+            <h1 className="text-xl font-bold text-foreground tracking-tight">CV History</h1>
+            <p className="text-muted-foreground text-xs">View your past CV analyses and scores</p>
           </div>
         </div>
       </div>

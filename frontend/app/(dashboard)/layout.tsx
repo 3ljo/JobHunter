@@ -6,7 +6,7 @@ import Navbar from '@/components/layout/Navbar';
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   return (
     <AuthGuard>
-      <div className="relative min-h-screen bg-zinc-950">
+      <div className="relative min-h-screen bg-background">
         {/* Subtle ambient background */}
         <div className="pointer-events-none fixed inset-0">
           <div className="absolute -left-40 top-0 h-[600px] w-[600px] rounded-full bg-violet-600/[0.03] blur-[120px]" />

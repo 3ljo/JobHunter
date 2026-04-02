@@ -29,7 +29,7 @@ export default function ForgotPasswordPage() {
   };
 
   return (
-    <div className="relative flex min-h-screen overflow-hidden bg-zinc-950">
+    <div className="relative flex min-h-screen overflow-hidden bg-background">
       {/* Ambient glow */}
       <div className="pointer-events-none absolute inset-0">
         <div className="absolute left-1/2 top-1/3 h-[500px] w-[500px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-violet-600/10 blur-[120px]" />
@@ -42,34 +42,34 @@ export default function ForgotPasswordPage() {
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500 to-fuchsia-600">
               <span className="text-sm font-black text-white leading-none tracking-tighter">JH</span>
             </div>
-            <span className="text-lg font-semibold text-white tracking-tight">JobHunter</span>
+            <span className="text-lg font-semibold text-foreground tracking-tight">JobHunter</span>
           </div>
 
           {!sent ? (
             <>
               <div className="mb-8">
-                <h2 className="text-2xl font-bold tracking-tight text-white">
+                <h2 className="text-2xl font-bold tracking-tight text-foreground">
                   Reset your password
                 </h2>
-                <p className="mt-2 text-sm text-zinc-500">
+                <p className="mt-2 text-sm text-muted-foreground">
                   Enter your email and we&apos;ll send you a reset link
                 </p>
               </div>
 
               <form onSubmit={handleSubmit} className="space-y-5">
                 <div className="space-y-1.5">
-                  <Label htmlFor="email" className="text-xs font-medium uppercase tracking-wider text-zinc-500">
+                  <Label htmlFor="email" className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
                     Email
                   </Label>
                   <div className="group relative">
-                    <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-600 transition-colors group-focus-within:text-violet-400" />
+                    <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/60 transition-colors group-focus-within:text-violet-400" />
                     <Input
                       id="email"
                       type="email"
                       placeholder="you@example.com"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
-                      className="h-11 rounded-xl border-zinc-800 bg-zinc-900/50 pl-10 text-sm text-white placeholder:text-zinc-600 transition-all focus:border-violet-500/40 focus:bg-zinc-900 focus:ring-1 focus:ring-violet-500/20"
+                      className="h-11 rounded-xl border-border bg-card pl-10 text-sm text-foreground placeholder:text-muted-foreground/60 transition-all focus:border-violet-500/40 focus:bg-card focus:ring-1 focus:ring-violet-500/20"
                       required
                     />
                   </div>
@@ -99,17 +99,17 @@ export default function ForgotPasswordPage() {
               <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-emerald-500/10">
                 <CheckCircle2 className="h-8 w-8 text-emerald-400" />
               </div>
-              <h2 className="text-2xl font-bold tracking-tight text-white mb-2">
+              <h2 className="text-2xl font-bold tracking-tight text-foreground mb-2">
                 Check your email
               </h2>
-              <p className="text-sm text-zinc-400 mb-6">
+              <p className="text-sm text-muted-foreground mb-6">
                 We sent a password reset link to{' '}
-                <span className="font-medium text-white">{email}</span>
+                <span className="font-medium text-foreground">{email}</span>
               </p>
               <Button
                 variant="outline"
                 onClick={() => setSent(false)}
-                className="rounded-xl border-zinc-800 text-zinc-400 hover:bg-zinc-900 hover:text-white"
+                className="rounded-xl border-border text-muted-foreground hover:bg-accent hover:text-foreground"
               >
                 Try another email
               </Button>
@@ -119,7 +119,7 @@ export default function ForgotPasswordPage() {
           <div className="mt-8 text-center">
             <Link
               href="/login"
-              className="inline-flex items-center gap-2 text-sm text-zinc-600 transition-colors hover:text-violet-400"
+              className="inline-flex items-center gap-2 text-sm text-muted-foreground/60 transition-colors hover:text-violet-400"
             >
               <ArrowLeft className="h-3.5 w-3.5" />
               Back to sign in

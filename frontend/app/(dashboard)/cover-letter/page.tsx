@@ -115,8 +115,8 @@ export default function CoverLetterPage() {
           <FileSignature className="h-4 w-4 text-violet-400" />
         </div>
         <div>
-          <h1 className="text-xl font-bold text-white tracking-tight">Cover Letter</h1>
-          <p className="text-zinc-500 text-xs">Upload your CV and paste a job description to generate a tailored cover letter</p>
+          <h1 className="text-xl font-bold text-foreground tracking-tight">Cover Letter</h1>
+          <p className="text-muted-foreground text-xs">Upload your CV and paste a job description to generate a tailored cover letter</p>
         </div>
       </div>
 
@@ -125,14 +125,14 @@ export default function CoverLetterPage() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Left — CV Upload */}
             <div className="space-y-1.5">
-              <Label className="text-xs font-medium uppercase tracking-wider text-zinc-500">Your CV</Label>
+              <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Your CV</Label>
               {!file ? (
                 <div
                   {...getRootProps()}
                   className={`group cursor-pointer rounded-2xl border-2 border-dashed p-10 transition-all text-center h-[280px] flex items-center justify-center ${
                     isDragActive
                       ? 'border-violet-500 bg-violet-500/5'
-                      : 'border-zinc-800 hover:border-zinc-600 hover:bg-white/[0.01]'
+                      : 'border-border hover:border-border hover:bg-accent/30'
                   }`}
                 >
                   <input {...getInputProps()} />
@@ -140,31 +140,31 @@ export default function CoverLetterPage() {
                     <div className={`flex h-14 w-14 items-center justify-center rounded-2xl transition-all ${
                       isDragActive
                         ? 'bg-violet-500/15 ring-1 ring-violet-500/30 scale-110'
-                        : 'bg-zinc-800/60 ring-1 ring-white/[0.04] group-hover:bg-zinc-800'
+                        : 'bg-muted/60 ring-1 ring-border group-hover:bg-muted'
                     }`}>
-                      <Upload className={`h-6 w-6 transition-colors ${isDragActive ? 'text-violet-400' : 'text-zinc-500 group-hover:text-zinc-400'}`} />
+                      <Upload className={`h-6 w-6 transition-colors ${isDragActive ? 'text-violet-400' : 'text-muted-foreground group-hover:text-muted-foreground'}`} />
                     </div>
                     <div>
-                      <p className="text-sm font-medium text-zinc-300">
+                      <p className="text-sm font-medium text-foreground/80">
                         {isDragActive ? 'Drop your CV here' : 'Drop your CV or click to browse'}
                       </p>
-                      <p className="text-xs text-zinc-600 mt-1">PDF format, max 5MB</p>
+                      <p className="text-xs text-muted-foreground/60 mt-1">PDF format, max 5MB</p>
                     </div>
                   </div>
                 </div>
               ) : (
-                <div className="flex items-center gap-4 rounded-2xl border border-zinc-800 bg-zinc-900/40 px-5 py-4 h-[280px]">
+                <div className="flex items-center gap-4 rounded-2xl border border-border bg-card/70 px-5 py-4 h-[280px]">
                   <div className="flex flex-col items-center justify-center w-full gap-3">
                     <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-violet-500/10 ring-1 ring-violet-500/20">
                       <FileText className="h-5 w-5 text-violet-400" />
                     </div>
                     <div className="text-center">
-                      <p className="text-sm font-medium text-zinc-200 truncate max-w-[200px]">{file.name}</p>
-                      <p className="text-xs text-zinc-600 mt-0.5">{(file.size / 1024).toFixed(0)} KB</p>
+                      <p className="text-sm font-medium text-foreground/90 truncate max-w-[200px]">{file.name}</p>
+                      <p className="text-xs text-muted-foreground/60 mt-0.5">{(file.size / 1024).toFixed(0)} KB</p>
                     </div>
                     <button
                       onClick={(e) => { e.stopPropagation(); setFile(null); }}
-                      className="flex items-center gap-1.5 text-xs text-zinc-500 hover:text-zinc-300 transition-colors mt-1"
+                      className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground/80 transition-colors mt-1"
                     >
                       <X className="h-3.5 w-3.5" />
                       Remove
@@ -176,12 +176,12 @@ export default function CoverLetterPage() {
 
             {/* Right — Job Description */}
             <div className="space-y-1.5">
-              <Label className="text-xs font-medium uppercase tracking-wider text-zinc-500">Job Description</Label>
+              <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Job Description</Label>
               <Textarea
                 placeholder="Paste the job description here..."
                 value={jobDescription}
                 onChange={(e) => setJobDescription(e.target.value)}
-                className="rounded-2xl bg-zinc-900/40 border-zinc-800 focus:border-violet-500/40 focus:ring-1 focus:ring-violet-500/20 resize-none text-sm placeholder:text-zinc-600 h-[280px] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                className="rounded-2xl bg-card/70 border-border focus:border-violet-500/40 focus:ring-1 focus:ring-violet-500/20 resize-none text-sm placeholder:text-muted-foreground/50 h-[280px] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
                 disabled={loading}
               />
             </div>
@@ -190,7 +190,7 @@ export default function CoverLetterPage() {
           {/* Tone + Generate */}
           <div className="flex items-center gap-4 flex-wrap">
             <div className="flex items-center gap-2">
-              <span className="text-xs text-zinc-500 uppercase tracking-wider font-medium">Tone</span>
+              <span className="text-xs text-muted-foreground uppercase tracking-wider font-medium">Tone</span>
               {tones.map((t) => (
                 <button
                   key={t.key}
@@ -199,7 +199,7 @@ export default function CoverLetterPage() {
                   className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-all ${
                     tone === t.key
                       ? 'bg-violet-500/15 text-violet-400 ring-1 ring-violet-500/30'
-                      : 'text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800/50'
+                      : 'text-muted-foreground hover:text-foreground/80 hover:bg-muted/50'
                   }`}
                 >
                   {t.label}
@@ -238,21 +238,21 @@ export default function CoverLetterPage() {
             <Button
               variant="outline"
               onClick={() => setResult('')}
-              className="gap-2 rounded-xl border-zinc-800 text-zinc-400 hover:bg-zinc-900 hover:text-white transition-all"
+              className="gap-2 rounded-xl border-border text-muted-foreground hover:bg-accent hover:text-foreground transition-all"
             >
               <RotateCcw className="h-4 w-4" />
               Regenerate
             </Button>
           </div>
-          <div className="rounded-2xl border border-white/[0.06] bg-zinc-900/40 p-8">
-            <p className="text-sm text-zinc-200 leading-relaxed whitespace-pre-wrap">{result}</p>
+          <div className="rounded-2xl border border-border bg-card/70 p-8">
+            <p className="text-sm text-foreground/90 leading-relaxed whitespace-pre-wrap">{result}</p>
           </div>
 
           {/* AI Refine */}
-          <div className="rounded-2xl border border-white/[0.06] bg-zinc-900/40 p-4">
+          <div className="rounded-2xl border border-border bg-card/70 p-4">
             <div className="flex items-center gap-2 mb-3">
               <Wand2 className="h-4 w-4 text-violet-400" />
-              <span className="text-xs font-semibold text-zinc-300">Refine with AI</span>
+              <span className="text-xs font-semibold text-foreground/80">Refine with AI</span>
             </div>
             <div className="flex gap-2">
               <input
@@ -261,7 +261,7 @@ export default function CoverLetterPage() {
                 onChange={(e) => setRefineInput(e.target.value)}
                 onKeyDown={(e) => { if (e.key === 'Enter' && !refining) handleRefine(); }}
                 placeholder="e.g. Make it shorter, add more enthusiasm, emphasize leadership..."
-                className="flex-1 h-10 rounded-xl border border-zinc-800 bg-zinc-950/50 px-4 text-sm text-white placeholder:text-zinc-600 focus:border-violet-500/40 focus:outline-none focus:ring-1 focus:ring-violet-500/20 transition-all"
+                className="flex-1 h-10 rounded-xl border border-border bg-background/50 px-4 text-sm text-foreground placeholder:text-muted-foreground/50 focus:border-violet-500/40 focus:outline-none focus:ring-1 focus:ring-violet-500/20 transition-all"
                 disabled={refining}
               />
               <Button

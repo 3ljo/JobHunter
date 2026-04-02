@@ -14,7 +14,7 @@ export default function KeywordChips({ keywordAnalysis }: KeywordChipsProps) {
       {/* Match percentage header */}
       {keyword_match_percentage != null && (
         <div className="flex items-center gap-2">
-          <span className="text-sm font-medium text-zinc-300">Keyword Match</span>
+          <span className="text-sm font-medium text-foreground/80">Keyword Match</span>
           <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${
             keyword_match_percentage >= 70
               ? 'bg-violet-500/15 text-violet-300'

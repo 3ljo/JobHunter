@@ -11,7 +11,7 @@ export default function SuggestionCards({ suggestions }: SuggestionCardsProps) {
 
   return (
     <div className="space-y-3">
-      <h3 className="text-sm font-medium text-zinc-300">Quick Wins</h3>
+      <h3 className="text-sm font-medium text-foreground/80">Quick Wins</h3>
       <div className="space-y-2">
         {suggestions.map((win: any, i: number) => {
           const impactColor =
@@ -22,7 +22,7 @@ export default function SuggestionCards({ suggestions }: SuggestionCardsProps) {
           return (
             <div
               key={i}
-              className="rounded-xl bg-zinc-900/80 border border-white/[0.06] p-4 border-l-2 border-l-violet-500 hover:bg-zinc-800/80 transition-colors"
+              className="rounded-xl bg-card/80 border border-white/[0.06] p-4 border-l-2 border-l-violet-500 hover:bg-muted/80 transition-colors"
             >
               <div className="flex items-start gap-3">
                 <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-violet-500/15 text-violet-400 mt-0.5">
@@ -30,7 +30,7 @@ export default function SuggestionCards({ suggestions }: SuggestionCardsProps) {
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-start justify-between gap-2">
-                    <p className="text-sm text-zinc-200">
+                    <p className="text-sm text-foreground/90">
                       {typeof win === 'string' ? win : win.action}
                     </p>
                     {win.impact && (
@@ -40,7 +40,7 @@ export default function SuggestionCards({ suggestions }: SuggestionCardsProps) {
                     )}
                   </div>
                   {win.reason && (
-                    <p className="text-xs text-zinc-500 mt-1">{win.reason}</p>
+                    <p className="text-xs text-muted-foreground mt-1">{win.reason}</p>
                   )}
                 </div>
               </div>

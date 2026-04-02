@@ -54,56 +54,56 @@ export default function SettingsPage() {
           <Settings className="h-4 w-4 text-violet-400" />
         </div>
         <div>
-          <h1 className="text-xl font-bold text-white tracking-tight">Settings</h1>
-          <p className="text-zinc-500 text-xs">Manage your account</p>
+          <h1 className="text-xl font-bold text-foreground tracking-tight">Settings</h1>
+          <p className="text-muted-foreground text-xs">Manage your account</p>
         </div>
       </div>
 
       {/* Account Info */}
-      <div className="rounded-2xl border border-white/[0.06] bg-zinc-900/40 p-6 space-y-4">
-        <h2 className="text-sm font-semibold text-white flex items-center gap-2">
-          <Mail className="h-4 w-4 text-zinc-500" />
+      <div className="rounded-2xl border border-border bg-card/70 p-6 space-y-4">
+        <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
+          <Mail className="h-4 w-4 text-muted-foreground" />
           Account
         </h2>
         <div className="space-y-1.5">
-          <Label className="text-xs font-medium uppercase tracking-wider text-zinc-500">Email</Label>
-          <div className="flex h-10 items-center rounded-xl border border-zinc-800 bg-zinc-900/50 px-3 text-sm text-zinc-400">
+          <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Email</Label>
+          <div className="flex h-10 items-center rounded-xl border border-border bg-card/80 px-3 text-sm text-muted-foreground">
             {user?.email || '—'}
           </div>
         </div>
       </div>
 
       {/* Change Password */}
-      <div className="rounded-2xl border border-white/[0.06] bg-zinc-900/40 p-6">
-        <h2 className="text-sm font-semibold text-white flex items-center gap-2 mb-4">
-          <Shield className="h-4 w-4 text-zinc-500" />
+      <div className="rounded-2xl border border-border bg-card/70 p-6">
+        <h2 className="text-sm font-semibold text-foreground flex items-center gap-2 mb-4">
+          <Shield className="h-4 w-4 text-muted-foreground" />
           Change Password
         </h2>
         <form onSubmit={handleChangePassword} className="space-y-4">
           <div className="space-y-1.5">
-            <Label className="text-xs font-medium uppercase tracking-wider text-zinc-500">New Password</Label>
+            <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">New Password</Label>
             <div className="group relative">
-              <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-600 transition-colors group-focus-within:text-violet-400" />
+              <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/60 transition-colors group-focus-within:text-violet-400" />
               <Input
                 type="password"
                 placeholder="At least 6 characters"
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
-                className="h-10 rounded-xl border-zinc-800 bg-zinc-900/50 pl-10 text-sm text-white placeholder:text-zinc-600 focus:border-violet-500/40 focus:ring-1 focus:ring-violet-500/20"
+                className="h-10 rounded-xl border-border bg-card/80 pl-10 text-sm text-foreground placeholder:text-muted-foreground/50 focus:border-violet-500/40 focus:ring-1 focus:ring-violet-500/20"
                 required
               />
             </div>
           </div>
           <div className="space-y-1.5">
-            <Label className="text-xs font-medium uppercase tracking-wider text-zinc-500">Confirm New Password</Label>
+            <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Confirm New Password</Label>
             <div className="group relative">
-              <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-600 transition-colors group-focus-within:text-violet-400" />
+              <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/60 transition-colors group-focus-within:text-violet-400" />
               <Input
                 type="password"
                 placeholder="Confirm your new password"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
-                className="h-10 rounded-xl border-zinc-800 bg-zinc-900/50 pl-10 text-sm text-white placeholder:text-zinc-600 focus:border-violet-500/40 focus:ring-1 focus:ring-violet-500/20"
+                className="h-10 rounded-xl border-border bg-card/80 pl-10 text-sm text-foreground placeholder:text-muted-foreground/50 focus:border-violet-500/40 focus:ring-1 focus:ring-violet-500/20"
                 required
               />
             </div>
@@ -126,12 +126,12 @@ export default function SettingsPage() {
       </div>
 
       {/* Danger Zone */}
-      <div className="rounded-2xl border border-red-500/10 bg-zinc-900/40 p-6">
-        <h2 className="text-sm font-semibold text-white flex items-center gap-2 mb-2">
+      <div className="rounded-2xl border border-red-500/10 bg-card/70 p-6">
+        <h2 className="text-sm font-semibold text-foreground flex items-center gap-2 mb-2">
           <LogOut className="h-4 w-4 text-red-400" />
           Sign Out
         </h2>
-        <p className="text-xs text-zinc-500 mb-4">Sign out of your account on this device.</p>
+        <p className="text-xs text-muted-foreground mb-4">Sign out of your account on this device.</p>
         <Button
           onClick={handleLogout}
           variant="outline"

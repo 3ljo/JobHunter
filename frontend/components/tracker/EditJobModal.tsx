@@ -80,37 +80,37 @@ export default function EditJobModal({ job, open, onClose, onUpdated }: EditJobM
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4 pt-2">
           <div className="space-y-1.5">
-            <Label className="text-xs font-medium uppercase tracking-wider text-zinc-500">Company Name</Label>
+            <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Company Name</Label>
             <Input
               value={form.company_name}
               onChange={(e) => update('company_name', e.target.value)}
-              className="h-10 rounded-xl border-zinc-800 bg-zinc-900/50 text-sm text-white placeholder:text-zinc-600 focus:border-violet-500/40 focus:ring-1 focus:ring-violet-500/20"
+              className="h-10 rounded-xl border-border bg-card/80 text-sm text-foreground placeholder:text-muted-foreground/50 focus:border-violet-500/40 focus:ring-1 focus:ring-violet-500/20"
               required
             />
           </div>
           <div className="space-y-1.5">
-            <Label className="text-xs font-medium uppercase tracking-wider text-zinc-500">Job Title</Label>
+            <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Job Title</Label>
             <Input
               value={form.job_title}
               onChange={(e) => update('job_title', e.target.value)}
-              className="h-10 rounded-xl border-zinc-800 bg-zinc-900/50 text-sm text-white placeholder:text-zinc-600 focus:border-violet-500/40 focus:ring-1 focus:ring-violet-500/20"
+              className="h-10 rounded-xl border-border bg-card/80 text-sm text-foreground placeholder:text-muted-foreground/50 focus:border-violet-500/40 focus:ring-1 focus:ring-violet-500/20"
               required
             />
           </div>
           <div className="space-y-1.5">
-            <Label className="text-xs font-medium uppercase tracking-wider text-zinc-500">Job URL</Label>
+            <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Job URL</Label>
             <Input
               value={form.job_url}
               onChange={(e) => update('job_url', e.target.value)}
-              className="h-10 rounded-xl border-zinc-800 bg-zinc-900/50 text-sm text-white placeholder:text-zinc-600 focus:border-violet-500/40 focus:ring-1 focus:ring-violet-500/20"
+              className="h-10 rounded-xl border-border bg-card/80 text-sm text-foreground placeholder:text-muted-foreground/50 focus:border-violet-500/40 focus:ring-1 focus:ring-violet-500/20"
             />
           </div>
           <div className="space-y-1.5">
-            <Label className="text-xs font-medium uppercase tracking-wider text-zinc-500">Status</Label>
+            <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Status</Label>
             <select
               value={form.status}
               onChange={(e) => update('status', e.target.value)}
-              className="flex h-10 w-full rounded-xl border border-zinc-800 bg-zinc-900/50 px-3 py-2 text-sm text-white transition-all focus:border-violet-500/40 focus:outline-none focus:ring-1 focus:ring-violet-500/20"
+              className="flex h-10 w-full rounded-xl border border-border bg-card/80 px-3 py-2 text-sm text-foreground transition-all focus:border-violet-500/40 focus:outline-none focus:ring-1 focus:ring-violet-500/20"
             >
               <option value="saved">Saved</option>
               <option value="applied">Applied</option>
@@ -120,20 +120,20 @@ export default function EditJobModal({ job, open, onClose, onUpdated }: EditJobM
             </select>
           </div>
           <div className="space-y-1.5">
-            <Label className="text-xs font-medium uppercase tracking-wider text-zinc-500">Date Applied</Label>
+            <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Date Applied</Label>
             <Input
               type="date"
               value={form.applied_at}
               onChange={(e) => update('applied_at', e.target.value)}
-              className="h-10 rounded-xl border-zinc-800 bg-zinc-900/50 text-sm text-white focus:border-violet-500/40 focus:ring-1 focus:ring-violet-500/20 [color-scheme:dark]"
+              className="h-10 rounded-xl border-border bg-card/80 text-sm text-foreground focus:border-violet-500/40 focus:ring-1 focus:ring-violet-500/20 "
             />
           </div>
           <div className="space-y-1.5">
-            <Label className="text-xs font-medium uppercase tracking-wider text-zinc-500">Notes</Label>
+            <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Notes</Label>
             <textarea
               value={form.notes}
               onChange={(e) => update('notes', e.target.value)}
-              className="flex min-h-[80px] w-full rounded-xl border border-zinc-800 bg-zinc-900/50 px-3 py-2.5 text-sm text-white placeholder:text-zinc-600 transition-all focus:border-violet-500/40 focus:outline-none focus:ring-1 focus:ring-violet-500/20 resize-none"
+              className="flex min-h-[80px] w-full rounded-xl border border-border bg-card/80 px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground/50 transition-all focus:border-violet-500/40 focus:outline-none focus:ring-1 focus:ring-violet-500/20 resize-none"
             />
           </div>
           <Button

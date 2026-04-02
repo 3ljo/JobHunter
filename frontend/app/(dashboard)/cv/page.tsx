@@ -139,10 +139,10 @@ export default function CVPage() {
           <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-violet-500/10 ring-1 ring-violet-500/20">
             <FileSearch className="h-6 w-6 text-violet-400" />
           </div>
-          <h1 className="text-3xl md:text-4xl font-bold text-white tracking-tight">
+          <h1 className="text-3xl md:text-4xl font-bold text-foreground tracking-tight">
             Analyze Your CV
           </h1>
-          <p className="text-zinc-500 mt-3 text-base max-w-md mx-auto leading-relaxed">
+          <p className="text-muted-foreground mt-3 text-base max-w-md mx-auto leading-relaxed">
             Upload your CV and paste a job description to get an AI-powered ATS analysis.
           </p>
         </div>
@@ -157,12 +157,12 @@ export default function CVPage() {
   return (
     <div className="space-y-6">
       {/* Top bar */}
-      <div className="rounded-2xl border border-white/[0.06] bg-zinc-900/40 overflow-hidden">
+      <div className="rounded-2xl border border-border bg-card/70 overflow-hidden">
         <div className="flex flex-col sm:flex-row items-center justify-between gap-6 p-6">
           <div className="flex items-center gap-8">
             <ScoreRing score={result.scores.current_ats} label="Current" size={100} />
             <div className="flex flex-col items-center gap-1">
-              <ArrowRight className="h-5 w-5 text-zinc-700" />
+              <ArrowRight className="h-5 w-5 text-muted-foreground/40" />
               {scoreDelta > 0 && (
                 <span className="flex items-center gap-0.5 text-xs font-medium text-emerald-400">
                   <TrendingUp className="h-3 w-3" />
@@ -178,7 +178,7 @@ export default function CVPage() {
               size="sm"
               onClick={handleDownload}
               disabled={downloading}
-              className="gap-2 rounded-xl border-zinc-800 text-zinc-400 hover:bg-zinc-800 hover:text-white transition-all"
+              className="gap-2 rounded-xl border-border text-muted-foreground hover:bg-accent hover:text-foreground transition-all"
             >
               <Download className="h-4 w-4" />
               {downloading ? 'Downloading...' : 'Download PDF'}
@@ -187,7 +187,7 @@ export default function CVPage() {
               variant="outline"
               size="sm"
               onClick={() => { setShowCL(true); setCLResult(''); }}
-              className="gap-2 rounded-xl border-zinc-800 text-zinc-400 hover:bg-zinc-800 hover:text-white transition-all"
+              className="gap-2 rounded-xl border-border text-muted-foreground hover:bg-accent hover:text-foreground transition-all"
             >
               <FileSignature className="h-4 w-4" />
               Cover Letter
@@ -196,7 +196,7 @@ export default function CVPage() {
               variant="ghost"
               size="sm"
               onClick={handleReset}
-              className="gap-2 rounded-xl text-zinc-500 hover:text-white"
+              className="gap-2 rounded-xl text-muted-foreground hover:text-foreground"
             >
               <RotateCcw className="h-4 w-4" />
               New Analysis
@@ -215,7 +215,7 @@ export default function CVPage() {
             </div>
             <button
               onClick={() => setShowCL(false)}
-              className="flex h-7 w-7 items-center justify-center rounded-lg text-zinc-500 hover:text-white hover:bg-zinc-800 transition-all"
+              className="flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-all"
             >
               <X className="h-4 w-4" />
             </button>
@@ -224,7 +224,7 @@ export default function CVPage() {
             {!clResult ? (
               <div className="flex items-center gap-4 flex-wrap">
                 <div className="flex items-center gap-2">
-                  <span className="text-xs text-zinc-500 uppercase tracking-wider font-medium">Tone</span>
+                  <span className="text-xs text-muted-foreground uppercase tracking-wider font-medium">Tone</span>
                   {tones.map((t) => (
                     <button
                       key={t.key}
@@ -233,7 +233,7 @@ export default function CVPage() {
                       className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-all ${
                         clTone === t.key
                           ? 'bg-violet-500/15 text-violet-400 ring-1 ring-violet-500/30'
-                          : 'text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800/50'
+                          : 'text-muted-foreground hover:text-foreground/80 hover:bg-muted/50'
                       }`}
                     >
                       {t.label}
@@ -273,22 +273,22 @@ export default function CVPage() {
                     variant="outline"
                     size="sm"
                     onClick={() => setCLResult('')}
-                    className="gap-2 rounded-xl border-zinc-800 text-zinc-400 hover:bg-zinc-800 hover:text-white transition-all"
+                    className="gap-2 rounded-xl border-border text-muted-foreground hover:bg-accent hover:text-foreground transition-all"
                   >
                     <RotateCcw className="h-3.5 w-3.5" />
                     Regenerate
                   </Button>
                 </div>
-                <p className="text-sm text-zinc-200 leading-relaxed whitespace-pre-wrap">{clResult}</p>
+                <p className="text-sm text-foreground/90 leading-relaxed whitespace-pre-wrap">{clResult}</p>
                 {/* Refine */}
-                <div className="flex gap-2 mt-4 pt-4 border-t border-white/[0.06]">
+                <div className="flex gap-2 mt-4 pt-4 border-t border-border">
                   <input
                     type="text"
                     value={clRefineInput}
                     onChange={(e) => setCLRefineInput(e.target.value)}
                     onKeyDown={(e) => { if (e.key === 'Enter' && !clRefining) handleRefineCL(); }}
                     placeholder="e.g. Make it shorter, more confident..."
-                    className="flex-1 h-9 rounded-lg border border-zinc-800 bg-zinc-950/50 px-3 text-sm text-white placeholder:text-zinc-600 focus:border-violet-500/40 focus:outline-none focus:ring-1 focus:ring-violet-500/20 transition-all"
+                    className="flex-1 h-9 rounded-lg border border-border bg-background/50 px-3 text-sm text-foreground placeholder:text-muted-foreground/50 focus:border-violet-500/40 focus:outline-none focus:ring-1 focus:ring-violet-500/20 transition-all"
                     disabled={clRefining}
                   />
                   <Button
@@ -314,14 +314,14 @@ export default function CVPage() {
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_420px] gap-6">
         <div className="space-y-4">
           <div className="sticky top-20">
-            <div className="max-h-[calc(100vh-220px)] overflow-y-auto rounded-2xl border border-white/[0.06] bg-zinc-900/40 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            <div className="max-h-[calc(100vh-220px)] overflow-y-auto rounded-2xl border border-border bg-card/70 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
               <CVPreview cv={finalCV} />
             </div>
           </div>
         </div>
 
         <div className="space-y-6">
-          <div className="rounded-2xl border border-white/[0.06] bg-zinc-900/40 p-6">
+          <div className="rounded-2xl border border-border bg-card/70 p-6">
             <AnalysisSidebar audit={result.audit} rewrite={result.rewrite} />
           </div>
           <QuickEditBox cvRecordId={result.cv_record_id} onRefine={handleRefine} />
