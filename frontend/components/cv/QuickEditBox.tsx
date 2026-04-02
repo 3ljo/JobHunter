@@ -34,7 +34,7 @@ export default function QuickEditBox({ cvRecordId, onRefine }: QuickEditBoxProps
   return (
     <div className="space-y-2">
       <div className="flex items-center gap-1.5">
-        <Sparkles className="h-3.5 w-3.5 text-muted-foreground" />
+        <Sparkles className="h-3.5 w-3.5 text-violet-400" />
         <span className="text-xs font-medium text-muted-foreground">Quick Edit</span>
       </div>
       <Textarea

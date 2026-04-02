@@ -1,0 +1,47 @@
+Senior Full Stack Developer
+TechNova Solutions — Remote (EU timezone preferred)
+
+About the Role:
+We're looking for a Senior Full Stack Developer to join our growing engineering team. You'll be responsible for designing, building, and maintaining scalable web applications that serve over 2 million active users. This is a hands-on role where you'll mentor junior developers and drive architectural decisions.
+
+Requirements:
+- Minimum 5 years of professional experience in full-stack web development
+- Strong proficiency in React.js, Next.js, and TypeScript
+- Backend experience with Node.js and Express.js
+- Database experience with PostgreSQL and MongoDB
+- Experience with cloud platforms (AWS or GCP)
+- Familiarity with CI/CD pipelines (GitHub Actions, Jenkins, or similar)
+- Experience with RESTful API design and GraphQL
+- Proficiency in Git and version control best practices
+- Understanding of microservices architecture
+- Experience with Docker and containerization
+
+Nice to Have:
+- Experience with Kubernetes and container orchestration
+- Knowledge of Redis for caching
+- Experience with message queues (RabbitMQ, Kafka)
+- Familiarity with Terraform or Infrastructure as Code
+- AWS certifications (Solutions Architect, Developer Associate)
+- Experience leading a team of 3+ developers
+
+Responsibilities:
+- Design and implement new features across the full stack
+- Write clean, testable, and well-documented code
+- Conduct code reviews and mentor junior team members
+- Collaborate with product managers and designers to define technical requirements
+- Optimize application performance and scalability
+- Participate in on-call rotation for production systems
+- Contribute to architectural decisions and technical roadmap
+
+Education:
+- Bachelor's degree in Computer Science, Software Engineering, or related field (or equivalent experience)
+
+Compensation:
+- Competitive salary based on experience
+- Equity options
+- Health insurance and wellness benefits
+- Learning & development budget
+- Flexible working hours
+
+Tech Stack:
+React, Next.js, TypeScript, Node.js, Express, PostgreSQL, MongoDB, Redis, Docker, AWS, GitHub Actions, GraphQL

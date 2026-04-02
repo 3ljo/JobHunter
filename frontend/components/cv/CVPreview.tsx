@@ -6,7 +6,7 @@ export default function CVPreview({ cv }: { cv: any }) {
   const contactParts = [cv.email, cv.phone, cv.location, cv.linkedin].filter(Boolean);
 
   return (
-    <div className="rounded-xl border bg-white p-6 md:p-8 shadow-sm dark:shadow-none dark:ring-1 dark:ring-border" style={{ fontFamily: 'Calibri, sans-serif' }}>
+    <div className="rounded-xl bg-white p-6 md:p-8 ring-1 ring-zinc-800" style={{ fontFamily: 'Calibri, sans-serif' }}>
       {/* Name */}
       <h1 className="text-center text-xl md:text-2xl font-bold text-gray-900">{cv.full_name}</h1>
 
