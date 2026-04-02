@@ -39,8 +39,12 @@ export default function KanbanBoard({ jobs, onRefresh }: KanbanBoardProps) {
     setDragOverCol(colKey);
   };
 
-  const handleDragLeave = () => {
-    setDragOverCol(null);
+  const handleDragLeave = (e: React.DragEvent) => {
+    const relatedTarget = e.relatedTarget as HTMLElement | null;
+    const currentTarget = e.currentTarget as HTMLElement;
+    if (!relatedTarget || !currentTarget.contains(relatedTarget)) {
+      setDragOverCol(null);
+    }
   };
 
   const handleDrop = async (e: React.DragEvent, newStatus: string) => {
@@ -72,14 +76,14 @@ export default function KanbanBoard({ jobs, onRefresh }: KanbanBoardProps) {
 
   return (
     <>
-      <div className="flex gap-3 overflow-x-auto pb-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 pb-4">
         {columns.map((col) => {
           const colJobs = jobs.filter((j) => j.status === col.key);
           const isDragOver = dragOverCol === col.key;
           return (
             <div
               key={col.key}
-              className={`flex-shrink-0 w-64 rounded-2xl border bg-zinc-900/30 flex flex-col transition-all ${
+              className={`min-w-0 rounded-2xl border bg-zinc-900/30 flex flex-col transition-all ${
                 isDragOver
                   ? `${col.color} bg-zinc-900/60`
                   : 'border-white/[0.06]'
@@ -107,6 +111,7 @@ export default function KanbanBoard({ jobs, onRefresh }: KanbanBoardProps) {
                     key={job.id}
                     draggable
                     onDragStart={(e) => handleDragStart(e, job)}
+                    onDragEnd={() => { setDraggedJob(null); setDragOverCol(null); }}
                     className={`group rounded-xl border border-white/[0.04] bg-zinc-950/50 p-3 cursor-grab active:cursor-grabbing transition-all hover:border-white/[0.08] hover:bg-zinc-950/80 ${
                       draggedJob?.id === job.id ? 'opacity-40' : ''
                     }`}
@@ -123,7 +128,7 @@ export default function KanbanBoard({ jobs, onRefresh }: KanbanBoardProps) {
                       <span className="text-[11px] text-zinc-600 tabular-nums">
                         {new Date(job.applied_at).toLocaleDateString()}
                       </span>
-                      <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <div className="flex items-center gap-0.5">
                         {job.job_url && (
                           <a
                             href={job.job_url}
