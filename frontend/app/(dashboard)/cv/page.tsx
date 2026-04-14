@@ -111,7 +111,8 @@ export default function CVPage() {
         </div>
         {analysisLoading ? (
           <div className="w-full max-w-2xl mx-auto">
-            <div className="rounded-2xl border border-border bg-card/70 p-5">
+            <div className="relative overflow-hidden rounded-2xl border border-white/[0.07] bg-card p-5">
+              <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-violet-500/30 to-transparent" />
               <div className="space-y-3">
                 {analysisSteps.map((s, i) => (
                   <div
@@ -154,7 +155,8 @@ export default function CVPage() {
   return (
     <div className="space-y-6">
       {/* Top bar */}
-      <div className="rounded-2xl border border-border bg-card/70 overflow-hidden">
+      <div className="relative overflow-hidden rounded-2xl border border-white/[0.07] bg-card">
+        <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-violet-500/30 to-transparent" />
         <div className="flex flex-col sm:flex-row items-center justify-between gap-6 p-6">
           <div className="flex items-center gap-8">
             <ScoreRing score={result.scores.current_ats} label="Current" size={100} />
@@ -175,7 +177,7 @@ export default function CVPage() {
               size="sm"
               onClick={handleDownload}
               disabled={downloading}
-              className="gap-2 rounded-xl border-border text-muted-foreground hover:bg-accent hover:text-foreground transition-all"
+              className="gap-2 rounded-xl border-white/[0.1] text-muted-foreground hover:bg-accent hover:text-foreground hover:border-violet-500/30 transition-all"
             >
               <Download className="h-4 w-4" />
               {downloading ? 'Downloading...' : 'Download PDF'}
@@ -311,14 +313,16 @@ export default function CVPage() {
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_420px] gap-6">
         <div className="space-y-4">
           <div className="sticky top-20">
-            <div className="max-h-[calc(100vh-220px)] overflow-y-auto rounded-2xl border border-border bg-card/70 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            <div className="relative max-h-[calc(100vh-220px)] overflow-y-auto rounded-2xl border border-white/[0.07] bg-card [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-violet-500/20 to-transparent" />
               <CVPreview cv={finalCV} />
             </div>
           </div>
         </div>
 
         <div className="space-y-6">
-          <div className="rounded-2xl border border-border bg-card/70 p-6">
+          <div className="relative overflow-hidden rounded-2xl border border-white/[0.07] bg-card p-6">
+            <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-violet-500/20 to-transparent" />
             <AnalysisSidebar audit={result.audit} rewrite={result.rewrite} />
           </div>
           <QuickEditBox cvRecordId={result.cv_record_id} onRefine={handleRefine} />

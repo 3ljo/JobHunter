@@ -50,17 +50,18 @@ export default function SettingsPage() {
     <div className="space-y-6 max-w-2xl">
       {/* Header */}
       <div className="flex items-center gap-3">
-        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-violet-500/10 ring-1 ring-violet-500/20">
-          <Settings className="h-4 w-4 text-violet-400" />
+        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500/20 to-violet-700/10 ring-1 ring-violet-500/25 shadow-[0_0_16px_rgba(118,77,240,0.15)]">
+          <Settings className="h-4.5 w-4.5 text-violet-400" />
         </div>
         <div>
-          <h1 className="text-xl font-bold text-foreground tracking-tight">Settings</h1>
-          <p className="text-muted-foreground text-xs">Manage your account</p>
+          <h1 className="text-xl font-black text-foreground tracking-tight">Settings</h1>
+          <p className="text-muted-foreground/60 text-xs">Manage your account</p>
         </div>
       </div>
 
       {/* Account Info */}
-      <div className="rounded-2xl border border-border bg-card/70 p-6 space-y-4">
+      <div className="relative overflow-hidden rounded-2xl border border-white/[0.07] bg-card p-6 space-y-4">
+        <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-violet-500/20 to-transparent" />
         <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
           <Mail className="h-4 w-4 text-muted-foreground" />
           Account
@@ -74,7 +75,8 @@ export default function SettingsPage() {
       </div>
 
       {/* Change Password */}
-      <div className="rounded-2xl border border-border bg-card/70 p-6">
+      <div className="relative overflow-hidden rounded-2xl border border-white/[0.07] bg-card p-6">
+        <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-violet-500/20 to-transparent" />
         <h2 className="text-sm font-semibold text-foreground flex items-center gap-2 mb-4">
           <Shield className="h-4 w-4 text-muted-foreground" />
           Change Password
@@ -111,7 +113,7 @@ export default function SettingsPage() {
           <Button
             type="submit"
             disabled={loading}
-            className="h-10 rounded-xl bg-violet-600 hover:bg-violet-500 text-sm font-semibold text-white transition-all hover:shadow-lg hover:shadow-violet-500/20 active:scale-[0.98]"
+            className="h-10 rounded-xl bg-gradient-to-b from-violet-500 to-violet-700 text-sm font-semibold text-white transition-all shadow-[0_2px_20px_rgba(118,77,240,0.3)] hover:shadow-[0_4px_28px_rgba(118,77,240,0.45)] hover:from-violet-400 hover:to-violet-600 active:scale-[0.97]"
           >
             {loading ? (
               <span className="flex items-center gap-2">
@@ -126,7 +128,8 @@ export default function SettingsPage() {
       </div>
 
       {/* Danger Zone */}
-      <div className="rounded-2xl border border-red-500/10 bg-card/70 p-6">
+      <div className="relative overflow-hidden rounded-2xl border border-red-500/15 bg-card p-6">
+        <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-red-500/20 to-transparent" />
         <h2 className="text-sm font-semibold text-foreground flex items-center gap-2 mb-2">
           <LogOut className="h-4 w-4 text-red-400" />
           Sign Out

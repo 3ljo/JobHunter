@@ -69,12 +69,12 @@ export default function CoverLetterPage() {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center gap-3">
-        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-violet-500/10 ring-1 ring-violet-500/20">
-          <FileSignature className="h-4 w-4 text-violet-400" />
+        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500/20 to-violet-700/10 ring-1 ring-violet-500/25 shadow-[0_0_16px_rgba(118,77,240,0.15)]">
+          <FileSignature className="h-4.5 w-4.5 text-violet-400" />
         </div>
         <div>
-          <h1 className="text-xl font-bold text-foreground tracking-tight">Cover Letter</h1>
-          <p className="text-muted-foreground text-xs">Upload your CV and paste a job description to generate a tailored cover letter</p>
+          <h1 className="text-xl font-black text-foreground tracking-tight">Cover Letter</h1>
+          <p className="text-muted-foreground/60 text-xs">Upload your CV and paste a job description to generate a tailored cover letter</p>
         </div>
       </div>
 
@@ -89,8 +89,8 @@ export default function CoverLetterPage() {
                   {...getRootProps()}
                   className={`group cursor-pointer rounded-2xl border-2 border-dashed p-10 transition-all text-center h-[280px] flex items-center justify-center ${
                     isDragActive
-                      ? 'border-violet-500 bg-violet-500/5'
-                      : 'border-border hover:border-border hover:bg-accent/30'
+                      ? 'border-violet-500 bg-violet-500/8 shadow-[0_0_30px_rgba(118,77,240,0.15)]'
+                      : 'border-white/[0.1] hover:border-violet-500/30 hover:bg-accent/20'
                   }`}
                 >
                   <input {...getInputProps()} />
@@ -167,7 +167,7 @@ export default function CoverLetterPage() {
             <Button
               onClick={handleGenerate}
               disabled={loading || !ready}
-              className="group gap-2 rounded-xl bg-violet-600 hover:bg-violet-500 text-sm font-semibold text-white transition-all hover:shadow-lg hover:shadow-violet-500/20 active:scale-[0.98] ml-auto"
+              className="group gap-2 rounded-xl bg-gradient-to-b from-violet-500 to-violet-700 text-sm font-semibold text-white transition-all shadow-[0_2px_20px_rgba(118,77,240,0.3)] hover:shadow-[0_4px_28px_rgba(118,77,240,0.45)] hover:from-violet-400 hover:to-violet-600 active:scale-[0.97] ml-auto"
             >
               {loading ? (
                 <span className="flex items-center gap-2">
@@ -212,7 +212,8 @@ export default function CoverLetterPage() {
               Regenerate
             </Button>
           </div>
-          <div className="rounded-2xl border border-border bg-card/70 p-8">
+          <div className="relative overflow-hidden rounded-2xl border border-white/[0.07] bg-card p-8">
+            <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-violet-500/25 to-transparent" />
             <p className="text-sm text-foreground/90 leading-relaxed whitespace-pre-wrap">{result}</p>
           </div>
 

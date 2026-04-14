@@ -657,10 +657,7 @@ export default function Home() {
       <footer className="text-white py-16 px-6" style={{ background: '#0d1130', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
         <div className="mx-auto max-w-6xl">
           <div className="flex flex-col md:flex-row items-center justify-between gap-8 text-center md:text-left">
-            <div>
-              <h3 className="text-white/50 text-sm uppercase tracking-widest mb-2" style={{ fontWeight: 700 }}>Address</h3>
-              <p className="text-white/50 text-sm" style={{ fontWeight: 400 }}>121 AI Blvd, San Francisco<br />BCA 94107</p>
-            </div>
+           
             <div className="flex flex-col items-center gap-4">
               <img src="/aivent/logo.webp" alt="JobHunter" style={{ height: '42px', width: 'auto' }} />
               <div className="flex items-center gap-6 mt-1">
@@ -669,10 +666,7 @@ export default function Home() {
                 ))}
               </div>
             </div>
-            <div>
-              <h3 className="text-white/50 text-sm uppercase tracking-widest mb-2" style={{ fontWeight: 700 }}>Contact Us</h3>
-              <p className="text-white/50 text-sm" style={{ fontWeight: 400 }}>M. support@jobhunter.app</p>
-            </div>
+           
           </div>
           <div className="mt-10 pt-6 text-center" style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}>
             <p className="text-white/25 text-xs tracking-wide" style={{ fontWeight: 400 }}>Copyright {new Date().getFullYear()} — JobHunter · AI-Powered Job Search</p>

@@ -35,12 +35,12 @@ export default function Navbar() {
   };
 
   return (
-    <header className="sticky top-0 z-50 border-b border-border/60 bg-background/85 backdrop-blur-xl">
+    <header className="sticky top-0 z-50 border-b border-white/[0.07] bg-background/80 backdrop-blur-2xl shadow-[0_1px_0_0_rgba(118,77,240,0.15)]">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 md:px-6 lg:px-8">
 
         {/* Logo */}
         <Link href="/cv" className="flex items-center gap-2.5 group">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500 to-fuchsia-600 shadow-md shadow-violet-500/20 transition-shadow group-hover:shadow-lg group-hover:shadow-violet-500/30">
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-violet-400 to-violet-700 shadow-[0_0_20px_rgba(118,77,240,0.4)] transition-all group-hover:shadow-[0_0_28px_rgba(118,77,240,0.55)] group-hover:scale-[1.05]">
             <span className="text-sm font-black text-white leading-none">JH</span>
           </div>
           <span className="text-base font-bold text-foreground hidden sm:block tracking-tight">JobHunter</span>
@@ -48,16 +48,16 @@ export default function Navbar() {
 
         {/* Desktop Nav */}
         <nav className="hidden md:flex items-center">
-          <div className="flex items-center rounded-xl bg-card/80 border border-border/50 p-1 gap-0.5">
+          <div className="flex items-center rounded-xl bg-card/60 border border-white/[0.07] p-1 gap-0.5 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.04)]">
             {navItems.map((item) => {
               const isActive = pathname === item.href;
               return (
                 <Link
                   key={item.href}
                   href={item.href}
-                  className={`relative flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-600 transition-all ${
+                  className={`relative flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-600 transition-all duration-200 ${
                     isActive
-                      ? 'bg-violet-600 text-white shadow-sm shadow-violet-500/30'
+                      ? 'bg-gradient-to-b from-violet-500 to-violet-700 text-white shadow-[0_2px_16px_rgba(118,77,240,0.45),inset_0_1px_0_rgba(255,255,255,0.15)]'
                       : 'text-muted-foreground hover:text-foreground hover:bg-accent/60'
                   }`}
                 >
@@ -80,7 +80,7 @@ export default function Navbar() {
           </button>
 
           <DropdownMenu>
-            <DropdownMenuTrigger className="hidden md:flex items-center gap-2 rounded-lg border border-border/50 bg-card/60 px-2.5 py-1.5 text-sm text-muted-foreground hover:text-foreground hover:bg-card hover:border-violet-500/30 transition-all cursor-pointer group">
+            <DropdownMenuTrigger className="hidden md:flex items-center gap-2 rounded-lg border border-white/[0.08] bg-card/50 px-2.5 py-1.5 text-sm text-muted-foreground hover:text-foreground hover:bg-card hover:border-violet-500/30 hover:shadow-[0_0_12px_rgba(118,77,240,0.15)] transition-all cursor-pointer group">
               <Avatar className="h-6 w-6">
                 <AvatarFallback className="bg-violet-600/25 text-violet-300 text-xs font-700">
                   {user?.email?.charAt(0).toUpperCase() || 'U'}
@@ -112,7 +112,7 @@ export default function Navbar() {
 
       {/* Mobile menu */}
       {mobileOpen && (
-        <div className="md:hidden border-t border-border/60 bg-background/95 backdrop-blur-xl">
+        <div className="md:hidden border-t border-white/[0.07] bg-background/90 backdrop-blur-2xl">
           <nav className="flex flex-col px-4 py-3 gap-1">
             {navItems.map((item) => {
               const isActive = pathname === item.href;
@@ -123,7 +123,7 @@ export default function Navbar() {
                   onClick={() => setMobileOpen(false)}
                   className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-600 transition-all ${
                     isActive
-                      ? 'text-white bg-violet-600 shadow-sm shadow-violet-500/20'
+                      ? 'text-white bg-gradient-to-b from-violet-500 to-violet-700 shadow-[0_2px_16px_rgba(118,77,240,0.35)]'
                       : 'text-muted-foreground hover:text-foreground hover:bg-accent/50'
                   }`}
                 >

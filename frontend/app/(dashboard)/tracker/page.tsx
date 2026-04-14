@@ -91,12 +91,12 @@ export default function TrackerPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-violet-500/10 ring-1 ring-violet-500/20">
-            <Kanban className="h-4 w-4 text-violet-400" />
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500/20 to-violet-700/10 ring-1 ring-violet-500/25 shadow-[0_0_16px_rgba(118,77,240,0.15)]">
+            <Kanban className="h-4.5 w-4.5 text-violet-400" />
           </div>
           <div>
-            <h1 className="text-xl font-bold text-foreground tracking-tight">Job Tracker</h1>
-            <p className="text-muted-foreground text-xs">Track and manage your applications</p>
+            <h1 className="text-xl font-black text-foreground tracking-tight">Job Tracker</h1>
+            <p className="text-muted-foreground/60 text-xs">Track and manage your applications</p>
           </div>
         </div>
         <AddJobModal onAdded={load} />
@@ -114,12 +114,12 @@ export default function TrackerPage() {
               placeholder="Search company or title..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="h-9 rounded-lg border-border bg-card/80 pl-9 text-sm text-foreground placeholder:text-muted-foreground/50 focus:border-violet-500/40 focus:ring-1 focus:ring-violet-500/20"
+              className="h-9 rounded-lg border-white/[0.08] bg-card pl-9 text-sm text-foreground placeholder:text-muted-foreground/50 focus:border-violet-500/40 focus:ring-1 focus:ring-violet-500/20"
             />
           </div>
 
           {/* View toggle */}
-          <div className="flex items-center rounded-lg bg-card/80 p-0.5">
+          <div className="flex items-center rounded-lg bg-card border border-white/[0.07] p-0.5">
             <button
               onClick={() => setView('table')}
               className={`flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium transition-all ${
@@ -170,7 +170,8 @@ export default function TrackerPage() {
 
       {/* Content */}
       {view === 'table' ? (
-        <div className="rounded-2xl border border-border bg-card/70 overflow-hidden">
+        <div className="relative overflow-hidden rounded-2xl border border-white/[0.07] bg-card">
+          <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-violet-500/25 to-transparent" />
           <JobTrackerTable jobs={filteredJobs} onRefresh={load} />
         </div>
       ) : (
