@@ -2,29 +2,117 @@
 
 import AuthGuard from '@/components/auth/AuthGuard';
 import Navbar from '@/components/layout/Navbar';
+import { useThemeStore } from '@/store/themeStore';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
+  const { theme } = useThemeStore();
+  const dark = theme === 'dark';
+
   return (
     <AuthGuard>
-      <div className="relative min-h-screen bg-background">
-        {/* AIvent deep ambient glow layers */}
+      <div className="relative min-h-screen" style={{ background: dark ? '#07091a' : '#f6f5ff' }}>
+
+        {/* ── AURORA LAYER (dark) / SOFT BLOBS (light) ── */}
         <div className="pointer-events-none fixed inset-0 overflow-hidden">
-          <div className="absolute -left-80 -top-40 h-[900px] w-[900px] rounded-full bg-violet-600/[0.09] blur-[200px]" />
-          <div className="absolute -right-80 -bottom-40 h-[800px] w-[800px] rounded-full bg-fuchsia-500/[0.07] blur-[180px]" />
-          <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 h-[600px] w-[600px] rounded-full bg-violet-500/[0.04] blur-[140px]" />
-          <div className="absolute right-1/4 top-10 h-[350px] w-[350px] rounded-full bg-indigo-600/[0.06] blur-[120px]" />
-          <div className="absolute left-1/3 bottom-0 h-[300px] w-[300px] rounded-full bg-violet-400/[0.04] blur-[100px]" />
+          {dark ? (
+            <>
+              {/* Top-left — primary violet */}
+              <div className="absolute rounded-full"
+                style={{
+                  width: 900, height: 900,
+                  top: -200, left: -200,
+                  background: 'radial-gradient(circle, rgba(118,77,240,0.45) 0%, rgba(118,77,240,0.15) 40%, transparent 70%)',
+                  filter: 'blur(60px)',
+                }} />
+              {/* Top-right — fuchsia/pink */}
+              <div className="absolute rounded-full"
+                style={{
+                  width: 700, height: 700,
+                  top: -100, right: -150,
+                  background: 'radial-gradient(circle, rgba(192,38,211,0.35) 0%, rgba(168,85,247,0.12) 45%, transparent 70%)',
+                  filter: 'blur(70px)',
+                }} />
+              {/* Center — deep indigo */}
+              <div className="absolute rounded-full"
+                style={{
+                  width: 800, height: 800,
+                  top: '30%', left: '25%',
+                  background: 'radial-gradient(circle, rgba(79,70,229,0.25) 0%, rgba(67,56,202,0.08) 50%, transparent 70%)',
+                  filter: 'blur(80px)',
+                }} />
+              {/* Bottom-right — violet */}
+              <div className="absolute rounded-full"
+                style={{
+                  width: 700, height: 700,
+                  bottom: -150, right: -100,
+                  background: 'radial-gradient(circle, rgba(139,92,246,0.30) 0%, rgba(109,40,217,0.10) 50%, transparent 70%)',
+                  filter: 'blur(65px)',
+                }} />
+              {/* Bottom-left — cyan accent */}
+              <div className="absolute rounded-full"
+                style={{
+                  width: 500, height: 500,
+                  bottom: 0, left: '10%',
+                  background: 'radial-gradient(circle, rgba(6,182,212,0.12) 0%, transparent 65%)',
+                  filter: 'blur(70px)',
+                }} />
+            </>
+          ) : (
+            <>
+              <div className="absolute rounded-full"
+                style={{
+                  width: 800, height: 800,
+                  top: -200, left: -200,
+                  background: 'radial-gradient(circle, rgba(118,77,240,0.12) 0%, transparent 65%)',
+                  filter: 'blur(60px)',
+                }} />
+              <div className="absolute rounded-full"
+                style={{
+                  width: 600, height: 600,
+                  top: 0, right: -100,
+                  background: 'radial-gradient(circle, rgba(192,38,211,0.09) 0%, transparent 65%)',
+                  filter: 'blur(60px)',
+                }} />
+              <div className="absolute rounded-full"
+                style={{
+                  width: 600, height: 600,
+                  bottom: -100, right: '20%',
+                  background: 'radial-gradient(circle, rgba(79,70,229,0.10) 0%, transparent 65%)',
+                  filter: 'blur(60px)',
+                }} />
+            </>
+          )}
         </div>
-        {/* Subtle dot grid — slightly more visible */}
+
+        {/* ── NOISE GRAIN TEXTURE ── */}
         <div
-          className="pointer-events-none fixed inset-0 opacity-[0.03]"
+          className="pointer-events-none fixed inset-0"
           style={{
-            backgroundImage: 'radial-gradient(circle, rgba(255,255,255,1) 1px, transparent 1px)',
-            backgroundSize: '40px 40px',
+            opacity: dark ? 0.035 : 0.025,
+            backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E")`,
+            backgroundRepeat: 'repeat',
+            backgroundSize: '128px 128px',
           }}
         />
-        {/* Top shimmer line */}
-        <div className="pointer-events-none fixed inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-violet-500/60 to-transparent" />
+
+        {/* ── DOT GRID ── */}
+        <div
+          className="pointer-events-none fixed inset-0"
+          style={{
+            backgroundImage: dark
+              ? 'radial-gradient(circle, rgba(255,255,255,0.55) 1px, transparent 1px)'
+              : 'radial-gradient(circle, rgba(0,0,0,0.10) 1px, transparent 1px)',
+            backgroundSize: '40px 40px',
+            opacity: dark ? 0.04 : 0.06,
+          }}
+        />
+
+        {/* ── TOP SHIMMER ── */}
+        <div
+          className="pointer-events-none fixed inset-x-0 top-0 h-px"
+          style={{ background: 'linear-gradient(90deg, transparent, rgba(118,77,240,0.9), transparent)' }}
+        />
+
         <Navbar />
         <main className="relative mx-auto max-w-7xl px-4 md:px-6 lg:px-8 py-8">
           {children}
