@@ -1,8 +1,9 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import Link from 'next/link';
-import { ChevronDown, Check } from 'lucide-react';
+import Script from 'next/script';
+import { ChevronDown, Menu, X } from 'lucide-react';
 
 /* ── Scroll reveal ── */
 function useScrollReveal() {
@@ -59,13 +60,38 @@ function Accordion({ items }: { items: { q: string; a: string }[] }) {
 /* ─────────────────────────────────────────── */
 export default function Home() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [activeTab, setActiveTab] = useState(0);
+  const [activeSection, setActiveSection] = useState('hero');
+  const [mobileOpen, setMobileOpen] = useState(false);
   const navScrolled = useNavbarScroll();
   useScrollReveal();
 
   useEffect(() => {
     setIsLoggedIn(!!localStorage.getItem('auth_token'));
   }, []);
+
+  /* ── Active section tracking ── */
+  useEffect(() => {
+    const sections = ['hero', 'features', 'journey', 'pricing', 'faq'];
+    const observers = sections.map((id) => {
+      const el = document.getElementById(id);
+      if (!el) return null;
+      const io = new IntersectionObserver(
+        ([entry]) => { if (entry.isIntersecting) setActiveSection(id); },
+        { rootMargin: '-40% 0px -55% 0px' }
+      );
+      io.observe(el);
+      return io;
+    });
+    return () => observers.forEach((io) => io?.disconnect());
+  }, []);
+
+  const navLinks = [
+    { href: '#hero', label: 'Home', id: 'hero' },
+    { href: '#features', label: 'Features', id: 'features' },
+    { href: '#journey', label: 'How It Works', id: 'journey' },
+    { href: '#pricing', label: 'Pricing', id: 'pricing' },
+    { href: '#faq', label: 'FAQ', id: 'faq' },
+  ];
 
   /* ── Data ── */
   const features = [
@@ -121,37 +147,6 @@ export default function Home() {
 
   const logos = Array.from({ length: 10 }, (_, i) => `/aivent/logo-light/${i + 1}.webp`);
 
-  const journeySteps = [
-    {
-      label: 'Step 1', date: 'Day 1',
-      items: [
-        { title: 'Create Your Free Account', desc: 'Sign up in 30 seconds. No credit card required. Your AI-powered career tools are instantly available.' },
-        { title: 'Upload Your Current CV', desc: 'Paste your CV text or upload a file. JobHunter accepts any format and parses your content automatically.' },
-      ],
-    },
-    {
-      label: 'Step 2', date: 'Day 1',
-      items: [
-        { title: 'Paste the Job Description', desc: 'Copy any job description from LinkedIn, Indeed, or any job board and paste it directly into JobHunter.' },
-        { title: 'Run AI Analysis', desc: 'Our AI scores your CV for ATS compatibility, identifies keyword gaps, and highlights missing skills.' },
-      ],
-    },
-    {
-      label: 'Step 3', date: 'Day 2',
-      items: [
-        { title: 'Review Your Optimization Report', desc: 'Get a detailed report with your ATS score, missing keywords, suggested rewrites, and formatting tips.' },
-        { title: 'Generate Your Cover Letter', desc: 'Pick your tone — balanced, formal, or friendly — and our AI writes a perfectly tailored cover letter.' },
-      ],
-    },
-    {
-      label: 'Step 4', date: 'Day 2+',
-      items: [
-        { title: 'Apply with Confidence', desc: 'Submit your optimized CV and AI cover letter. Track your application status directly in the dashboard.' },
-        { title: 'Monitor & Improve', desc: 'Use the tracker to follow up, the history to measure progress, and keep optimizing as you apply for more roles.' },
-      ],
-    },
-  ];
-
   const pricing = [
     {
       bg: '/aivent/misc/l3.webp',
@@ -198,71 +193,150 @@ export default function Home() {
   return (
     <div className="min-h-screen text-white overflow-x-hidden" style={{ background: '#101435' }}>
 
+      {/* AIvent JS only — no CSS import (would conflict with Tailwind) */}
+      <Script src="/aivent/js/vendors.js" strategy="afterInteractive" />
+      <Script src="/aivent/js/designesia.js" strategy="afterInteractive" />
+
       {/* ══ NAVBAR ══ */}
-      <header className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${navScrolled ? 'navbar-solid' : 'navbar-transparent'}`}>
-        <div className="mx-auto flex h-20 max-w-7xl items-center justify-between px-6">
-          <Link href="/">
-            <img src="/aivent/logo.webp" alt="JobHunter" style={{ height: '34px', width: 'auto' }} />
+      <header
+        className="fixed top-0 left-0 right-0 z-50 transition-all duration-300"
+        style={navScrolled
+          ? { background: 'rgba(16,20,53,0.93)', backdropFilter: 'blur(20px)', borderBottom: '1px solid rgba(255,255,255,0.08)' }
+          : { background: 'transparent', borderBottom: '1px solid transparent' }
+        }
+      >
+        <div className="mx-auto max-w-7xl px-6 flex items-center justify-between h-[72px]">
+
+          {/* Logo */}
+          <Link href="/" className="flex-shrink-0">
+            <img src="/aivent/logo.webp" alt="JobHunter" style={{ height: '36px', width: 'auto' }} />
           </Link>
-          <nav className="hidden md:flex items-center gap-8">
-            {[['Home','#hero'],['Features','#features'],['How It Works','#journey'],['Pricing','#pricing'],['FAQ','#faq']].map(([l, h]) => (
-              <a key={l} href={h} className="text-sm font-700 text-white/75 hover:text-white transition-colors tracking-wide">{l}</a>
+
+          {/* Desktop nav links */}
+          <nav className="hidden lg:flex items-center gap-1">
+            {navLinks.map((link) => (
+              <a
+                key={link.id}
+                href={link.href}
+                onClick={() => setActiveSection(link.id)}
+                className="relative px-4 py-2 text-sm font-semibold transition-colors duration-200"
+                style={{
+                  color: activeSection === link.id ? '#fff' : 'rgba(255,255,255,0.55)',
+                  letterSpacing: '0.01em',
+                }}
+              >
+                {link.label}
+                {/* Active underline */}
+                <span
+                  className="absolute left-4 right-4 transition-all duration-300"
+                  style={{
+                    bottom: '0px',
+                    height: '2px',
+                    background: 'oklch(0.59 0.245 291)',
+                    opacity: activeSection === link.id ? 1 : 0,
+                    transform: activeSection === link.id ? 'scaleX(1)' : 'scaleX(0)',
+                    transformOrigin: 'center',
+                  }}
+                />
+              </a>
             ))}
           </nav>
-          {isLoggedIn
-            ? <Link href="/cv" className="btn-aivent fx-slide" data-hover="OPEN APP"><span>Open App</span></Link>
-            : <Link href="/register" className="btn-aivent fx-slide" data-hover="GET STARTED"><span>Get Started</span></Link>}
+
+          {/* Mobile toggle */}
+          <div className="flex items-center gap-3">
+            {/* Mobile hamburger */}
+            <button
+              className="lg:hidden flex items-center justify-center w-10 h-10 rounded-lg text-white/70 hover:text-white transition-colors"
+              style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }}
+              onClick={() => setMobileOpen(!mobileOpen)}
+              aria-label="Toggle menu"
+            >
+              {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+            </button>
+          </div>
         </div>
-      </header>
 
-      {/* ══ HERO ══ */}
-      <section id="hero" className="relative flex items-center justify-center text-white overflow-hidden" style={{ minHeight: '100vh' }}>
-        {/* ── Video background (same as AIvent) ── */}
-        <video
-          autoPlay
-          muted
-          loop
-          playsInline
-          poster="/aivent/background/2.webp"
-          className="absolute inset-0 w-full h-full object-cover"
-          style={{ zIndex: 0 }}
-        >
-          <source src="/aivent/video/2.mp4" type="video/mp4" />
-        </video>
-        <div className="absolute inset-0" style={{ background: 'rgba(0,0,0,0.78)', zIndex: 1 }} />
-        <div className="absolute top-0 left-0 right-0 h-[30%]" style={{ background: 'linear-gradient(180deg,#101435 0%,rgba(16,20,53,0) 100%)', zIndex: 2 }} />
-        <div className="absolute bottom-0 left-0 right-0 h-[45%]" style={{ background: 'linear-gradient(0deg,#101435 0%,rgba(16,20,53,0) 100%)', zIndex: 2 }} />
-
-        <div className="relative text-center px-6 max-w-5xl mx-auto" style={{ zIndex: 3 }}>
-          <span className="aivent-subtitle" data-reveal>The Future of Job Search</span>
-          <h1 className="font-800 text-white mb-8 leading-[1.0]" style={{ fontSize: 'clamp(56px,10vw,120px)', letterSpacing:'-0.02em', textTransform:'uppercase' }} data-reveal data-delay="100">
-            AI JOB HUNTER<br />
-          </h1>
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-8 text-xl" data-reveal data-delay="200">
-            <div className="flex items-center gap-3 text-white/80">
-              <span className="text-2xl" style={{ color:'oklch(0.59 0.245 291)' }}></span>
-              <h4 className="font-600 text-lg m-0">Land Your Dream Job — Powered by AI</h4>
+        {/* Mobile dropdown */}
+        {mobileOpen && (
+          <div
+            className="lg:hidden px-6 pb-6 pt-2"
+            style={{ background: 'rgba(16,20,53,0.97)', borderBottom: '1px solid rgba(255,255,255,0.08)' }}
+          >
+            {navLinks.map((link) => (
+              <a
+                key={link.id}
+                href={link.href}
+                onClick={() => { setActiveSection(link.id); setMobileOpen(false); }}
+                className="block py-3 text-sm font-semibold border-b"
+                style={{
+                  color: activeSection === link.id ? 'oklch(0.59 0.245 291)' : 'rgba(255,255,255,0.7)',
+                  borderColor: 'rgba(255,255,255,0.06)',
+                }}
+              >
+                {link.label}
+              </a>
+            ))}
+            <div className="mt-4">
+              {isLoggedIn
+                ? <Link href="/cv" className="btn-aivent fx-slide w-full text-center block" data-hover="OPEN APP"><span>Open App</span></Link>
+                : <Link href="/register" className="btn-aivent fx-slide w-full text-center block" data-hover="GET STARTED"><span>Get Started</span></Link>
+              }
             </div>
           </div>
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-4" data-reveal data-delay="300">
-            {isLoggedIn
-              ? <Link href="/cv" className="btn-aivent fx-slide" data-hover="OPEN DASHBOARD"><span>Open Dashboard</span></Link>
-              : <>
-                  <Link href="/register" className="btn-aivent fx-slide" data-hover="START FREE"><span>Get Started Free</span></Link>
-                  <Link href="/login" className="btn-aivent btn-line fx-slide" data-hover="SIGN IN"><span>Sign In</span></Link>
-                </>
-            }
+        )}
+      </header>
+
+      {/* ══ HERO — Demo 6 split layout ══ */}
+      <section id="hero" className="relative overflow-hidden jarallax" style={{ paddingTop: '110px', paddingBottom: 0 }} data-jarallax data-speed="0.5">
+        <img src="/aivent/background/8.webp" className="jarallax-img" alt="" style={{ position: 'absolute', objectFit: 'cover', width: '100%', height: '100%', top: 0, left: 0 }} />
+        <div className="absolute inset-0" style={{ background: 'rgba(16,20,53,0.60)' }} />
+        <div className="absolute bottom-0 left-0 right-0" style={{ height: '35%', background: 'linear-gradient(0deg,#101435 0%,transparent 100%)' }} />
+
+        <div className="relative mx-auto max-w-7xl px-6 pb-24" style={{ zIndex: 2 }}>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+
+            {/* Left — c2.webp hero image */}
+            <div className="wow fadeInUp" data-wow-delay=".3s">
+              <img src="/aivent/misc/c2.webp" alt="AI Job Search" className="w-full" style={{ maxHeight: '560px', objectFit: 'contain' }} />
+            </div>
+
+            {/* Right — headline + CTA */}
+            <div>
+              <span className="aivent-subtitle s2 wow fadeInUp" data-wow-delay=".0s">Welcome to JobHunter</span>
+              <h1
+                className="wow fadeInUp text-white leading-[1.1] mb-6"
+                style={{ fontSize: 'clamp(38px,5vw,62px)', letterSpacing: '-0.02em', fontWeight: 800 }}
+                data-wow-delay=".2s"
+              >
+                Land Your Dream Job with Artificial Intelligence
+              </h1>
+              <p className="wow fadeInUp text-white/60 text-base leading-relaxed mb-8" style={{ fontWeight: 400, maxWidth: '32rem' }} data-wow-delay=".4s">
+                Upload your CV, paste any job description, and get an instant ATS score, keyword gap analysis, and a tailored cover letter. JobHunter gives every job seeker an unfair advantage.
+              </p>
+              <div className="flex flex-wrap gap-4 wow fadeInUp" data-wow-delay=".6s">
+                {isLoggedIn
+                  ? <Link href="/cv" className="btn-aivent fx-slide" data-hover="OPEN DASHBOARD"><span>Open Dashboard</span></Link>
+                  : <>
+                      <Link href="/register" className="btn-aivent fx-slide" data-hover="START FREE"><span>Get Started Free</span></Link>
+                      <Link href="/login" className="btn-aivent btn-line fx-slide" data-hover="SIGN IN"><span>Sign In</span></Link>
+                    </>
+                }
+              </div>
+            </div>
           </div>
         </div>
 
-        {/* Glassmorphism bottom bar */}
-        <div className="absolute bottom-8 left-0 right-0 px-6" style={{ zIndex: 4 }}>
+        {/* Glassmorphism stats bar */}
+        <div className="relative px-6" style={{ zIndex: 3 }}>
           <div className="mx-auto max-w-5xl">
-            <div className="hidden md:grid grid-cols-3 divide-x divide-white/10 rounded-xl px-8 py-5" style={{ background:'rgba(0,0,0,0.18)', backdropFilter:'blur(12px)', border:'1px solid rgba(255,255,255,0.08)' }}>
-              {[{v:'10,000+',l:'CVs Analyzed'},{v:'85%',l:'Average Score Improvement'},{v:'3×',l:'More Interview Callbacks'}].map((s)=>(
+            <div
+              className="hidden md:grid grid-cols-3 divide-x divide-white/10 rounded-t-xl px-8 py-5"
+              style={{ background: 'rgba(0,0,0,0.22)', backdropFilter: 'blur(14px)', border: '1px solid rgba(255,255,255,0.08)', borderBottom: 'none' }}
+            >
+              {[{ v: '10,000+', l: 'CVs Analyzed' }, { v: '85%', l: 'Average Score Improvement' }, { v: '3×', l: 'More Interview Callbacks' }].map((s) => (
                 <div key={s.l} className="text-center px-6">
-                  <h3 className="text-2xl font-800 text-white mb-0.5">{s.v}</h3>
-                  <p className="text-sm text-white/55 font-500">{s.l}</p>
+                  <h3 className="text-2xl text-white mb-0.5" style={{ fontWeight: 800 }}>{s.v}</h3>
+                  <p className="text-sm text-white/55" style={{ fontWeight: 500 }}>{s.l}</p>
                 </div>
               ))}
             </div>
@@ -271,53 +345,53 @@ export default function Home() {
       </section>
 
       {/* ══ ABOUT ══ */}
-      <section className="py-28 px-6" style={{ background:'#101435' }}>
+      <section className="py-28 px-6" style={{ background: '#101435' }}>
         <div className="mx-auto max-w-6xl">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
             <div>
-              <span className="aivent-subtitle" data-reveal>About JobHunter</span>
-              <h2 className="text-4xl md:text-5xl font-800 text-white tracking-tight mb-6" data-reveal data-delay="100">A Global AI Platform for Job Seekers</h2>
-              <p className="text-white/55 text-base leading-relaxed mb-8 font-400" data-reveal data-delay="200">
+              <span className="aivent-subtitle wow fadeInUp" data-wow-delay=".2s">About JobHunter</span>
+              <h2 className="wow fadeInUp text-white tracking-tight mb-6" style={{ fontSize: 'clamp(32px,4vw,48px)', fontWeight: 800 }} data-wow-delay=".4s">A Global AI Platform for Job Seekers</h2>
+              <p className="wow fadeInUp text-white/55 text-base leading-relaxed mb-8" style={{ fontWeight: 400 }} data-wow-delay=".6s">
                 Join thousands of job seekers using cutting-edge AI to perfect their CVs, craft winning cover letters, and land interviews faster. JobHunter gives you the AI-powered edge in every application.
               </p>
-              <ul className="ul-check" data-reveal data-delay="300">
-                <li>Instant ATS scoring against any job description</li>
-                <li>AI cover letters in seconds</li>
-                <li>Smart job application tracker</li>
-                <li>Full CV history and progress analytics</li>
+              <ul className="ul-check">
+                <li className="wow fadeInUp" data-wow-delay=".7s">Instant ATS scoring against any job description</li>
+                <li className="wow fadeInUp" data-wow-delay=".8s">AI cover letters in seconds</li>
+                <li className="wow fadeInUp" data-wow-delay=".9s">Smart job application tracker</li>
+                <li className="wow fadeInUp" data-wow-delay="1s">Full CV history and progress analytics</li>
               </ul>
             </div>
-            <div className="flex justify-center" data-reveal="scale">
-              <img src="/aivent/misc/c1.webp" alt="JobHunter AI" className="rotate-slow" style={{ width:'80%', maxWidth:'420px' }} />
+            <div className="flex justify-center wow scaleIn">
+              <img src="/aivent/misc/c1.webp" alt="JobHunter AI" className="rotate-slow" style={{ width: '80%', maxWidth: '420px' }} />
             </div>
           </div>
         </div>
       </section>
 
       {/* ══ MARQUEE ══ */}
-      <div className="relative overflow-hidden" style={{ lineHeight:1 }}>
-        <div className="py-5 overflow-hidden" style={{ background:'oklch(0.59 0.245 291)', transform:'rotateZ(2deg)', margin:'0 -60px' }}>
+      <div className="relative overflow-hidden" style={{ lineHeight: 1 }}>
+        <div className="py-5 overflow-hidden" style={{ background: 'oklch(0.59 0.245 291)', transform: 'rotateZ(2deg)', margin: '0 -60px' }}>
           <div className="animate-marquee">
-            {[...Array(2)].map((_,i)=>(
+            {[...Array(2)].map((_, i) => (
               <div key={i} className="flex items-center">
-                {['CV Analysis','ATS Optimization','Smart Matching','Cover Letters','Job Tracking','AI Insights','Interview Prep','Score Boost'].map(t=>(
+                {['CV Analysis', 'ATS Optimization', 'Smart Matching', 'Cover Letters', 'Job Tracking', 'AI Insights', 'Interview Prep', 'Score Boost'].map(t => (
                   <span key={t} className="flex items-center">
-                    <span className="text-white font-800 uppercase tracking-wider px-8 whitespace-nowrap" style={{ fontSize:'52px' }}>{t}</span>
-                    <span className="text-white/30 font-300" style={{ fontSize:'52px' }}>/</span>
+                    <span className="text-white uppercase px-8 whitespace-nowrap" style={{ fontSize: '52px', fontWeight: 800, letterSpacing: '0.05em' }}>{t}</span>
+                    <span className="text-white/30" style={{ fontSize: '52px', fontWeight: 300 }}>/</span>
                   </span>
                 ))}
               </div>
             ))}
           </div>
         </div>
-        <div className="py-5 overflow-hidden" style={{ background:'oklch(0.42 0.18 285)', transform:'rotateZ(-1deg)', margin:'-20px -60px 0' }}>
+        <div className="py-5 overflow-hidden" style={{ background: 'oklch(0.42 0.18 285)', transform: 'rotateZ(-1deg)', margin: '-20px -60px 0' }}>
           <div className="animate-marquee-reverse">
-            {[...Array(2)].map((_,i)=>(
+            {[...Array(2)].map((_, i) => (
               <div key={i} className="flex items-center">
-                {['Land Faster','Get Hired','Beat ATS','Stand Out','AI Resume','Top Results','More Offers','Career AI'].map(t=>(
+                {['Land Faster', 'Get Hired', 'Beat ATS', 'Stand Out', 'AI Resume', 'Top Results', 'More Offers', 'Career AI'].map(t => (
                   <span key={t} className="flex items-center">
-                    <span className="text-white/80 font-800 uppercase tracking-wider px-8 whitespace-nowrap" style={{ fontSize:'52px' }}>{t}</span>
-                    <span className="text-white/20 font-300" style={{ fontSize:'52px' }}>/</span>
+                    <span className="text-white/80 uppercase px-8 whitespace-nowrap" style={{ fontSize: '52px', fontWeight: 800, letterSpacing: '0.05em' }}>{t}</span>
+                    <span className="text-white/20" style={{ fontSize: '52px', fontWeight: 300 }}>/</span>
                   </span>
                 ))}
               </div>
@@ -327,26 +401,26 @@ export default function Home() {
       </div>
 
       {/* ══ FEATURES (image cards) ══ */}
-      <section id="features" className="py-32 px-6" style={{ background:'#101435' }}>
+      <section id="features" className="py-32 px-6" style={{ background: '#101435' }}>
         <div className="mx-auto max-w-6xl">
           <div className="text-center mb-16">
             <span className="aivent-subtitle" data-reveal>Why JobHunter</span>
-            <h2 className="text-4xl md:text-5xl font-800 text-white tracking-tight" data-reveal data-delay="100">What You Will Gain</h2>
-            <p className="text-white/55 text-lg mt-4 max-w-2xl mx-auto font-400" data-reveal data-delay="200">
+            <h2 className="text-white tracking-tight" data-reveal data-delay="100" style={{ fontSize: 'clamp(32px,4vw,48px)', fontWeight: 800 }}>What You Will Gain</h2>
+            <p className="text-white/55 text-lg mt-4 max-w-2xl mx-auto" style={{ fontWeight: 400 }} data-reveal data-delay="200">
               From ATS-beating CVs to automated cover letters — every tool you need to land your next role faster.
             </p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {features.map((f,i)=>(
-              <div key={f.title} className="feature-card relative rounded-xl overflow-hidden cursor-pointer" style={{ minHeight:'300px' }} data-reveal data-delay={String(i*80)}>
-                <div className="card-bg absolute inset-0 transition-colors duration-500" style={{ background:'#1A1E42' }}>
+            {features.map((f, i) => (
+              <div key={f.title} className="feature-card relative rounded-xl overflow-hidden cursor-pointer wow scale-in-mask" style={{ minHeight: '300px' }}>
+                <div className="card-bg absolute inset-0 transition-colors duration-500" style={{ background: '#1A1E42' }}>
                   <img src={f.img} alt={f.title} className="w-full h-full object-cover opacity-75" />
                 </div>
-                <div className="absolute bottom-0 left-0 right-0 h-3/4" style={{ background:'linear-gradient(0deg,#101435 0%,rgba(16,20,53,0) 100%)', zIndex:1 }} />
-                <div className="radial-overlay absolute inset-0" style={{ zIndex:2 }} />
-                <div className="absolute bottom-0 left-0 right-0 p-6" style={{ zIndex:3 }}>
-                  <h4 className="text-white font-700 text-xl mb-2 tracking-tight">{f.title}</h4>
-                  <p className="text-white/60 text-sm leading-relaxed font-400">{f.desc}</p>
+                <div className="absolute bottom-0 left-0 right-0 h-3/4" style={{ background: 'linear-gradient(0deg,#101435 0%,rgba(16,20,53,0) 100%)', zIndex: 1 }} />
+                <div className="radial-overlay absolute inset-0" style={{ zIndex: 2 }} />
+                <div className="absolute bottom-0 left-0 right-0 p-6" style={{ zIndex: 3 }}>
+                  <h4 className="text-white text-xl mb-2 tracking-tight" style={{ fontWeight: 700 }}>{f.title}</h4>
+                  <p className="text-white/60 text-sm leading-relaxed" style={{ fontWeight: 400 }}>{f.desc}</p>
                 </div>
               </div>
             ))}
@@ -355,43 +429,51 @@ export default function Home() {
       </section>
 
       {/* ══ PARALLAX QUOTE ══ */}
-      <section className="relative py-32 px-6 text-white" style={{ backgroundImage:'url(/aivent/background/1.webp)', backgroundSize:'cover', backgroundPosition:'center', backgroundAttachment:'fixed' }}>
-        <div className="absolute inset-0" style={{ background:'rgba(0,0,0,0.82)' }} />
-        <div className="absolute top-0 left-0 right-0 h-1/4" style={{ background:'linear-gradient(180deg,#101435 0%,transparent 100%)' }} />
-        <div className="absolute bottom-0 left-0 right-0 h-1/4" style={{ background:'linear-gradient(0deg,#101435 0%,transparent 100%)' }} />
-        <div className="relative mx-auto max-w-5xl" style={{ zIndex:2 }}>
+      <section
+        className="relative overflow-hidden jarallax"
+        aria-label="quote"
+        style={{ paddingTop: '140px', paddingBottom: '140px' }}
+        data-jarallax data-speed="0.5"
+      >
+        <img src="/aivent/background/1.webp" className="jarallax-img" alt="" style={{ position: 'absolute', objectFit: 'cover', width: '100%', height: '100%', top: 0, left: 0 }} />
+        {/* Overlays */}
+        <div className="absolute inset-0" style={{ background: 'rgba(10,13,40,0.82)' }} />
+        <div className="absolute top-0 left-0 right-0" style={{ height: '120px', background: 'linear-gradient(180deg,#101435 0%,transparent 100%)' }} />
+        <div className="absolute bottom-0 left-0 right-0" style={{ height: '120px', background: 'linear-gradient(0deg,#101435 0%,transparent 100%)' }} />
+
+        <div className="relative mx-auto max-w-6xl px-6" style={{ zIndex: 4 }}>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-12 items-center">
-            <div className="relative" data-reveal="scale">
-              <div className="absolute top-0 right-0 w-16 h-16 flex items-center justify-center rounded-lg z-10 text-white text-4xl font-800" style={{ background:'oklch(0.59 0.245 291)', lineHeight:1 }}>"</div>
+            <div className="relative wow scale-in-mask">
+              <div className="absolute top-0 right-0 w-16 h-16 flex items-center justify-center rounded-lg z-10 text-white text-4xl" style={{ fontWeight: 800, lineHeight: 1, background: 'oklch(0.59 0.245 291)' }}>"</div>
               <img src="https://images.unsplash.com/photo-1573497019236-17f8177b81e8?w=500&h=600&fit=crop&q=80" alt="HR professional" className="w-full rounded-xl" />
             </div>
-            <div className="md:col-span-2" data-reveal data-delay="150">
-              <h3 className="text-2xl md:text-3xl font-600 text-white leading-relaxed mb-6">
+            <div className="md:col-span-2 wow fadeInUp" data-wow-delay=".2s">
+              <h3 className="text-white leading-relaxed mb-6" style={{ fontSize: 'clamp(20px,2.5vw,28px)', fontWeight: 600 }}>
                 "AI is fundamentally reshaping how people find work. Those who embrace AI-powered tools in their job search will have an insurmountable advantage over those who don't."
               </h3>
-              <span className="text-white/45 font-500 text-sm tracking-widest uppercase">— The Future of Work Report, 2026</span>
+              <span className="text-white/45 text-sm uppercase tracking-widest" style={{ fontWeight: 500 }}>— The Future of Work Report, 2026</span>
             </div>
           </div>
         </div>
       </section>
 
-      {/* ══ SUCCESS STORIES (Speakers equivalent) ══ */}
-      <section className="py-32 px-6" style={{ background:'#101435' }}>
+      {/* ══ SUCCESS STORIES ══ */}
+      <section className="py-32 px-6" style={{ background: '#101435' }}>
         <div className="mx-auto max-w-6xl">
           <div className="text-center mb-16">
             <span className="aivent-subtitle" data-reveal>Success Stories</span>
-            <h2 className="text-4xl md:text-5xl font-800 text-white tracking-tight" data-reveal data-delay="100">Meet Our Top Users</h2>
-            <p className="text-white/55 text-lg mt-4 max-w-2xl mx-auto font-400" data-reveal data-delay="200">Real job seekers who used JobHunter to land roles at the world's top companies.</p>
+            <h2 className="text-white tracking-tight" data-reveal data-delay="100" style={{ fontSize: 'clamp(32px,4vw,48px)', fontWeight: 800 }}>Meet Our Top Users</h2>
+            <p className="text-white/55 text-lg mt-4 max-w-2xl mx-auto" style={{ fontWeight: 400 }} data-reveal data-delay="200">Real job seekers who used JobHunter to land roles at the world's top companies.</p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {testimonials.map((t,i)=>(
-              <div key={t.name} className="speaker-card relative rounded-xl overflow-hidden" style={{ minHeight:'380px' }} data-reveal data-delay={String(i*100)}>
-                <img src={t.img} alt={t.name} className="w-full h-full object-cover absolute inset-0" style={{ minHeight:'380px' }} />
-                <div className="absolute inset-0" style={{ background:'linear-gradient(0deg,rgba(16,20,53,0.9) 0%,rgba(16,20,53,0) 60%)', zIndex:1 }} />
-                <div className="speaker-overlay absolute inset-0" style={{ zIndex:2 }} />
-                <div className="absolute bottom-0 left-0 right-0 z-10 p-4 m-4 rounded-xl text-center" style={{ background:'rgba(0,0,0,0.18)', backdropFilter:'blur(10px)', border:'1px solid rgba(255,255,255,0.08)' }}>
-                  <h3 className="text-white font-700 text-lg mb-1">{t.name}</h3>
-                  <span className="text-white/55 text-sm font-400">{t.title}</span>
+            {testimonials.map((t, i) => (
+              <div key={t.name} className="speaker-card relative rounded-xl overflow-hidden wow scale-in-mask" style={{ minHeight: '380px' }}>
+                <img src={t.img} alt={t.name} className="w-full h-full object-cover absolute inset-0" style={{ minHeight: '380px' }} />
+                <div className="absolute inset-0" style={{ background: 'linear-gradient(0deg,rgba(16,20,53,0.9) 0%,rgba(16,20,53,0) 60%)', zIndex: 1 }} />
+                <div className="speaker-overlay absolute inset-0" style={{ zIndex: 2 }} />
+                <div className="absolute bottom-0 left-0 right-0 z-10 p-4 m-4 rounded-xl text-center" style={{ background: 'rgba(0,0,0,0.18)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.08)' }}>
+                  <h3 className="text-white text-lg mb-1" style={{ fontWeight: 700 }}>{t.name}</h3>
+                  <span className="text-white/55 text-sm" style={{ fontWeight: 400 }}>{t.title}</span>
                 </div>
               </div>
             ))}
@@ -400,89 +482,122 @@ export default function Home() {
       </section>
 
       {/* ══ COMPANY LOGOS ══ */}
-      <section className="relative py-20 px-6 overflow-hidden" style={{ backgroundImage:'url(/aivent/background/1.webp)', backgroundSize:'cover', backgroundPosition:'center', backgroundAttachment:'fixed' }}>
-        <div className="absolute inset-0" style={{ background:'rgba(0,0,0,0.85)' }} />
-        <div className="absolute top-0 left-0 right-0 h-1/3" style={{ background:'linear-gradient(180deg,#101435 0%,transparent 100%)' }} />
-        <div className="absolute bottom-0 left-0 right-0 h-1/3" style={{ background:'linear-gradient(0deg,#101435 0%,transparent 100%)' }} />
-        <div className="relative" style={{ zIndex:2 }}>
-          <div className="animate-logo-scroll">
+      <section
+        className="relative overflow-hidden jarallax"
+        aria-label="logos"
+        style={{ paddingTop: '80px', paddingBottom: '80px' }}
+        data-jarallax data-speed="0.5"
+      >
+        <img src="/aivent/background/1.webp" className="jarallax-img" alt="" style={{ position: 'absolute', objectFit: 'cover', width: '100%', height: '100%', top: 0, left: 0 }} />
+        <div className="absolute inset-0" style={{ background: 'rgba(10,13,40,0.82)' }} />
+        <div className="absolute top-0 left-0 right-0" style={{ height: '80px', background: 'linear-gradient(180deg,#101435 0%,transparent 100%)' }} />
+        <div className="absolute bottom-0 left-0 right-0" style={{ height: '80px', background: 'linear-gradient(0deg,#101435 0%,transparent 100%)' }} />
+
+        <div className="relative overflow-hidden" style={{ zIndex: 4 }}>
+          <div className="animate-logo-scroll wow fadeInUp">
             {[...logos, ...logos].map((src, i) => (
-              <div key={i} className="px-8 flex items-center justify-center" style={{ minWidth:'140px' }}>
-                <img src={src} alt="" className="w-full object-contain opacity-60 hover:opacity-100 transition-opacity" style={{ maxWidth:'120px', maxHeight:'50px' }} />
+              <div key={i} className="px-8 flex items-center justify-center" style={{ minWidth: '140px' }}>
+                <img src={src} alt="" className="object-contain opacity-60 hover:opacity-100 transition-opacity" style={{ maxWidth: '120px', maxHeight: '50px' }} />
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* ══ JOURNEY (Schedule equivalent) ══ */}
-      <section id="journey" className="py-32 px-6" style={{ background:'#1A1E42' }}>
+      {/* ══ HOW IT WORKS ══ */}
+      <section id="journey" className="py-32 px-6" style={{ background: '#101435' }}>
         <div className="mx-auto max-w-6xl">
-          <div className="text-center mb-16">
-            <span className="aivent-subtitle s2" data-reveal>Your Journey</span>
-            <h2 className="text-4xl md:text-5xl font-800 text-white tracking-tight" data-reveal data-delay="100">Your Path to Employment</h2>
-          </div>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
 
-          {/* Tab headers */}
-          <div className="grid grid-cols-4 gap-4 mb-8 border-b border-white/10" data-reveal>
-            {journeySteps.map((s, i) => (
-              <div key={i} className={`sched-tab text-center pb-4 ${activeTab === i ? 'active' : ''}`} onClick={() => setActiveTab(i)}>
-                <h3 className="text-xl font-800 m-0">{s.label}</h3>
-                <span className="text-sm opacity-60 font-400">{s.date}</span>
+            {/* Left — text + checklist */}
+            <div className="lg:pr-8">
+              <span className="aivent-subtitle wow fadeInUp" data-wow-delay=".2s">How It Works</span>
+              <h2 className="wow fadeInUp text-white tracking-tight mb-6" style={{ fontSize: 'clamp(32px,4vw,48px)', fontWeight: 800 }} data-wow-delay=".4s">Your Path to Getting Hired</h2>
+              <p className="wow fadeInUp text-white/55 text-base leading-relaxed mb-8" style={{ fontWeight: 400 }} data-wow-delay=".6s">
+                From uploading your CV to landing interviews — JobHunter's AI handles every step.
+                Get your ATS score, optimize your profile, generate cover letters, and track every application in one place.
+              </p>
+              <ul className="ul-check mb-8">
+                <li className="wow fadeInUp" data-wow-delay=".7s">Upload your CV and paste any job description</li>
+                <li className="wow fadeInUp" data-wow-delay=".8s">Get an instant ATS score and keyword gap report</li>
+                <li className="wow fadeInUp" data-wow-delay=".9s">Generate a tailored cover letter in seconds</li>
+                <li className="wow fadeInUp" data-wow-delay="1s">Track every application from saved to offer</li>
+              </ul>
+              <div className="wow fadeInUp" data-wow-delay="1.1s">
+                {isLoggedIn
+                  ? <Link href="/cv" className="btn-aivent fx-slide" data-hover="OPEN DASHBOARD"><span>Open Dashboard</span></Link>
+                  : <Link href="/register" className="btn-aivent fx-slide" data-hover="GET STARTED"><span>Get Started Free</span></Link>
+                }
               </div>
-            ))}
-          </div>
+            </div>
 
-          {/* Tab content */}
-          <div className="space-y-6">
-            {journeySteps[activeTab].items.map((item, i) => (
-              <div key={i} className="rounded-2xl p-8" style={{ background:'rgba(16,20,53,0.6)', border:'1px solid rgba(255,255,255,0.07)' }}>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-center">
-                  <div className="text-white/40 font-700 text-sm uppercase tracking-widest">{`0${i + 1}`}</div>
-                  <div className="md:col-span-2">
-                    <h3 className="text-xl font-700 text-white mb-2 tracking-tight">{item.title}</h3>
-                    <p className="text-white/55 text-sm leading-relaxed font-400">{item.desc}</p>
-                  </div>
+            {/* Right — staggered images + counter boxes */}
+            <div className="grid grid-cols-2 gap-4">
+
+              {/* Column 1 */}
+              <div className="flex flex-col gap-4">
+                <div className="relative overflow-hidden rounded-xl wow scale-in-mask">
+                  <img src="/aivent/misc/s1.webp" alt="" className="w-full object-cover" style={{ borderRadius: '12px' }} />
+                  <div className="absolute bottom-0 left-0 right-0" style={{ height: '50%', background: 'linear-gradient(0deg,rgba(16,20,53,0.8) 0%,transparent 100%)' }} />
+                </div>
+                <div className="rounded-xl text-center py-8 px-4 wow scale-in-mask" style={{ background: 'oklch(0.59 0.245 291)' }}>
+                  <h2 className="text-white mb-1" style={{ fontSize: '2.5rem', fontWeight: 800, lineHeight: 1 }}>10K+</h2>
+                  <div className="text-white/80 text-sm" style={{ fontWeight: 600 }}>CVs Analyzed</div>
                 </div>
               </div>
-            ))}
+
+              {/* Column 2 — offset down */}
+              <div className="flex flex-col gap-4 mt-10">
+                <div className="rounded-xl text-center py-8 px-4 wow scale-in-mask" style={{ background: 'oklch(0.42 0.18 285)' }}>
+                  <h2 className="text-white mb-1" style={{ fontSize: '2.5rem', fontWeight: 800, lineHeight: 1 }}>85%</h2>
+                  <div className="text-white/80 text-sm" style={{ fontWeight: 600 }}>Score Improvement</div>
+                </div>
+                <div className="relative overflow-hidden rounded-xl wow scale-in-mask">
+                  <img src="/aivent/misc/s2.webp" alt="" className="w-full object-cover" style={{ borderRadius: '12px' }} />
+                  <div className="absolute bottom-0 left-0 right-0" style={{ height: '50%', background: 'linear-gradient(0deg,rgba(16,20,53,0.8) 0%,transparent 100%)' }} />
+                </div>
+              </div>
+
+            </div>
           </div>
         </div>
       </section>
 
-      {/* ══ PRICING (Tickets equivalent) ══ */}
-      <section id="pricing" className="relative py-32 px-6" style={{ backgroundImage:'url(/aivent/background/7.webp)', backgroundSize:'cover', backgroundPosition:'center', backgroundAttachment:'fixed' }}>
-        <div className="absolute inset-0" style={{ background:'rgba(0,0,0,0.80)' }} />
-        <div className="absolute top-0 left-0 right-0 h-1/4" style={{ background:'linear-gradient(180deg,#1A1E42 0%,transparent 100%)' }} />
-        <div className="absolute bottom-0 left-0 right-0 h-1/4" style={{ background:'linear-gradient(0deg,#101435 0%,transparent 100%)' }} />
+      {/* ══ PRICING ══ */}
+      <section
+        id="pricing"
+        className="relative py-32 px-6"
+        style={{ backgroundImage: 'url(/aivent/background/7.webp)', backgroundSize: 'cover', backgroundPosition: 'center', backgroundAttachment: 'fixed' }}
+      >
+        <div className="absolute inset-0" style={{ background: 'rgba(0,0,0,0.80)' }} />
+        <div className="absolute top-0 left-0 right-0 h-1/4" style={{ background: 'linear-gradient(180deg,#1A1E42 0%,transparent 100%)' }} />
+        <div className="absolute bottom-0 left-0 right-0 h-1/4" style={{ background: 'linear-gradient(0deg,#101435 0%,transparent 100%)' }} />
 
-        <div className="relative mx-auto max-w-6xl" style={{ zIndex:2 }}>
+        <div className="relative mx-auto max-w-6xl" style={{ zIndex: 2 }}>
           <div className="text-center mb-16">
             <span className="aivent-subtitle s2" data-reveal>Pricing Plans</span>
-            <h2 className="text-4xl md:text-5xl font-800 text-white tracking-tight" data-reveal data-delay="100">Choose Your Plan</h2>
-            <p className="text-white/55 text-lg mt-4 max-w-2xl mx-auto font-400" data-reveal data-delay="200">Start free. Upgrade when you need more power.</p>
+            <h2 className="text-white tracking-tight" data-reveal data-delay="100" style={{ fontSize: 'clamp(32px,4vw,48px)', fontWeight: 800 }}>Choose Your Plan</h2>
+            <p className="text-white/55 text-lg mt-4 max-w-2xl mx-auto" style={{ fontWeight: 400 }} data-reveal data-delay="200">Start free. Upgrade when you need more power.</p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {pricing.map((p, i) => (
               <div key={p.plan} data-reveal data-delay={String(i * 100)}>
-                {/* Ticket header */}
-                <div className="d-ticket-card mb-0 rounded-b-none" style={{ backgroundImage:`url(${p.bg})`, border: p.highlight ? '2px solid oklch(0.59 0.245 291)' : '2px solid rgba(255,255,255,0.08)', borderBottom:'none' }}>
-                  <div className="absolute inset-0" style={{ background:'rgba(16,20,53,0.82)', borderRadius:'10px 10px 0 0' }} />
-                  <div className="relative" style={{ zIndex:1 }}>
-                    <img src="/aivent/logo.webp" alt="" style={{ height:'28px', marginBottom:'20px', opacity:0.8 }} />
-                    <h2 className="text-3xl font-800 text-white mb-1">{p.plan}</h2>
-                    <h4 className="text-white/80 font-600 mb-4">
-                      <span className="text-4xl font-800 text-white">{p.price}</span>
-                      <span className="text-base font-400 text-white/50 ml-1">{p.period}</span>
+                <div className="d-ticket-card mb-0 rounded-b-none" style={{ backgroundImage: `url(${p.bg})`, border: p.highlight ? '2px solid oklch(0.59 0.245 291)' : '2px solid rgba(255,255,255,0.08)', borderBottom: 'none' }}>
+                  <div className="absolute inset-0" style={{ background: 'rgba(16,20,53,0.82)', borderRadius: '10px 10px 0 0' }} />
+                  <div className="relative" style={{ zIndex: 1 }}>
+                    <img src="/aivent/logo.webp" alt="" style={{ height: '28px', marginBottom: '20px', opacity: 0.8 }} />
+                    <h2 className="text-white mb-1" style={{ fontSize: '1.875rem', fontWeight: 800 }}>{p.plan}</h2>
+                    <h4 className="text-white/80 mb-4" style={{ fontWeight: 600 }}>
+                      <span className="text-white" style={{ fontSize: '2.25rem', fontWeight: 800 }}>{p.price}</span>
+                      <span className="text-white/50 ml-1" style={{ fontSize: '1rem', fontWeight: 400 }}>{p.period}</span>
                     </h4>
                     {p.highlight && (
-                      <span className="inline-block px-3 py-1 rounded-full text-xs font-700 uppercase tracking-widest" style={{ background:'oklch(0.59 0.245 291)' }}>Most Popular</span>
+                      <span className="inline-block px-3 py-1 rounded-full text-xs uppercase tracking-widest text-white" style={{ fontWeight: 700, background: 'oklch(0.59 0.245 291)' }}>Most Popular</span>
                     )}
                   </div>
                 </div>
-                {/* Feature list */}
-                <div className="rounded-t-none rounded-b-xl px-6 py-6" style={{ background:'#1A1E42', border: p.highlight ? '2px solid oklch(0.59 0.245 291)' : '2px solid rgba(255,255,255,0.08)', borderTop:'none' }}>
+                <div className="rounded-t-none rounded-b-xl px-6 py-6" style={{ background: '#1A1E42', border: p.highlight ? '2px solid oklch(0.59 0.245 291)' : '2px solid rgba(255,255,255,0.08)', borderTop: 'none' }}>
                   <ul className="ul-check mb-6 space-y-2">
                     {p.features.map(f => <li key={f}>{f}</li>)}
                   </ul>
@@ -497,12 +612,12 @@ export default function Home() {
       </section>
 
       {/* ══ FAQ ══ */}
-      <section id="faq" className="py-32 px-6" style={{ background:'#101435' }}>
+      <section id="faq" className="py-32 px-6" style={{ background: '#101435' }}>
         <div className="mx-auto max-w-6xl">
           <div className="grid grid-cols-1 lg:grid-cols-5 gap-16">
             <div className="lg:col-span-2">
               <span className="aivent-subtitle" data-reveal>Everything You Need to Know</span>
-              <h2 className="text-4xl font-800 text-white tracking-tight" data-reveal data-delay="100">Frequently Asked Questions</h2>
+              <h2 className="text-white tracking-tight" data-reveal data-delay="100" style={{ fontSize: 'clamp(28px,3.5vw,40px)', fontWeight: 800 }}>Frequently Asked Questions</h2>
             </div>
             <div className="lg:col-span-3" data-reveal data-delay="200">
               <Accordion items={faqItems} />
@@ -511,49 +626,56 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ══ NEWSLETTER / CTA ══ */}
-      <section className="relative py-32 px-6 text-white" style={{ backgroundImage:'url(/aivent/background/3.webp)', backgroundSize:'cover', backgroundPosition:'center', backgroundAttachment:'fixed' }}>
-        <div className="absolute inset-0" style={{ background:'rgba(0,0,0,0.82)' }} />
-        <div className="absolute top-0 left-0 right-0 h-1/4" style={{ background:'linear-gradient(180deg,#101435 0%,transparent 100%)' }} />
-        <div className="absolute bottom-0 left-0 right-0 h-1/4" style={{ background:'linear-gradient(0deg,#101435 0%,transparent 100%)' }} />
-        <div className="relative mx-auto max-w-3xl text-center" style={{ zIndex:2 }}>
-          <span className="aivent-subtitle" data-reveal>Start Today — It's Free</span>
-          <h2 className="text-4xl md:text-6xl font-800 text-white tracking-tight mb-6" data-reveal data-delay="100">Join the Future of Job Search</h2>
-          <p className="text-white/55 text-lg mb-10 leading-relaxed font-400" data-reveal data-delay="200">
+      {/* ══ CTA / NEWSLETTER ══ */}
+      <section
+        className="relative overflow-hidden jarallax text-center"
+        aria-label="cta"
+        style={{ paddingTop: '140px', paddingBottom: '140px' }}
+        data-jarallax data-speed="0.5"
+      >
+        <img src="/aivent/background/3.webp" className="jarallax-img" alt="" style={{ position: 'absolute', objectFit: 'cover', width: '100%', height: '100%', top: 0, left: 0 }} />
+        <div className="absolute inset-0" style={{ background: 'rgba(10,13,40,0.82)' }} />
+        <div className="absolute top-0 left-0 right-0" style={{ height: '120px', background: 'linear-gradient(180deg,#101435 0%,transparent 100%)' }} />
+        <div className="absolute bottom-0 left-0 right-0" style={{ height: '120px', background: 'linear-gradient(0deg,#101435 0%,transparent 100%)' }} />
+
+        <div className="relative mx-auto max-w-3xl px-6" style={{ zIndex: 4 }}>
+          <span className="aivent-subtitle s2 wow fadeInUp" data-wow-delay=".0s">Start Today — It is Free</span>
+          <h2 className="text-white tracking-tight mb-6 wow fadeInUp" style={{ fontSize: 'clamp(32px,4vw,52px)', fontWeight: 800 }} data-wow-delay=".2s">Join the Future of Job Search</h2>
+          <p className="text-white/60 text-lg leading-relaxed mb-8 wow fadeInUp" style={{ fontWeight: 400 }} data-wow-delay=".4s">
             Thousands of job seekers are already using AI to get more interviews. Create your free account and start today.
           </p>
-          <div data-reveal data-delay="300">
+          <div className="wow fadeInUp" data-wow-delay=".6s">
             {isLoggedIn
-              ? <Link href="/cv" className="btn-aivent fx-slide" style={{ fontSize:'14px', padding:'16px 40px' }} data-hover="OPEN DASHBOARD"><span>Open Dashboard</span></Link>
-              : <Link href="/register" className="btn-aivent fx-slide" style={{ fontSize:'14px', padding:'16px 40px' }} data-hover="CREATE ACCOUNT"><span>Get Started Free</span></Link>
+              ? <Link href="/cv" className="btn-aivent fx-slide" data-hover="OPEN DASHBOARD"><span>Open Dashboard</span></Link>
+              : <Link href="/register" className="btn-aivent fx-slide" data-hover="CREATE ACCOUNT"><span>Get Started Free</span></Link>
             }
           </div>
         </div>
       </section>
 
       {/* ══ FOOTER ══ */}
-      <footer className="text-white py-16 px-6" style={{ background:'#0d1130', borderTop:'1px solid rgba(255,255,255,0.06)' }}>
+      <footer className="text-white py-16 px-6" style={{ background: '#0d1130', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
         <div className="mx-auto max-w-6xl">
           <div className="flex flex-col md:flex-row items-center justify-between gap-8 text-center md:text-left">
             <div>
-              <h3 className="font-700 text-white/50 text-sm uppercase tracking-widest mb-2">Address</h3>
-              <p className="text-white/50 text-sm font-400">121 AI Blvd, San Francisco<br />BCA 94107</p>
+              <h3 className="text-white/50 text-sm uppercase tracking-widest mb-2" style={{ fontWeight: 700 }}>Address</h3>
+              <p className="text-white/50 text-sm" style={{ fontWeight: 400 }}>121 AI Blvd, San Francisco<br />BCA 94107</p>
             </div>
             <div className="flex flex-col items-center gap-4">
-              <img src="/aivent/logo.webp" alt="JobHunter" style={{ height:'42px', width:'auto' }} />
+              <img src="/aivent/logo.webp" alt="JobHunter" style={{ height: '42px', width: 'auto' }} />
               <div className="flex items-center gap-6 mt-1">
                 {['Sign In', 'Register', 'Features', 'Pricing'].map((l, i) => (
-                  <a key={l} href={['#login','#register','#features','#pricing'][i]} className="text-xs text-white/35 hover:text-white/80 transition-colors font-600 uppercase tracking-widest">{l}</a>
+                  <a key={l} href={['#login', '#register', '#features', '#pricing'][i]} className="text-white/35 hover:text-white/80 transition-colors uppercase tracking-widest" style={{ fontSize: '11px', fontWeight: 600 }}>{l}</a>
                 ))}
               </div>
             </div>
             <div>
-              <h3 className="font-700 text-white/50 text-sm uppercase tracking-widest mb-2">Contact Us</h3>
-              <p className="text-white/50 text-sm font-400">M. support@jobhunter.app</p>
+              <h3 className="text-white/50 text-sm uppercase tracking-widest mb-2" style={{ fontWeight: 700 }}>Contact Us</h3>
+              <p className="text-white/50 text-sm" style={{ fontWeight: 400 }}>M. support@jobhunter.app</p>
             </div>
           </div>
-          <div className="mt-10 pt-6 text-center" style={{ borderTop:'1px solid rgba(255,255,255,0.05)' }}>
-            <p className="text-white/25 text-xs font-400 tracking-wide">Copyright {new Date().getFullYear()} — JobHunter · AI-Powered Job Search</p>
+          <div className="mt-10 pt-6 text-center" style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+            <p className="text-white/25 text-xs tracking-wide" style={{ fontWeight: 400 }}>Copyright {new Date().getFullYear()} — JobHunter · AI-Powered Job Search</p>
           </div>
         </div>
       </footer>
