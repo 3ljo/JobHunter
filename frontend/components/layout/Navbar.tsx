@@ -35,29 +35,30 @@ export default function Navbar() {
   };
 
   return (
-    <header className="sticky top-0 z-50 border-b border-border bg-background/80 backdrop-blur-xl">
-      <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4 md:px-6 lg:px-8">
+    <header className="sticky top-0 z-50 border-b border-border/60 bg-background/85 backdrop-blur-xl">
+      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 md:px-6 lg:px-8">
+
         {/* Logo */}
         <Link href="/cv" className="flex items-center gap-2.5 group">
-          <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500 to-fuchsia-600 transition-shadow group-hover:shadow-lg group-hover:shadow-violet-500/25">
-            <span className="text-sm font-black text-foreground leading-none tracking-tighter">JH</span>
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500 to-fuchsia-600 shadow-md shadow-violet-500/20 transition-shadow group-hover:shadow-lg group-hover:shadow-violet-500/30">
+            <span className="text-sm font-black text-white leading-none">JH</span>
           </div>
-          <span className="text-base font-semibold text-foreground hidden sm:block tracking-tight">JobHunter</span>
+          <span className="text-base font-bold text-foreground hidden sm:block tracking-tight">JobHunter</span>
         </Link>
 
         {/* Desktop Nav */}
         <nav className="hidden md:flex items-center">
-          <div className="flex items-center rounded-lg bg-card/80 p-0.5">
+          <div className="flex items-center rounded-xl bg-card/80 border border-border/50 p-1 gap-0.5">
             {navItems.map((item) => {
               const isActive = pathname === item.href;
               return (
                 <Link
                   key={item.href}
                   href={item.href}
-                  className={`relative flex items-center gap-2 rounded-md px-3 py-1.5 text-sm font-medium transition-all ${
+                  className={`relative flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-600 transition-all ${
                     isActive
-                      ? 'bg-muted text-foreground shadow-sm'
-                      : 'text-muted-foreground hover:text-foreground/80'
+                      ? 'bg-violet-600 text-white shadow-sm shadow-violet-500/30'
+                      : 'text-muted-foreground hover:text-foreground hover:bg-accent/60'
                   }`}
                 >
                   <item.icon className="h-3.5 w-3.5" />
@@ -72,25 +73,27 @@ export default function Navbar() {
         <div className="flex items-center gap-2">
           <button
             onClick={toggleTheme}
-            className="hidden md:flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+            className="hidden md:flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
             title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
           >
             {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
           </button>
+
           <DropdownMenu>
-            <DropdownMenuTrigger className="hidden md:flex items-center rounded-lg p-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors cursor-pointer group">
-              <Avatar className="h-8 w-8 ring-1 ring-white/10 transition-all group-hover:ring-violet-500/30">
-                <AvatarFallback className="bg-violet-600/20 text-violet-400 text-xs font-semibold">
+            <DropdownMenuTrigger className="hidden md:flex items-center gap-2 rounded-lg border border-border/50 bg-card/60 px-2.5 py-1.5 text-sm text-muted-foreground hover:text-foreground hover:bg-card hover:border-violet-500/30 transition-all cursor-pointer group">
+              <Avatar className="h-6 w-6">
+                <AvatarFallback className="bg-violet-600/25 text-violet-300 text-xs font-700">
                   {user?.email?.charAt(0).toUpperCase() || 'U'}
                 </AvatarFallback>
               </Avatar>
+              <span className="hidden lg:block text-xs font-600 max-w-[120px] truncate">{user?.email?.split('@')[0] || 'Account'}</span>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56">
-              <DropdownMenuItem onClick={() => router.push('/settings')} className="cursor-pointer">
-                <Settings className="h-4 w-4 mr-2" />
+            <DropdownMenuContent align="end" className="w-52 border-border/60 bg-card">
+              <DropdownMenuItem onClick={() => router.push('/settings')} className="cursor-pointer font-500">
+                <Settings className="h-4 w-4 mr-2 text-muted-foreground" />
                 Settings
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={handleLogout} className="text-red-400 cursor-pointer">
+              <DropdownMenuItem onClick={handleLogout} className="text-red-400 cursor-pointer font-500">
                 <LogOut className="h-4 w-4 mr-2" />
                 Sign out
               </DropdownMenuItem>
@@ -109,7 +112,7 @@ export default function Navbar() {
 
       {/* Mobile menu */}
       {mobileOpen && (
-        <div className="md:hidden border-t border-border bg-background/95 backdrop-blur-xl">
+        <div className="md:hidden border-t border-border/60 bg-background/95 backdrop-blur-xl">
           <nav className="flex flex-col px-4 py-3 gap-1">
             {navItems.map((item) => {
               const isActive = pathname === item.href;
@@ -118,9 +121,9 @@ export default function Navbar() {
                   key={item.href}
                   href={item.href}
                   onClick={() => setMobileOpen(false)}
-                  className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all ${
+                  className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-600 transition-all ${
                     isActive
-                      ? 'text-foreground bg-muted'
+                      ? 'text-white bg-violet-600 shadow-sm shadow-violet-500/20'
                       : 'text-muted-foreground hover:text-foreground hover:bg-accent/50'
                   }`}
                 >
@@ -129,10 +132,10 @@ export default function Navbar() {
                 </Link>
               );
             })}
-            <div className="border-t border-border mt-2 pt-2">
+            <div className="border-t border-border/60 mt-2 pt-2 space-y-1">
               <button
                 onClick={toggleTheme}
-                className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-accent/50 transition-colors"
+                className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-600 text-muted-foreground hover:text-foreground hover:bg-accent/50 transition-colors"
               >
                 {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
                 <span>{theme === 'dark' ? 'Light Mode' : 'Dark Mode'}</span>
@@ -140,9 +143,9 @@ export default function Navbar() {
               <Link
                 href="/settings"
                 onClick={() => setMobileOpen(false)}
-                className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all ${
+                className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-600 transition-all ${
                   pathname === '/settings'
-                    ? 'text-foreground bg-muted'
+                    ? 'text-white bg-violet-600'
                     : 'text-muted-foreground hover:text-foreground hover:bg-accent/50'
                 }`}
               >
@@ -151,7 +154,7 @@ export default function Navbar() {
               </Link>
               <button
                 onClick={() => { setMobileOpen(false); handleLogout(); }}
-                className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-red-400 hover:bg-accent/50 transition-colors"
+                className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-600 text-red-400 hover:bg-accent/50 transition-colors"
               >
                 <LogOut className="h-4 w-4" />
                 <span>Sign out</span>
