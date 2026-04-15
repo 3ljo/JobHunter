@@ -242,8 +242,36 @@ export default function Home() {
             ))}
           </nav>
 
-          {/* Mobile toggle */}
+          {/* Right side — desktop CTAs + mobile hamburger */}
           <div className="flex items-center gap-3">
+
+            {/* Desktop CTA buttons */}
+            {isLoggedIn ? (
+              <Link
+                href="/dashboard"
+                className="btn-aivent fx-slide hidden lg:inline-flex"
+                data-hover="OPEN APP"
+              >
+                <span>Open App</span>
+              </Link>
+            ) : (
+              <div className="hidden lg:flex items-center gap-2">
+                <Link
+                  href="/login"
+                  className="px-5 py-2 text-sm font-bold text-white/75 hover:text-white transition-colors"
+                >
+                  Sign In
+                </Link>
+                <Link
+                  href="/register"
+                  className="btn-aivent fx-slide"
+                  data-hover="GET STARTED"
+                >
+                  <span>Get Started Free</span>
+                </Link>
+              </div>
+            )}
+
             {/* Mobile hamburger */}
             <button
               className="lg:hidden flex items-center justify-center w-10 h-10 rounded-lg text-white/70 hover:text-white transition-colors"
@@ -345,7 +373,7 @@ export default function Home() {
       </section>
 
       {/* ══ ABOUT ══ */}
-      <section className="py-28 px-6" style={{ background: '#101435' }}>
+      <section className="py-28 px-6" style={{ background: '#101435', position: 'relative', zIndex: 1 }}>
         <div className="mx-auto max-w-6xl">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
             <div>
@@ -369,29 +397,57 @@ export default function Home() {
       </section>
 
       {/* ══ MARQUEE ══ */}
-      <div className="relative overflow-hidden" style={{ lineHeight: 1 }}>
-        <div className="py-5 overflow-hidden" style={{ background: 'oklch(0.59 0.245 291)', transform: 'rotateZ(2deg)', margin: '0 -60px' }}>
+      {/*
+        clipPath:"inset(0)" is the only reliable way to clip rotated children
+        in Chromium — overflow:hidden alone doesn't clip CSS-transformed elements.
+        paddingTop/Bottom gives room so the tilt doesn't eat into band text.
+      */}
+      <div
+        className="relative"
+        style={{
+          lineHeight: 1,
+          clipPath: 'inset(0)',
+          paddingTop: '8px',
+          paddingBottom: '8px',
+          background: '#101435', /* fills gap caused by padding */
+        }}
+      >
+        <div
+          className="py-6 overflow-hidden"
+          style={{
+            background: 'oklch(0.59 0.245 291)',
+            transform: 'rotateZ(1.5deg)',
+            margin: '0 -80px',
+          }}
+        >
           <div className="animate-marquee">
             {[...Array(2)].map((_, i) => (
               <div key={i} className="flex items-center">
                 {['CV Analysis', 'ATS Optimization', 'Smart Matching', 'Cover Letters', 'Job Tracking', 'AI Insights', 'Interview Prep', 'Score Boost'].map(t => (
                   <span key={t} className="flex items-center">
-                    <span className="text-white uppercase px-8 whitespace-nowrap" style={{ fontSize: '52px', fontWeight: 800, letterSpacing: '0.05em' }}>{t}</span>
-                    <span className="text-white/30" style={{ fontSize: '52px', fontWeight: 300 }}>/</span>
+                    <span className="text-white uppercase px-8 whitespace-nowrap" style={{ fontSize: '44px', fontWeight: 800, letterSpacing: '0.05em' }}>{t}</span>
+                    <span className="text-white/30" style={{ fontSize: '44px', fontWeight: 300 }}>/</span>
                   </span>
                 ))}
               </div>
             ))}
           </div>
         </div>
-        <div className="py-5 overflow-hidden" style={{ background: 'oklch(0.42 0.18 285)', transform: 'rotateZ(-1deg)', margin: '-20px -60px 0' }}>
+        <div
+          className="py-6 overflow-hidden"
+          style={{
+            background: 'oklch(0.42 0.18 285)',
+            transform: 'rotateZ(-0.8deg)',
+            margin: '-16px -80px 0',
+          }}
+        >
           <div className="animate-marquee-reverse">
             {[...Array(2)].map((_, i) => (
               <div key={i} className="flex items-center">
                 {['Land Faster', 'Get Hired', 'Beat ATS', 'Stand Out', 'AI Resume', 'Top Results', 'More Offers', 'Career AI'].map(t => (
                   <span key={t} className="flex items-center">
-                    <span className="text-white/80 uppercase px-8 whitespace-nowrap" style={{ fontSize: '52px', fontWeight: 800, letterSpacing: '0.05em' }}>{t}</span>
-                    <span className="text-white/20" style={{ fontSize: '52px', fontWeight: 300 }}>/</span>
+                    <span className="text-white/80 uppercase px-8 whitespace-nowrap" style={{ fontSize: '44px', fontWeight: 800, letterSpacing: '0.05em' }}>{t}</span>
+                    <span className="text-white/20" style={{ fontSize: '44px', fontWeight: 300 }}>/</span>
                   </span>
                 ))}
               </div>
@@ -401,7 +457,7 @@ export default function Home() {
       </div>
 
       {/* ══ FEATURES (image cards) ══ */}
-      <section id="features" className="py-32 px-6" style={{ background: '#101435' }}>
+      <section id="features" className="py-32 px-6" style={{ background: '#101435', position: 'relative', zIndex: 1 }}>
         <div className="mx-auto max-w-6xl">
           <div className="text-center mb-16">
             <span className="aivent-subtitle" data-reveal>Why JobHunter</span>
@@ -458,7 +514,7 @@ export default function Home() {
       </section>
 
       {/* ══ SUCCESS STORIES ══ */}
-      <section className="py-32 px-6" style={{ background: '#101435' }}>
+      <section className="py-32 px-6" style={{ background: '#101435', position: 'relative', zIndex: 1 }}>
         <div className="mx-auto max-w-6xl">
           <div className="text-center mb-16">
             <span className="aivent-subtitle" data-reveal>Success Stories</span>
@@ -505,7 +561,7 @@ export default function Home() {
       </section>
 
       {/* ══ HOW IT WORKS ══ */}
-      <section id="journey" className="py-32 px-6" style={{ background: '#101435' }}>
+      <section id="journey" className="py-32 px-6" style={{ background: '#101435', position: 'relative', zIndex: 1 }}>
         <div className="mx-auto max-w-6xl">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
 
@@ -612,7 +668,7 @@ export default function Home() {
       </section>
 
       {/* ══ FAQ ══ */}
-      <section id="faq" className="py-32 px-6" style={{ background: '#101435' }}>
+      <section id="faq" className="py-32 px-6" style={{ background: '#101435', position: 'relative', zIndex: 1 }}>
         <div className="mx-auto max-w-6xl">
           <div className="grid grid-cols-1 lg:grid-cols-5 gap-16">
             <div className="lg:col-span-2">
@@ -654,7 +710,7 @@ export default function Home() {
       </section>
 
       {/* ══ FOOTER ══ */}
-      <footer className="text-white py-16 px-6" style={{ background: '#0d1130', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+      <footer className="text-white py-16 px-6" style={{ background: '#0d1130', borderTop: '1px solid rgba(255,255,255,0.06)', position: 'relative', zIndex: 1 }}>
         <div className="mx-auto max-w-6xl">
           <div className="flex flex-col md:flex-row items-center justify-between gap-8 text-center md:text-left">
            
