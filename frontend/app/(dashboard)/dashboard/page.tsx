@@ -139,7 +139,6 @@ export default function DashboardPage() {
                 WebkitBackdropFilter: 'blur(14px)',
                 border: '1px solid rgba(255,255,255,0.08)',
                 borderBottom: 'none',
-                divideColor: 'rgba(255,255,255,0.08)',
               }}
             >
               {statBoxes.map((s) => (

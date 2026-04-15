@@ -4,7 +4,7 @@ import { useState, useCallback, useEffect } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { useCVAnalysisStore } from '@/store/cvAnalysisStore';
 import toast from 'react-hot-toast';
-import { Upload, FileText, X, Sparkles } from 'lucide-react';
+import { Upload, FileText, X } from 'lucide-react';
 
 const CV_UPLOAD_JD_KEY = 'cv_upload_job_description';
 
@@ -145,10 +145,7 @@ export default function CVUpload() {
             Analyzing…
           </span>
         ) : (
-          <span className="flex items-center gap-2.5">
-            <Sparkles className="h-4 w-4" />
-            <span>Analyze CV</span>
-          </span>
+          <span>Analyze CV</span>
         )}
       </button>
 

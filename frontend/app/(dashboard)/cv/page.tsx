@@ -118,75 +118,9 @@ export default function CVPage() {
             style={{ height: '40%', background: 'linear-gradient(0deg,#0d1130 0%,transparent 100%)' }} />
 
           <div className="relative mx-auto max-w-7xl px-6" style={{ zIndex: 2 }}>
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-start">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
 
-              {/* ── LEFT: stacked images + stats (AIvent "About" pattern) */}
-              <div className="hidden lg:block">
-                <div className="grid grid-cols-2 gap-4 items-start">
-
-                  {/* col A: s1.webp top + stat card */}
-                  <div className="flex flex-col gap-4">
-                    <div className="relative overflow-hidden rounded-xl" style={{ aspectRatio: '4/5' }}>
-                      <img
-                        src="/aivent/misc/s1.webp"
-                        alt=""
-                        className="w-full h-full object-cover"
-                        style={{ transition: 'transform 0.6s ease' }}
-                        onMouseEnter={e => (e.currentTarget.style.transform = 'scale(1.05)')}
-                        onMouseLeave={e => (e.currentTarget.style.transform = 'scale(1)')}
-                      />
-                      {/* gradient fade */}
-                      <div className="absolute bottom-0 left-0 right-0 h-1/2"
-                        style={{ background: 'linear-gradient(0deg,rgba(13,17,48,0.9) 0%,transparent 100%)' }} />
-                    </div>
-                    {/* stat pill */}
-                    <div
-                      className="rounded-xl p-5 text-center"
-                      style={{
-                        background: 'linear-gradient(135deg,rgba(118,77,240,0.2),rgba(68,36,144,0.15))',
-                        border: '1px solid rgba(118,77,240,0.25)',
-                      }}
-                    >
-                      <div className="text-3xl font-black mb-1" style={{ color: '#764DF0' }}>98%</div>
-                      <div className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.45)' }}>
-                        ATS Pass Rate
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* col B: stat card top + s2.webp */}
-                  <div className="flex flex-col gap-4" style={{ paddingTop: '48px' }}>
-                    {/* stat pill */}
-                    <div
-                      className="rounded-xl p-5 text-center"
-                      style={{
-                        background: 'linear-gradient(135deg,rgba(6,182,212,0.12),rgba(79,70,229,0.10))',
-                        border: '1px solid rgba(6,182,212,0.2)',
-                      }}
-                    >
-                      <div className="text-3xl font-black mb-1" style={{ color: '#22d3ee' }}>3x</div>
-                      <div className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.45)' }}>
-                        More Interviews
-                      </div>
-                    </div>
-                    <div className="relative overflow-hidden rounded-xl" style={{ aspectRatio: '4/5' }}>
-                      <img
-                        src="/aivent/misc/s2.webp"
-                        alt=""
-                        className="w-full h-full object-cover"
-                        style={{ transition: 'transform 0.6s ease' }}
-                        onMouseEnter={e => (e.currentTarget.style.transform = 'scale(1.05)')}
-                        onMouseLeave={e => (e.currentTarget.style.transform = 'scale(1)')}
-                      />
-                      <div className="absolute bottom-0 left-0 right-0 h-1/2"
-                        style={{ background: 'linear-gradient(0deg,rgba(13,17,48,0.9) 0%,transparent 100%)' }} />
-                    </div>
-                  </div>
-
-                </div>
-              </div>
-
-              {/* ── RIGHT: title + form ───────────────────────────── */}
+              {/* ── LEFT: title + form ───────────────────────────── */}
               <div>
                 <span className="aivent-subtitle">AI-Powered</span>
                 <h1
@@ -197,7 +131,7 @@ export default function CVPage() {
                 </h1>
                 <p className="mb-8" style={{ color: 'rgba(255,255,255,0.45)', fontSize: '16px', lineHeight: 1.7 }}>
                   {analysisLoading
-                    ? 'Your analysis is running. You can switch tabs — it won\'t be interrupted.'
+                    ? "Your analysis is running. You can switch tabs — it won't be interrupted."
                     : 'Upload your CV + paste a job description. Get ATS score, keyword gaps, and a fully rewritten CV in seconds.'}
                 </p>
 
@@ -250,6 +184,8 @@ export default function CVPage() {
                   </ul>
                 )}
               </div>
+
+           
 
             </div>
           </div>
