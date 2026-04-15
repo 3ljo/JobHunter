@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { Button } from '@/components/ui/button';
 import CVUpload from '@/components/cv/CVUpload';
 import CVPreview from '@/components/cv/CVPreview';
 import QuickEditBox from '@/components/cv/QuickEditBox';
@@ -11,19 +10,32 @@ import { downloadCVPdf } from '@/lib/api';
 import { useCVAnalysisStore } from '@/store/cvAnalysisStore';
 import { useCoverLetterStore } from '@/store/coverLetterStore';
 import toast from 'react-hot-toast';
-import { Download, RotateCcw, ArrowRight, FileSearch, TrendingUp, FileSignature, Sparkles, Copy, Check, X, Wand2, Send } from 'lucide-react';
+import {
+  Download, RotateCcw, ArrowRight, TrendingUp, FileSignature,
+  Sparkles, Copy, Check, X, Send,
+} from 'lucide-react';
 
 const tones = [
   { key: 'balanced', label: 'Balanced' },
-  { key: 'formal', label: 'Formal' },
+  { key: 'formal',   label: 'Formal'   },
   { key: 'friendly', label: 'Friendly' },
 ];
 
+const glass = {
+  background: 'rgba(0,0,0,0.30)',
+  backdropFilter: 'blur(18px)',
+  WebkitBackdropFilter: 'blur(18px)',
+  border: '1px solid rgba(255,255,255,0.08)',
+} as const;
+
 export default function CVPage() {
-  const { result, setResult, reset: resetAnalysis, loading: analysisLoading, step: analysisStep, steps: analysisSteps } = useCVAnalysisStore();
+  const {
+    result, setResult, reset: resetAnalysis,
+    loading: analysisLoading, step: analysisStep, steps: analysisSteps,
+  } = useCVAnalysisStore();
+
   const [downloading, setDownloading] = useState(false);
 
-  // Cover letter state from store (persists across tab switches)
   const {
     inlineResult: clResult,
     inlineLoading: clLoading,
@@ -36,296 +48,479 @@ export default function CVPage() {
     resetInline,
   } = useCoverLetterStore();
 
-  const [showCL, setShowCL] = useState(() => !!clResult);
-  const [clCopied, setCLCopied] = useState(false);
-  const [clRefineInput, setCLRefineInput] = useState('');
+  const [showCL,        setShowCL]        = useState(() => !!clResult);
+  const [clCopied,      setClCopied]      = useState(false);
+  const [clRefineInput, setClRefineInput] = useState('');
 
   const handleRefine = (updatedFinalCV: any) => {
     if (!result) return;
-    setResult({
-      ...result,
-      final: { ...result.final, final_cv: updatedFinalCV },
-    });
+    setResult({ ...result, final: { ...result.final, final_cv: updatedFinalCV } });
   };
 
   const handleDownload = async () => {
     if (!result?.cv_record_id) return;
     setDownloading(true);
-    try {
-      await downloadCVPdf(result.cv_record_id);
-      toast.success('PDF downloaded');
-    } catch {
-      toast.error('Failed to download PDF');
-    } finally {
-      setDownloading(false);
-    }
+    try { await downloadCVPdf(result.cv_record_id); toast.success('PDF downloaded'); }
+    catch { toast.error('Failed to download PDF'); }
+    finally { setDownloading(false); }
   };
 
-  const handleReset = () => {
-    resetAnalysis();
-    setShowCL(false);
-    resetInline();
-  };
-
-  const handleGenerateCL = async () => {
+  const handleReset       = () => { resetAnalysis(); setShowCL(false); resetInline(); };
+  const handleGenerateCL  = async () => {
     const cvText = sessionStorage.getItem('cl_cv_text') || '';
-    const jd = sessionStorage.getItem('cl_job_description') || '';
-    if (!cvText || !jd) {
-      toast.error('Missing CV or job description data');
-      return;
-    }
+    const jd     = sessionStorage.getItem('cl_job_description') || '';
+    if (!cvText || !jd) { toast.error('Missing CV or job description data'); return; }
     await generateInline(cvText, jd, clTone);
   };
-
   const handleRefineCL = async () => {
     if (!clRefineInput.trim() || !clResult) return;
     await refineInline(clResult, clRefineInput);
-    setCLRefineInput('');
+    setClRefineInput('');
   };
-
   const handleCopyCL = async () => {
     await navigator.clipboard.writeText(clResult);
-    setCLCopied(true);
+    setClCopied(true);
     toast.success('Copied to clipboard');
-    setTimeout(() => setCLCopied(false), 2000);
+    setTimeout(() => setClCopied(false), 2000);
   };
 
   const finalCV = result?.final?.final_cv;
 
-  // Upload phase (or analysis in progress)
+  /* ══ UPLOAD / LOADING PHASE ══════════════════════════════════════ */
   if (!result) {
     return (
-      <div className="flex flex-col items-center pt-8 md:pt-20">
-        <div className="text-center mb-12">
-          <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-violet-500/10 ring-1 ring-violet-500/20">
-            <FileSearch className="h-6 w-6 text-violet-400" />
-          </div>
-          <h1 className="text-3xl md:text-4xl font-bold text-foreground tracking-tight">
-            {analysisLoading ? 'Analyzing Your CV' : 'Analyze Your CV'}
-          </h1>
-          <p className="text-muted-foreground mt-3 text-base max-w-md mx-auto leading-relaxed">
-            {analysisLoading
-              ? 'Your analysis is in progress. Feel free to browse other tabs — it won\'t be interrupted.'
-              : 'Upload your CV and paste a job description to get an AI-powered ATS analysis.'}
-          </p>
-        </div>
-        {analysisLoading ? (
-          <div className="w-full max-w-2xl mx-auto">
-            <div className="relative overflow-hidden rounded-2xl border border-white/[0.07] bg-card p-5">
-              <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-violet-500/30 to-transparent" />
-              <div className="space-y-3">
-                {analysisSteps.map((s, i) => (
-                  <div
-                    key={s}
-                    className={`flex items-center gap-3 text-sm transition-all duration-300 ${
-                      i <= analysisStep ? 'text-foreground/90' : 'text-muted-foreground/40'
-                    }`}
-                  >
-                    <div className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full transition-all duration-300 ${
-                      i < analysisStep
-                        ? 'bg-violet-500/20 text-violet-400'
-                        : i === analysisStep
-                        ? 'bg-violet-500/15 ring-2 ring-violet-500/30'
-                        : 'bg-muted/50'
-                    }`}>
-                      {i < analysisStep ? (
-                        <Check className="h-3 w-3" />
-                      ) : i === analysisStep ? (
-                        <div className="h-2 w-2 rounded-full bg-violet-400 animate-pulse" />
-                      ) : (
-                        <div className="h-1.5 w-1.5 rounded-full bg-muted-foreground/40" />
-                      )}
+      <div
+        style={{
+          width: '100vw',
+          marginLeft: 'calc(-50vw + 50%)',
+          marginTop: '-32px',
+          background: '#0d1130',
+          position: 'relative',
+          zIndex: 2,
+        }}
+      >
+        {/* ── NARROW TOP BAND with background/6.webp ─────────────── */}
+        <div
+          className="relative overflow-hidden"
+          style={{
+            backgroundImage: 'url(/aivent/background/6.webp)',
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+            height: '6px',
+          }}
+        />
+        {/* violet shimmer line */}
+        <div style={{ height: '1px', background: 'linear-gradient(90deg,transparent,rgba(118,77,240,0.8),transparent)' }} />
+
+        {/* ── MAIN TWO-COLUMN SECTION ─────────────────────────────── */}
+        <section className="relative" style={{ paddingTop: '72px', paddingBottom: '80px' }}>
+
+          {/* bg/5 as full section background with heavy overlay */}
+          <div
+            className="absolute inset-0"
+            style={{
+              backgroundImage: 'url(/aivent/background/6.webp)',
+              backgroundSize: 'cover',
+              backgroundPosition: 'center',
+              opacity: 0.15,
+            }}
+          />
+          <div className="absolute inset-0" style={{ background: 'linear-gradient(135deg,rgba(13,17,48,0.95) 0%,rgba(10,13,35,0.88) 100%)' }} />
+
+          <div className="relative mx-auto max-w-7xl px-6" style={{ zIndex: 2 }}>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-start">
+
+              {/* ── LEFT: stacked images + stats (AIvent "About" pattern) */}
+              <div className="hidden lg:block">
+                <div className="grid grid-cols-2 gap-4 items-start">
+
+                  {/* col A: s1.webp top + stat card */}
+                  <div className="flex flex-col gap-4">
+                    <div className="relative overflow-hidden rounded-xl" style={{ aspectRatio: '4/5' }}>
+                      <img
+                        src="/aivent/misc/s1.webp"
+                        alt=""
+                        className="w-full h-full object-cover"
+                        style={{ transition: 'transform 0.6s ease' }}
+                        onMouseEnter={e => (e.currentTarget.style.transform = 'scale(1.05)')}
+                        onMouseLeave={e => (e.currentTarget.style.transform = 'scale(1)')}
+                      />
+                      {/* gradient fade */}
+                      <div className="absolute bottom-0 left-0 right-0 h-1/2"
+                        style={{ background: 'linear-gradient(0deg,rgba(13,17,48,0.9) 0%,transparent 100%)' }} />
                     </div>
-                    <span className="font-medium">{s}</span>
+                    {/* stat pill */}
+                    <div
+                      className="rounded-xl p-5 text-center"
+                      style={{
+                        background: 'linear-gradient(135deg,rgba(118,77,240,0.2),rgba(68,36,144,0.15))',
+                        border: '1px solid rgba(118,77,240,0.25)',
+                      }}
+                    >
+                      <div className="text-3xl font-black mb-1" style={{ color: '#764DF0' }}>98%</div>
+                      <div className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.45)' }}>
+                        ATS Pass Rate
+                      </div>
+                    </div>
                   </div>
+
+                  {/* col B: stat card top + s2.webp */}
+                  <div className="flex flex-col gap-4" style={{ paddingTop: '48px' }}>
+                    {/* stat pill */}
+                    <div
+                      className="rounded-xl p-5 text-center"
+                      style={{
+                        background: 'linear-gradient(135deg,rgba(6,182,212,0.12),rgba(79,70,229,0.10))',
+                        border: '1px solid rgba(6,182,212,0.2)',
+                      }}
+                    >
+                      <div className="text-3xl font-black mb-1" style={{ color: '#22d3ee' }}>3x</div>
+                      <div className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.45)' }}>
+                        More Interviews
+                      </div>
+                    </div>
+                    <div className="relative overflow-hidden rounded-xl" style={{ aspectRatio: '4/5' }}>
+                      <img
+                        src="/aivent/misc/s2.webp"
+                        alt=""
+                        className="w-full h-full object-cover"
+                        style={{ transition: 'transform 0.6s ease' }}
+                        onMouseEnter={e => (e.currentTarget.style.transform = 'scale(1.05)')}
+                        onMouseLeave={e => (e.currentTarget.style.transform = 'scale(1)')}
+                      />
+                      <div className="absolute bottom-0 left-0 right-0 h-1/2"
+                        style={{ background: 'linear-gradient(0deg,rgba(13,17,48,0.9) 0%,transparent 100%)' }} />
+                    </div>
+                  </div>
+
+                </div>
+              </div>
+
+              {/* ── RIGHT: title + form ───────────────────────────── */}
+              <div>
+                <span className="aivent-subtitle">AI-Powered</span>
+                <h1
+                  className="text-white leading-[1.1] mb-3"
+                  style={{ fontSize: 'clamp(32px,4.5vw,52px)', fontWeight: 800, letterSpacing: '-0.02em' }}
+                >
+                  {analysisLoading ? 'Analyzing Your CV…' : 'ATS CV Analyzer'}
+                </h1>
+                <p className="mb-8" style={{ color: 'rgba(255,255,255,0.45)', fontSize: '16px', lineHeight: 1.7 }}>
+                  {analysisLoading
+                    ? 'Your analysis is running. You can switch tabs — it won\'t be interrupted.'
+                    : 'Upload your CV + paste a job description. Get ATS score, keyword gaps, and a fully rewritten CV in seconds.'}
+                </p>
+
+                {/* form card */}
+                <div className="rounded-2xl overflow-hidden" style={glass}>
+                  <div style={{ height: '2px', background: 'linear-gradient(90deg,transparent,rgba(118,77,240,0.9),transparent)' }} />
+                  <div className="p-7">
+                    {analysisLoading ? (
+                      <div className="space-y-4">
+                        <p className="text-xs font-bold uppercase tracking-widest mb-6" style={{ color: 'rgba(255,255,255,0.3)' }}>
+                          Analysis Progress
+                        </p>
+                        {analysisSteps.map((s, i) => (
+                          <div
+                            key={s}
+                            className="flex items-center gap-3 text-sm transition-all duration-300"
+                            style={{ color: i <= analysisStep ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.2)' }}
+                          >
+                            <div
+                              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full"
+                              style={{
+                                background: i < analysisStep ? 'rgba(118,77,240,0.25)'
+                                  : i === analysisStep ? 'rgba(118,77,240,0.15)'
+                                  : 'rgba(255,255,255,0.04)',
+                                border: i === analysisStep ? '2px solid rgba(118,77,240,0.5)' : '1px solid transparent',
+                                color: i <= analysisStep ? '#a78bfa' : 'rgba(255,255,255,0.2)',
+                              }}
+                            >
+                              {i < analysisStep ? <Check className="h-3.5 w-3.5" />
+                                : i === analysisStep ? <div className="h-2 w-2 rounded-full bg-violet-400 animate-pulse" />
+                                : <div className="h-1.5 w-1.5 rounded-full" style={{ background: 'rgba(255,255,255,0.15)' }} />
+                              }
+                            </div>
+                            <span className="font-semibold">{s}</span>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <CVUpload />
+                    )}
+                  </div>
+                </div>
+
+                {/* checklist below form */}
+                {!analysisLoading && (
+                  <ul className="ul-check mt-6 space-y-2">
+                    <li style={{ color: 'rgba(255,255,255,0.5)', fontSize: '14px' }}>ATS keyword gap analysis</li>
+                    <li style={{ color: 'rgba(255,255,255,0.5)', fontSize: '14px' }}>AI-rewritten CV optimized for the role</li>
+                    <li style={{ color: 'rgba(255,255,255,0.5)', fontSize: '14px' }}>Cover letter generated from the same analysis</li>
+                  </ul>
+                )}
+              </div>
+
+            </div>
+          </div>
+        </section>
+
+        {/* ── BOTTOM BAND: s9.webp full width ───────────────────────── */}
+        <div
+          className="relative overflow-hidden"
+          style={{ height: '320px', position: 'relative' }}
+        >
+          <img
+            src="/aivent/misc/s9.webp"
+            alt=""
+            className="absolute inset-0 w-full h-full object-cover"
+            style={{ opacity: 0.35 }}
+          />
+          <div className="absolute inset-0" style={{ background: 'linear-gradient(180deg,#0d1130 0%,rgba(13,17,48,0) 40%,rgba(13,17,48,0) 60%,#0d1130 100%)' }} />
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="text-center px-6">
+              <p className="text-white/30 text-sm font-semibold uppercase tracking-widest mb-3">Trusted by job seekers worldwide</p>
+              <div className="flex items-center justify-center gap-8 flex-wrap">
+                {['10k+ CVs Analyzed', '94% ATS Pass Rate', 'Instant Results', 'PDF Export'].map((t) => (
+                  <span key={t} className="text-white/55 text-sm font-medium">{t}</span>
                 ))}
               </div>
             </div>
           </div>
-        ) : (
-          <CVUpload />
-        )}
+        </div>
+
       </div>
     );
   }
 
+  /* ══ RESULTS PHASE ════════════════════════════════════════════════ */
   const scoreDelta = result.scores.projected_ats - result.scores.current_ats;
 
-  // Results phase
   return (
-    <div className="space-y-6">
-      {/* Top bar */}
-      <div className="relative overflow-hidden rounded-2xl border border-white/[0.07] bg-card">
-        <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-violet-500/30 to-transparent" />
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-6 p-6">
-          <div className="flex items-center gap-8">
-            <ScoreRing score={result.scores.current_ats} label="Current" size={100} />
-            <div className="flex flex-col items-center gap-1">
-              <ArrowRight className="h-5 w-5 text-muted-foreground/40" />
-              {scoreDelta > 0 && (
-                <span className="flex items-center gap-0.5 text-xs font-medium text-emerald-400">
-                  <TrendingUp className="h-3 w-3" />
-                  +{scoreDelta}
-                </span>
+    <div
+      style={{
+        width: '100vw',
+        marginLeft: 'calc(-50vw + 50%)',
+        marginTop: '-32px',
+        background: '#0d1130',
+        position: 'relative',
+        zIndex: 2,
+        paddingBottom: '80px',
+      }}
+    >
+      {/* ── RESULTS HEADER — background/2.webp (different!) ────────── */}
+      <section
+        className="relative overflow-hidden"
+        style={{
+          backgroundImage: 'url(/aivent/background/2.webp)',
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          paddingTop: '64px',
+          paddingBottom: '96px',
+        }}
+      >
+        <div className="absolute inset-0" style={{ background: 'rgba(8,11,35,0.85)' }} />
+        <div className="absolute bottom-0 left-0 right-0"
+          style={{ height: '50%', background: 'linear-gradient(0deg,#0d1130 0%,transparent 100%)' }} />
+
+        <div className="relative mx-auto max-w-7xl px-6" style={{ zIndex: 2 }}>
+          <div className="text-center mb-10">
+            <span className="aivent-subtitle s2">Analysis Complete</span>
+            <h1
+              className="text-white leading-[1.1]"
+              style={{ fontSize: 'clamp(28px,4vw,46px)', fontWeight: 800, letterSpacing: '-0.02em' }}
+            >
+              Your ATS Score Report
+            </h1>
+          </div>
+
+          {/* score card */}
+          <div className="mx-auto max-w-3xl rounded-2xl overflow-hidden" style={glass}>
+            <div style={{ height: '2px', background: 'linear-gradient(90deg,transparent,rgba(118,77,240,0.9),transparent)' }} />
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-6 px-8 py-6">
+
+              {/* scores */}
+              <div className="flex items-center gap-8">
+                <ScoreRing score={result.scores.current_ats} label="Current" size={100} />
+                <div className="flex flex-col items-center gap-1">
+                  <ArrowRight className="h-5 w-5" style={{ color: 'rgba(255,255,255,0.2)' }} />
+                  {scoreDelta > 0 && (
+                    <span className="flex items-center gap-0.5 text-xs font-bold" style={{ color: '#34d399' }}>
+                      <TrendingUp className="h-3 w-3" />+{scoreDelta}
+                    </span>
+                  )}
+                </div>
+                <ScoreRing score={result.scores.projected_ats} label="Projected" size={100} />
+              </div>
+
+              {/* actions */}
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  onClick={handleDownload}
+                  disabled={downloading}
+                  className="flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition-all duration-200"
+                  style={{ background: 'rgba(118,77,240,0.18)', border: '1px solid rgba(118,77,240,0.32)', color: '#c4b5fd' }}
+                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(118,77,240,0.28)'; }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(118,77,240,0.18)'; }}
+                >
+                  <Download className="h-4 w-4" />
+                  {downloading ? 'Downloading…' : 'PDF'}
+                </button>
+                <button
+                  onClick={() => setShowCL(true)}
+                  className="flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition-all duration-200"
+                  style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.6)' }}
+                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.1)'; (e.currentTarget as HTMLElement).style.color = '#fff'; }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.06)'; (e.currentTarget as HTMLElement).style.color = 'rgba(255,255,255,0.6)'; }}
+                >
+                  <FileSignature className="h-4 w-4" />
+                  Cover Letter
+                </button>
+                <button
+                  onClick={handleReset}
+                  className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold transition-all duration-200"
+                  style={{ background: 'transparent', border: '1px solid rgba(255,255,255,0.07)', color: 'rgba(255,255,255,0.3)' }}
+                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = 'rgba(255,255,255,0.7)'; }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'rgba(255,255,255,0.3)'; }}
+                >
+                  <RotateCcw className="h-4 w-4" />
+                  New
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ── CONTENT ───────────────────────────────────────────────── */}
+      <div className="mx-auto max-w-7xl px-6 space-y-6" style={{ position: 'relative', zIndex: 1 }}>
+
+        {/* cover letter panel */}
+        {(showCL || clLoading) && (
+          <div className="rounded-2xl overflow-hidden" style={{ background: 'rgba(118,77,240,0.04)', border: '1px solid rgba(118,77,240,0.2)' }}>
+            <div style={{ height: '1px', background: 'linear-gradient(90deg,transparent,rgba(118,77,240,0.7),transparent)' }} />
+            <div className="flex items-center justify-between px-6 py-4" style={{ borderBottom: '1px solid rgba(118,77,240,0.1)' }}>
+              <div className="flex items-center gap-2.5">
+                <FileSignature className="h-4 w-4" style={{ color: '#a78bfa' }} />
+                <h3 className="text-sm font-bold" style={{ color: 'rgba(255,255,255,0.8)' }}>Cover Letter Generator</h3>
+              </div>
+              <button
+                onClick={() => setShowCL(false)}
+                className="flex h-7 w-7 items-center justify-center rounded-lg transition-colors"
+                style={{ color: 'rgba(255,255,255,0.25)' }}
+                onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = 'rgba(255,255,255,0.7)'; }}
+                onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'rgba(255,255,255,0.25)'; }}
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="p-6">
+              {!clResult ? (
+                <div className="flex items-center gap-4 flex-wrap">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.25)' }}>Tone</span>
+                    {tones.map((t) => (
+                      <button
+                        key={t.key}
+                        onClick={() => setCLTone(t.key)}
+                        disabled={clLoading}
+                        className="rounded-lg px-3 py-1.5 text-xs font-semibold transition-all"
+                        style={clTone === t.key
+                          ? { background: 'rgba(118,77,240,0.2)', color: '#c4b5fd', border: '1px solid rgba(118,77,240,0.4)' }
+                          : { background: 'rgba(255,255,255,0.04)', color: 'rgba(255,255,255,0.4)', border: '1px solid rgba(255,255,255,0.07)' }
+                        }
+                      >
+                        {t.label}
+                      </button>
+                    ))}
+                  </div>
+                  <button
+                    onClick={handleGenerateCL}
+                    disabled={clLoading}
+                    className="btn-aivent fx-slide ml-auto"
+                    data-hover="GENERATE"
+                    style={{ fontSize: '13px', padding: '8px 20px', height: 'auto' }}
+                  >
+                    {clLoading
+                      ? <span className="flex items-center gap-2"><span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/30 border-t-white" />Generating…</span>
+                      : <span className="flex items-center gap-2"><Sparkles className="h-3.5 w-3.5" /><span>Generate</span></span>
+                    }
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={handleCopyCL}
+                      className="flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold"
+                      style={{ background: 'rgba(118,77,240,0.2)', border: '1px solid rgba(118,77,240,0.35)', color: '#c4b5fd' }}
+                    >
+                      {clCopied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+                      {clCopied ? 'Copied!' : 'Copy'}
+                    </button>
+                    <button
+                      onClick={() => setCLResult('')}
+                      className="flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold"
+                      style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.5)' }}
+                    >
+                      <RotateCcw className="h-3.5 w-3.5" />
+                      Regenerate
+                    </button>
+                  </div>
+                  <p className="text-sm leading-relaxed whitespace-pre-wrap" style={{ color: 'rgba(255,255,255,0.8)' }}>
+                    {clResult}
+                  </p>
+                  <div className="flex gap-2 mt-4 pt-4" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+                    <input
+                      type="text"
+                      value={clRefineInput}
+                      onChange={(e) => setClRefineInput(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === 'Enter' && !clRefining) handleRefineCL(); }}
+                      placeholder="e.g. Make it shorter, more confident…"
+                      disabled={clRefining}
+                      className="flex-1 h-9 rounded-lg px-3 text-sm outline-none"
+                      style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.09)', color: 'rgba(255,255,255,0.8)' }}
+                    />
+                    <button
+                      onClick={handleRefineCL}
+                      disabled={clRefining || !clRefineInput.trim()}
+                      className="flex h-9 w-9 items-center justify-center rounded-lg disabled:opacity-40"
+                      style={{ background: 'rgba(118,77,240,0.25)', border: '1px solid rgba(118,77,240,0.4)', color: '#c4b5fd' }}
+                    >
+                      {clRefining
+                        ? <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                        : <Send className="h-3.5 w-3.5" />
+                      }
+                    </button>
+                  </div>
+                </div>
               )}
             </div>
-            <ScoreRing score={result.scores.projected_ats} label="Projected" size={100} />
           </div>
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleDownload}
-              disabled={downloading}
-              className="gap-2 rounded-xl border-white/[0.1] text-muted-foreground hover:bg-accent hover:text-foreground hover:border-violet-500/30 transition-all"
-            >
-              <Download className="h-4 w-4" />
-              {downloading ? 'Downloading...' : 'Download PDF'}
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setShowCL(true)}
-              className="gap-2 rounded-xl border-border text-muted-foreground hover:bg-accent hover:text-foreground transition-all"
-            >
-              <FileSignature className="h-4 w-4" />
-              Cover Letter
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleReset}
-              className="gap-2 rounded-xl text-muted-foreground hover:text-foreground"
-            >
-              <RotateCcw className="h-4 w-4" />
-              New Analysis
-            </Button>
-          </div>
-        </div>
-      </div>
+        )}
 
-      {/* Cover Letter Panel */}
-      {(showCL || clLoading) && (
-        <div className="rounded-2xl border border-violet-500/20 bg-violet-50 dark:bg-violet-500/[0.03] overflow-hidden">
-          <div className="flex items-center justify-between px-6 py-4 border-b border-violet-500/15 dark:border-violet-500/10">
-            <div className="flex items-center gap-2.5">
-              <FileSignature className="h-4 w-4 text-violet-500 dark:text-violet-400" />
-              <h3 className="text-sm font-semibold text-foreground">Cover Letter Generator</h3>
-            </div>
-            <button
-              onClick={() => setShowCL(false)}
-              className="flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-all"
-            >
-              <X className="h-4 w-4" />
-            </button>
-          </div>
-          <div className="p-6">
-            {!clResult ? (
-              <div className="flex items-center gap-4 flex-wrap">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-muted-foreground uppercase tracking-wider font-medium">Tone</span>
-                  {tones.map((t) => (
-                    <button
-                      key={t.key}
-                      onClick={() => setCLTone(t.key)}
-                      disabled={clLoading}
-                      className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-all ${
-                        clTone === t.key
-                          ? 'bg-violet-500/15 text-violet-400 ring-1 ring-violet-500/30'
-                          : 'text-muted-foreground hover:text-foreground/80 hover:bg-muted/50'
-                      }`}
-                    >
-                      {t.label}
-                    </button>
-                  ))}
-                </div>
-                <Button
-                  onClick={handleGenerateCL}
-                  disabled={clLoading}
-                  className="gap-2 rounded-xl bg-violet-600 hover:bg-violet-500 text-white text-sm font-semibold hover:shadow-lg hover:shadow-violet-500/20 transition-all active:scale-[0.98] ml-auto"
-                >
-                  {clLoading ? (
-                    <span className="flex items-center gap-2">
-                      <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-                      Generating...
-                    </span>
-                  ) : (
-                    <>
-                      <Sparkles className="h-4 w-4" />
-                      Generate
-                    </>
-                  )}
-                </Button>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                <div className="flex items-center gap-2">
-                  <Button
-                    onClick={handleCopyCL}
-                    size="sm"
-                    className="gap-2 rounded-xl bg-violet-600 hover:bg-violet-500 text-white transition-all"
-                  >
-                    {clCopied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
-                    {clCopied ? 'Copied!' : 'Copy'}
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setCLResult('')}
-                    className="gap-2 rounded-xl border-border text-muted-foreground hover:bg-accent hover:text-foreground transition-all"
-                  >
-                    <RotateCcw className="h-3.5 w-3.5" />
-                    Regenerate
-                  </Button>
-                </div>
-                <p className="text-sm text-foreground/90 leading-relaxed whitespace-pre-wrap">{clResult}</p>
-                {/* Refine */}
-                <div className="flex gap-2 mt-4 pt-4 border-t border-border">
-                  <input
-                    type="text"
-                    value={clRefineInput}
-                    onChange={(e) => setCLRefineInput(e.target.value)}
-                    onKeyDown={(e) => { if (e.key === 'Enter' && !clRefining) handleRefineCL(); }}
-                    placeholder="e.g. Make it shorter, more confident..."
-                    className="flex-1 h-9 rounded-lg border border-border bg-background/50 px-3 text-sm text-foreground placeholder:text-muted-foreground/50 focus:border-violet-500/40 focus:outline-none focus:ring-1 focus:ring-violet-500/20 transition-all"
-                    disabled={clRefining}
-                  />
-                  <Button
-                    onClick={handleRefineCL}
-                    disabled={clRefining || !clRefineInput.trim()}
-                    size="sm"
-                    className="h-9 rounded-lg bg-violet-600 hover:bg-violet-500 text-white px-3"
-                  >
-                    {clRefining ? (
-                      <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-                    ) : (
-                      <Send className="h-3.5 w-3.5" />
-                    )}
-                  </Button>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Two-column grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_420px] gap-6">
-        <div className="space-y-4">
+        {/* two-column grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_420px] gap-6">
+          {/* CV Preview */}
           <div className="sticky top-20">
-            <div className="relative max-h-[calc(100vh-220px)] overflow-y-auto rounded-2xl border border-white/[0.07] bg-card [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-              <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-violet-500/20 to-transparent" />
+            <div
+              className="rounded-2xl overflow-hidden"
+              style={{ ...glass, maxHeight: 'calc(100vh - 220px)', overflowY: 'auto' }}
+            >
+              <div style={{ height: '1px', background: 'linear-gradient(90deg,transparent,rgba(118,77,240,0.5),transparent)' }} />
               <CVPreview cv={finalCV} />
             </div>
           </div>
-        </div>
 
-        <div className="space-y-6">
-          <div className="relative overflow-hidden rounded-2xl border border-white/[0.07] bg-card p-6">
-            <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-violet-500/20 to-transparent" />
-            <AnalysisSidebar audit={result.audit} rewrite={result.rewrite} />
+          {/* Analysis + Quick Edit */}
+          <div className="space-y-6">
+            <div className="rounded-2xl p-6 overflow-hidden" style={glass}>
+              <div style={{ height: '1px', background: 'linear-gradient(90deg,transparent,rgba(118,77,240,0.5),transparent)', margin: '-24px -24px 20px' }} />
+              <AnalysisSidebar audit={result.audit} rewrite={result.rewrite} />
+            </div>
+            <QuickEditBox cvRecordId={result.cv_record_id} onRefine={handleRefine} />
           </div>
-          <QuickEditBox cvRecordId={result.cv_record_id} onRefine={handleRefine} />
         </div>
       </div>
     </div>

@@ -2,11 +2,9 @@
 
 import { useState, useCallback, useEffect } from 'react';
 import { useDropzone } from 'react-dropzone';
-import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
 import { useCVAnalysisStore } from '@/store/cvAnalysisStore';
 import toast from 'react-hot-toast';
-import { Upload, FileText, X, Sparkles, Check } from 'lucide-react';
+import { Upload, FileText, X, Sparkles } from 'lucide-react';
 
 const CV_UPLOAD_JD_KEY = 'cv_upload_job_description';
 
@@ -17,7 +15,7 @@ export default function CVUpload() {
     return sessionStorage.getItem(CV_UPLOAD_JD_KEY) || '';
   });
 
-  const { loading, step, steps, startAnalysis } = useCVAnalysisStore();
+  const { loading, startAnalysis } = useCVAnalysisStore();
 
   useEffect(() => {
     sessionStorage.setItem(CV_UPLOAD_JD_KEY, jobDescription);
@@ -41,46 +39,68 @@ export default function CVUpload() {
   };
 
   return (
-    <div className="w-full max-w-2xl mx-auto space-y-6">
+    <div className="w-full space-y-5">
+
       {/* Dropzone */}
       {!file ? (
         <div
           {...getRootProps()}
-          className={`group cursor-pointer rounded-2xl border-2 border-dashed p-14 transition-all text-center ${
-            isDragActive
-              ? 'border-violet-500 bg-violet-500/5 shadow-[0_0_40px_-10px_rgba(139,92,246,0.15)]'
-              : 'border-border hover:border-border hover:bg-white/[0.01]'
-          }`}
+          className="cursor-pointer rounded-xl p-10 text-center transition-all duration-200"
+          style={{
+            border: isDragActive
+              ? '2px dashed rgba(118,77,240,0.8)'
+              : '2px dashed rgba(255,255,255,0.1)',
+            background: isDragActive
+              ? 'rgba(118,77,240,0.08)'
+              : 'rgba(255,255,255,0.02)',
+            boxShadow: isDragActive ? '0 0 40px -10px rgba(118,77,240,0.25)' : 'none',
+          }}
         >
           <input {...getInputProps()} />
-          <div className="flex flex-col items-center gap-5">
-            <div className={`flex h-16 w-16 items-center justify-center rounded-2xl transition-all ${
-              isDragActive
-                ? 'bg-violet-500/15 ring-1 ring-violet-500/30 scale-110'
-                : 'bg-muted/60 ring-1 ring-border group-hover:bg-muted group-hover:ring-white/[0.08]'
-            }`}>
-              <Upload className={`h-7 w-7 transition-colors ${isDragActive ? 'text-violet-400' : 'text-muted-foreground group-hover:text-muted-foreground'}`} />
+          <div className="flex flex-col items-center gap-4">
+            <div
+              className="flex h-14 w-14 items-center justify-center rounded-2xl transition-all duration-200"
+              style={{
+                background: isDragActive ? 'rgba(118,77,240,0.2)' : 'rgba(255,255,255,0.05)',
+                border: isDragActive ? '1px solid rgba(118,77,240,0.4)' : '1px solid rgba(255,255,255,0.08)',
+                transform: isDragActive ? 'scale(1.1)' : 'scale(1)',
+                color: isDragActive ? '#a78bfa' : 'rgba(255,255,255,0.35)',
+              }}
+            >
+              <Upload className="h-6 w-6" />
             </div>
             <div>
-              <p className="text-base font-medium text-foreground/80">
+              <p className="text-sm font-semibold" style={{ color: isDragActive ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.6)' }}>
                 {isDragActive ? 'Drop your CV here' : 'Drop your CV here or click to browse'}
               </p>
-              <p className="text-sm text-muted-foreground/60 mt-1.5">PDF format, max 5MB</p>
+              <p className="text-xs mt-1" style={{ color: 'rgba(255,255,255,0.25)' }}>PDF format · max 5 MB</p>
             </div>
           </div>
         </div>
       ) : (
-        <div className="flex items-center gap-4 rounded-2xl border border-border bg-card/70 px-5 py-4 transition-all">
-          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-violet-500/10 ring-1 ring-violet-500/20">
-            <FileText className="h-5 w-5 text-violet-400" />
+        <div
+          className="flex items-center gap-4 rounded-xl px-5 py-4"
+          style={{
+            background: 'rgba(118,77,240,0.08)',
+            border: '1px solid rgba(118,77,240,0.22)',
+          }}
+        >
+          <div
+            className="flex h-10 w-10 items-center justify-center rounded-xl shrink-0"
+            style={{ background: 'rgba(118,77,240,0.18)', border: '1px solid rgba(118,77,240,0.3)' }}
+          >
+            <FileText className="h-5 w-5" style={{ color: '#a78bfa' }} />
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-foreground/90 truncate">{file.name}</p>
-            <p className="text-xs text-muted-foreground/60 mt-0.5">{(file.size / 1024).toFixed(0)} KB</p>
+            <p className="text-sm font-semibold truncate" style={{ color: 'rgba(255,255,255,0.85)' }}>{file.name}</p>
+            <p className="text-xs mt-0.5" style={{ color: 'rgba(255,255,255,0.3)' }}>{(file.size / 1024).toFixed(0)} KB</p>
           </div>
           <button
             onClick={(e) => { e.stopPropagation(); setFile(null); }}
-            className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground/60 hover:text-foreground/80 hover:bg-accent transition-all"
+            className="flex h-8 w-8 items-center justify-center rounded-lg transition-colors"
+            style={{ color: 'rgba(255,255,255,0.3)' }}
+            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = 'rgba(255,255,255,0.7)'; }}
+            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'rgba(255,255,255,0.3)'; }}
           >
             <X className="h-4 w-4" />
           </button>
@@ -89,68 +109,49 @@ export default function CVUpload() {
 
       {/* Job description */}
       <div className="space-y-2">
-        <label className="block text-xs font-medium uppercase tracking-wider text-muted-foreground">Job Description</label>
-        <Textarea
-          placeholder="Paste the job description you're targeting..."
+        <label className="block text-[11px] font-bold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.3)' }}>
+          Job Description
+        </label>
+        <textarea
+          placeholder="Paste the job description you're targeting…"
           value={jobDescription}
           onChange={(e) => setJobDescription(e.target.value)}
           rows={5}
-          className="rounded-xl bg-card/70 border-border focus:border-violet-500/40 focus:ring-1 focus:ring-violet-500/20 resize-none text-sm placeholder:text-muted-foreground/50 transition-all max-h-[200px] overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
           disabled={loading}
+          className="w-full rounded-xl px-4 py-3 text-sm resize-none outline-none transition-all"
+          style={{
+            background: 'rgba(255,255,255,0.03)',
+            border: '1px solid rgba(255,255,255,0.08)',
+            color: 'rgba(255,255,255,0.8)',
+            maxHeight: '200px',
+            overflowY: 'auto',
+          }}
+          onFocus={e => { (e.currentTarget as HTMLElement).style.borderColor = 'rgba(118,77,240,0.45)'; }}
+          onBlur={e => { (e.currentTarget as HTMLElement).style.borderColor = 'rgba(255,255,255,0.08)'; }}
         />
       </div>
 
       {/* Analyze button */}
-      <Button
+      <button
         onClick={handleAnalyze}
         disabled={loading || !file}
-        className="group w-full h-12 rounded-xl text-base font-semibold bg-violet-600 hover:bg-violet-500 text-white gap-2.5 transition-all hover:shadow-lg hover:shadow-violet-500/20 active:scale-[0.98]"
+        className="btn-aivent fx-slide w-full disabled:opacity-50 disabled:cursor-not-allowed"
+        data-hover="ANALYZE NOW"
+        style={{ justifyContent: 'center', height: '48px' }}
       >
         {loading ? (
           <span className="flex items-center gap-2.5">
             <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-            Analyzing...
+            Analyzing…
           </span>
         ) : (
-          <>
-            <Sparkles className="h-4 w-4 transition-transform group-hover:scale-110" />
-            Analyze CV
-          </>
+          <span className="flex items-center gap-2.5">
+            <Sparkles className="h-4 w-4" />
+            <span>Analyze CV</span>
+          </span>
         )}
-      </Button>
+      </button>
 
-      {/* Progress steps */}
-      {loading && (
-        <div className="rounded-2xl border border-border bg-card/70 p-5">
-          <div className="space-y-3">
-            {steps.map((s, i) => (
-              <div
-                key={s}
-                className={`flex items-center gap-3 text-sm transition-all duration-300 ${
-                  i <= step ? 'text-foreground/90' : 'text-muted-foreground/40'
-                }`}
-              >
-                <div className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full transition-all duration-300 ${
-                  i < step
-                    ? 'bg-violet-500/20 text-violet-400'
-                    : i === step
-                    ? 'bg-violet-500/15 ring-2 ring-violet-500/30'
-                    : 'bg-muted/50'
-                }`}>
-                  {i < step ? (
-                    <Check className="h-3 w-3" />
-                  ) : i === step ? (
-                    <div className="h-2 w-2 rounded-full bg-violet-400 animate-pulse" />
-                  ) : (
-                    <div className="h-1.5 w-1.5 rounded-full bg-muted-foreground/40" />
-                  )}
-                </div>
-                <span className="font-medium">{s}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
     </div>
   );
 }
