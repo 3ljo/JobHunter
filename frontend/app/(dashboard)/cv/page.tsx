@@ -99,33 +99,23 @@ export default function CVPage() {
           zIndex: 2,
         }}
       >
-        {/* ── NARROW TOP BAND with background/6.webp ─────────────── */}
-        <div
+        {/* ── MAIN TWO-COLUMN SECTION — background/6.webp hero ──────── */}
+        <section
           className="relative overflow-hidden"
           style={{
             backgroundImage: 'url(/aivent/background/6.webp)',
             backgroundSize: 'cover',
             backgroundPosition: 'center',
-            height: '6px',
+            backgroundAttachment: 'fixed',
+            paddingTop: '72px',
+            paddingBottom: '80px',
           }}
-        />
-        {/* violet shimmer line */}
-        <div style={{ height: '1px', background: 'linear-gradient(90deg,transparent,rgba(118,77,240,0.8),transparent)' }} />
-
-        {/* ── MAIN TWO-COLUMN SECTION ─────────────────────────────── */}
-        <section className="relative" style={{ paddingTop: '72px', paddingBottom: '80px' }}>
-
-          {/* bg/5 as full section background with heavy overlay */}
-          <div
-            className="absolute inset-0"
-            style={{
-              backgroundImage: 'url(/aivent/background/6.webp)',
-              backgroundSize: 'cover',
-              backgroundPosition: 'center',
-              opacity: 0.15,
-            }}
-          />
-          <div className="absolute inset-0" style={{ background: 'linear-gradient(135deg,rgba(13,17,48,0.95) 0%,rgba(10,13,35,0.88) 100%)' }} />
+        >
+          {/* dark tint — light enough to see the image */}
+          <div className="absolute inset-0" style={{ background: 'rgba(8,11,32,0.65)' }} />
+          {/* bottom fade into page bg */}
+          <div className="absolute bottom-0 left-0 right-0"
+            style={{ height: '40%', background: 'linear-gradient(0deg,#0d1130 0%,transparent 100%)' }} />
 
           <div className="relative mx-auto max-w-7xl px-6" style={{ zIndex: 2 }}>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-start">
