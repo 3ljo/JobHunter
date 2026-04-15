@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/authStore';
@@ -15,106 +15,92 @@ import {
 import { Menu, X, LogOut, Settings, Sun, Moon, ChevronDown } from 'lucide-react';
 
 const navItems = [
-  { href: '/dashboard', label: 'Dashboard' },
-  { href: '/cv', label: 'CV Analyzer' },
+  { href: '/dashboard',    label: 'Dashboard'    },
+  { href: '/cv',           label: 'CV Analyzer'  },
   { href: '/cover-letter', label: 'Cover Letter' },
-  { href: '/tracker', label: 'Tracker' },
-  { href: '/cv-history', label: 'History' },
+  { href: '/tracker',      label: 'Tracker'      },
+  { href: '/cv-history',   label: 'History'      },
 ];
 
 export default function Navbar() {
-  const pathname = usePathname();
-  const router = useRouter();
-  const { user, logout } = useAuthStore();
+  const pathname   = usePathname();
+  const router     = useRouter();
+  const { user, logout }      = useAuthStore();
   const { theme, toggleTheme } = useThemeStore();
-  const [mobileOpen, setMobileOpen] = useState(false);
+  const [scrolled,    setScrolled]    = useState(false);
+  const [mobileOpen,  setMobileOpen]  = useState(false);
 
-  const dark = theme === 'dark';
+  /* scroll detection — same as landing page */
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 60);
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
 
   const handleLogout = () => {
     logout();
     router.push('/login');
   };
 
-  const navBg = dark
-    ? 'rgba(13,16,48,0.85)'
-    : 'rgba(255,255,255,0.85)';
-
-  const navBorder = dark
-    ? '1px solid rgba(255,255,255,0.06)'
-    : '1px solid rgba(0,0,0,0.07)';
-
   return (
     <>
+      {/* ══ HEADER ══ */}
       <header
-        className="sticky top-0 z-50 w-full backdrop-blur-2xl"
-        style={{
-          background: navBg,
-          borderBottom: navBorder,
-          boxShadow: dark
-            ? '0 4px 30px rgba(0,0,0,0.5), inset 0 -1px 0 rgba(118,77,240,0.2)'
-            : '0 4px 20px rgba(0,0,0,0.06), inset 0 -1px 0 rgba(118,77,240,0.12)',
-        }}
+        className="fixed top-0 left-0 right-0 z-50 transition-all duration-300"
+        style={
+          scrolled
+            ? {
+                background: 'rgba(16,20,53,0.93)',
+                backdropFilter: 'blur(20px)',
+                WebkitBackdropFilter: 'blur(20px)',
+                borderBottom: '1px solid rgba(255,255,255,0.08)',
+              }
+            : {
+                background: 'rgba(16,20,53,0.72)',
+                backdropFilter: 'blur(16px)',
+                WebkitBackdropFilter: 'blur(16px)',
+                borderBottom: '1px solid rgba(255,255,255,0.06)',
+              }
+        }
       >
-        <div className="mx-auto flex h-[68px] max-w-7xl items-center justify-between px-4 md:px-6 lg:px-8">
+        <div className="mx-auto flex h-[72px] max-w-7xl items-center justify-between px-6">
 
           {/* ── LOGO ── */}
-          <Link href="/dashboard" className="flex items-center gap-3 shrink-0 group">
-            <div
-              className="flex h-9 w-9 items-center justify-center rounded-xl font-black text-white text-sm transition-transform duration-200 group-hover:scale-105"
-              style={{
-                background: 'linear-gradient(135deg, #764DF0 0%, #442490 100%)',
-                boxShadow: '0 0 18px rgba(118,77,240,0.5)',
-              }}
-            >
-              JH
-            </div>
-            <span
-              className="text-[15px] font-black tracking-tight hidden sm:block"
-              style={{ color: dark ? '#fff' : '#0f0f1a' }}
-            >
-              Job<span style={{ color: '#764DF0' }}>Hunter</span>
-            </span>
+          <Link href="/dashboard" className="flex-shrink-0">
+            <img
+              src="/aivent/logo.webp"
+              alt="JobHunter"
+              style={{ height: '34px', width: 'auto' }}
+            />
           </Link>
 
           {/* ── DESKTOP NAV ── */}
-          <nav className="hidden md:flex items-center gap-1">
+          <nav className="hidden lg:flex items-center gap-1">
             {navItems.map((item) => {
               const isActive = pathname === item.href;
               return (
                 <Link
                   key={item.href}
                   href={item.href}
-                  className="relative px-4 py-2 rounded-lg text-[13px] font-semibold transition-all duration-200"
-                  style={isActive ? {
-                    background: 'linear-gradient(135deg, #764DF0, #5a35d4)',
-                    color: '#fff',
-                    boxShadow: '0 2px 18px rgba(118,77,240,0.45), inset 0 1px 0 rgba(255,255,255,0.15)',
-                  } : {
-                    color: dark ? 'rgba(255,255,255,0.5)' : 'rgba(15,15,26,0.5)',
-                  }}
-                  onMouseEnter={e => {
-                    if (!isActive) {
-                      const el = e.currentTarget as HTMLElement;
-                      el.style.color = dark ? 'rgba(255,255,255,0.9)' : 'rgba(15,15,26,0.85)';
-                      el.style.background = dark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)';
-                    }
-                  }}
-                  onMouseLeave={e => {
-                    if (!isActive) {
-                      const el = e.currentTarget as HTMLElement;
-                      el.style.color = dark ? 'rgba(255,255,255,0.5)' : 'rgba(15,15,26,0.5)';
-                      el.style.background = 'transparent';
-                    }
+                  className="relative px-4 py-2 text-sm font-semibold transition-colors duration-200"
+                  style={{
+                    color: isActive ? '#fff' : 'rgba(255,255,255,0.55)',
+                    letterSpacing: '0.01em',
                   }}
                 >
                   {item.label}
-                  {isActive && (
-                    <span
-                      className="absolute -bottom-[1px] left-1/2 -translate-x-1/2 h-px w-4/5 rounded-full"
-                      style={{ background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent)' }}
-                    />
-                  )}
+                  {/* violet underline — same scaleX transition as landing page */}
+                  <span
+                    className="absolute left-4 right-4 transition-all duration-300"
+                    style={{
+                      bottom: '0px',
+                      height: '2px',
+                      background: '#764DF0',
+                      opacity: isActive ? 1 : 0,
+                      transform: isActive ? 'scaleX(1)' : 'scaleX(0)',
+                      transformOrigin: 'center',
+                    }}
+                  />
                 </Link>
               );
             })}
@@ -123,79 +109,73 @@ export default function Navbar() {
           {/* ── RIGHT SIDE ── */}
           <div className="flex items-center gap-2">
 
-            {/* Theme toggle */}
+            {/* Theme toggle — subtle icon button */}
             <button
               onClick={toggleTheme}
-              className="hidden md:flex h-9 w-9 items-center justify-center rounded-lg transition-all duration-200"
-              style={{ color: dark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.4)' }}
-              onMouseEnter={e => {
-                const el = e.currentTarget as HTMLElement;
-                el.style.background = dark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.06)';
-                el.style.color = dark ? 'rgba(255,255,255,0.85)' : 'rgba(0,0,0,0.8)';
-              }}
-              onMouseLeave={e => {
-                const el = e.currentTarget as HTMLElement;
-                el.style.background = 'transparent';
-                el.style.color = dark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.4)';
-              }}
+              className="hidden md:flex h-9 w-9 items-center justify-center rounded-lg transition-colors duration-200 text-white/45 hover:text-white/90"
+              style={{ background: 'transparent' }}
+              aria-label="Toggle theme"
             >
-              {dark ? <Sun className="h-[17px] w-[17px]" /> : <Moon className="h-[17px] w-[17px]" />}
+              {theme === 'dark'
+                ? <Sun  className="h-[17px] w-[17px]" />
+                : <Moon className="h-[17px] w-[17px]" />
+              }
             </button>
 
-            {/* User dropdown */}
+            {/* User dropdown — styled like landing page CTA area */}
             <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button
-                  className="hidden md:flex items-center gap-2.5 rounded-xl px-3 py-2 text-[13px] font-semibold transition-all duration-200 outline-none"
-                  style={{
-                    background: dark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)',
-                    border: dark ? '1px solid rgba(255,255,255,0.08)' : '1px solid rgba(0,0,0,0.08)',
-                    color: dark ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.65)',
-                  }}
-                  onMouseEnter={e => {
-                    const el = e.currentTarget as HTMLElement;
-                    el.style.borderColor = 'rgba(118,77,240,0.4)';
-                    el.style.boxShadow = '0 0 14px rgba(118,77,240,0.18)';
-                  }}
-                  onMouseLeave={e => {
-                    const el = e.currentTarget as HTMLElement;
-                    el.style.borderColor = dark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)';
-                    el.style.boxShadow = 'none';
-                  }}
+              <DropdownMenuTrigger
+                className="hidden md:flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-bold transition-all duration-200 outline-none"
+                style={{
+                  background: 'rgba(255,255,255,0.06)',
+                  border: '1px solid rgba(255,255,255,0.1)',
+                  color: 'rgba(255,255,255,0.75)',
+                  letterSpacing: '0.01em',
+                }}
+                onMouseEnter={e => {
+                  const el = e.currentTarget as HTMLElement;
+                  el.style.background = 'rgba(255,255,255,0.1)';
+                  el.style.borderColor = 'rgba(118,77,240,0.45)';
+                  el.style.color = '#fff';
+                }}
+                onMouseLeave={e => {
+                  const el = e.currentTarget as HTMLElement;
+                  el.style.background = 'rgba(255,255,255,0.06)';
+                  el.style.borderColor = 'rgba(255,255,255,0.1)';
+                  el.style.color = 'rgba(255,255,255,0.75)';
+                }}
+              >
+                {/* Avatar */}
+                <div
+                  className="h-6 w-6 rounded-md flex items-center justify-center text-xs font-black text-white shrink-0"
+                  style={{ background: 'linear-gradient(135deg,#764DF0,#442490)' }}
                 >
-                  {/* Avatar circle */}
-                  <div
-                    className="h-6 w-6 rounded-lg flex items-center justify-center text-xs font-black text-white shrink-0"
-                    style={{ background: 'linear-gradient(135deg, #764DF0, #442490)' }}
-                  >
-                    {user?.email?.charAt(0).toUpperCase() || 'U'}
-                  </div>
-                  <span className="hidden lg:block max-w-[110px] truncate">
-                    {user?.email?.split('@')[0] || 'Account'}
-                  </span>
-                  <ChevronDown className="h-3.5 w-3.5 opacity-50 shrink-0" />
-                </button>
+                  {user?.email?.charAt(0).toUpperCase() ?? 'U'}
+                </div>
+                <span className="hidden lg:block max-w-[100px] truncate">
+                  {user?.email?.split('@')[0] ?? 'Account'}
+                </span>
+                <ChevronDown className="h-3.5 w-3.5 opacity-50 shrink-0" />
               </DropdownMenuTrigger>
 
               <DropdownMenuContent
                 align="end"
                 className="w-52 rounded-xl p-1"
                 style={{
-                  background: dark ? '#12163a' : '#ffffff',
-                  border: dark ? '1px solid rgba(255,255,255,0.1)' : '1px solid rgba(0,0,0,0.1)',
-                  boxShadow: dark ? '0 8px 32px rgba(0,0,0,0.5)' : '0 8px 32px rgba(0,0,0,0.12)',
+                  background: '#12163a',
+                  border: '1px solid rgba(255,255,255,0.1)',
+                  boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
                 }}
               >
                 <div className="px-3 py-2 mb-1">
-                  <p className="text-xs font-semibold truncate" style={{ color: dark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.4)' }}>
-                    {user?.email || 'preview@localhost.com'}
+                  <p className="text-xs font-semibold truncate text-white/40">
+                    {user?.email ?? ''}
                   </p>
                 </div>
-                <DropdownMenuSeparator style={{ background: dark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.07)' }} />
+                <DropdownMenuSeparator style={{ background: 'rgba(255,255,255,0.07)' }} />
                 <DropdownMenuItem
                   onClick={() => router.push('/settings')}
-                  className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm cursor-pointer mt-1"
-                  style={{ color: dark ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.7)' }}
+                  className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm cursor-pointer mt-1 text-white/70 hover:text-white"
                 >
                   <Settings className="h-4 w-4 opacity-60" />
                   Settings
@@ -211,30 +191,27 @@ export default function Navbar() {
               </DropdownMenuContent>
             </DropdownMenu>
 
-            {/* Mobile hamburger */}
+            {/* Mobile hamburger — same as landing page */}
             <button
+              className="lg:hidden flex items-center justify-center w-10 h-10 rounded-lg text-white/70 hover:text-white transition-colors"
+              style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }}
               onClick={() => setMobileOpen(!mobileOpen)}
-              className="md:hidden h-9 w-9 flex items-center justify-center rounded-lg transition-all duration-200"
-              style={{ color: dark ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.6)' }}
+              aria-label="Toggle menu"
             >
               {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
             </button>
           </div>
         </div>
-      </header>
 
-      {/* ── MOBILE MENU ── */}
-      {mobileOpen && (
-        <div
-          className="md:hidden fixed inset-x-0 z-40 backdrop-blur-2xl"
-          style={{
-            top: 68,
-            background: dark ? 'rgba(13,16,48,0.97)' : 'rgba(255,255,255,0.97)',
-            borderBottom: dark ? '1px solid rgba(255,255,255,0.07)' : '1px solid rgba(0,0,0,0.08)',
-            boxShadow: dark ? '0 12px 40px rgba(0,0,0,0.5)' : '0 12px 40px rgba(0,0,0,0.1)',
-          }}
-        >
-          <nav className="px-4 py-4 space-y-1">
+        {/* ── MOBILE DROPDOWN ── same style as landing page */}
+        {mobileOpen && (
+          <div
+            className="lg:hidden px-6 pb-6 pt-2"
+            style={{
+              background: 'rgba(16,20,53,0.97)',
+              borderBottom: '1px solid rgba(255,255,255,0.08)',
+            }}
+          >
             {navItems.map((item) => {
               const isActive = pathname === item.href;
               return (
@@ -242,13 +219,10 @@ export default function Navbar() {
                   key={item.href}
                   href={item.href}
                   onClick={() => setMobileOpen(false)}
-                  className="flex items-center px-4 py-3 rounded-xl text-sm font-semibold transition-all duration-200"
-                  style={isActive ? {
-                    background: 'linear-gradient(135deg, #764DF0, #5a35d4)',
-                    color: '#fff',
-                    boxShadow: '0 2px 16px rgba(118,77,240,0.4)',
-                  } : {
-                    color: dark ? 'rgba(255,255,255,0.55)' : 'rgba(0,0,0,0.55)',
+                  className="block py-3 text-sm font-semibold border-b transition-colors duration-200"
+                  style={{
+                    color: isActive ? '#764DF0' : 'rgba(255,255,255,0.7)',
+                    borderColor: 'rgba(255,255,255,0.06)',
                   }}
                 >
                   {item.label}
@@ -256,41 +230,37 @@ export default function Navbar() {
               );
             })}
 
-            <div className="pt-3 mt-3 space-y-1" style={{ borderTop: dark ? '1px solid rgba(255,255,255,0.07)' : '1px solid rgba(0,0,0,0.07)' }}>
+            <div className="mt-5 space-y-2">
               <button
-                onClick={() => { toggleTheme(); }}
-                className="flex w-full items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all"
-                style={{ color: dark ? 'rgba(255,255,255,0.55)' : 'rgba(0,0,0,0.55)' }}
+                onClick={toggleTheme}
+                className="flex w-full items-center gap-3 py-3 text-sm font-semibold text-white/55 hover:text-white transition-colors"
               >
-                {dark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-                {dark ? 'Light Mode' : 'Dark Mode'}
+                {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+                {theme === 'dark' ? 'Light Mode' : 'Dark Mode'}
               </button>
               <Link
                 href="/settings"
                 onClick={() => setMobileOpen(false)}
-                className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all"
-                style={pathname === '/settings' ? {
-                  background: 'linear-gradient(135deg, #764DF0, #5a35d4)',
-                  color: '#fff',
-                } : {
-                  color: dark ? 'rgba(255,255,255,0.55)' : 'rgba(0,0,0,0.55)',
-                }}
+                className="flex items-center gap-3 py-3 text-sm font-semibold text-white/55 hover:text-white transition-colors"
               >
                 <Settings className="h-4 w-4" />
                 Settings
               </Link>
               <button
                 onClick={() => { setMobileOpen(false); handleLogout(); }}
-                className="flex w-full items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all"
+                className="flex w-full items-center gap-3 py-3 text-sm font-semibold transition-colors"
                 style={{ color: '#f87171' }}
               >
                 <LogOut className="h-4 w-4" />
                 Sign out
               </button>
             </div>
-          </nav>
-        </div>
-      )}
+          </div>
+        )}
+      </header>
+
+      {/* spacer so content doesn't hide under fixed navbar */}
+      <div style={{ height: '72px' }} />
     </>
   );
 }
