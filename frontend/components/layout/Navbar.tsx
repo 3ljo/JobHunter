@@ -144,7 +144,7 @@ export default function Navbar() {
 
             {/* User dropdown */}
             <DropdownMenu>
-              <DropdownMenuTrigger>
+              <DropdownMenuTrigger asChild>
                 <button
                   className="hidden md:flex items-center gap-2.5 rounded-xl px-3 py-2 text-[13px] font-semibold transition-all duration-200 outline-none"
                   style={{
