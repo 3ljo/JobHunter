@@ -497,18 +497,13 @@ export default function Home() {
         <div className="absolute top-0 left-0 right-0" style={{ height: '120px', background: 'linear-gradient(180deg,#101435 0%,transparent 100%)' }} />
         <div className="absolute bottom-0 left-0 right-0" style={{ height: '120px', background: 'linear-gradient(0deg,#101435 0%,transparent 100%)' }} />
 
-        <div className="relative mx-auto max-w-6xl px-6" style={{ zIndex: 4 }}>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-12 items-center">
-            <div className="relative wow scale-in-mask">
-              <div className="absolute top-0 right-0 w-16 h-16 flex items-center justify-center rounded-lg z-10 text-white text-4xl" style={{ fontWeight: 800, lineHeight: 1, background: 'oklch(0.59 0.245 291)' }}>"</div>
-              <img src="https://images.unsplash.com/photo-1573497019236-17f8177b81e8?w=500&h=600&fit=crop&q=80" alt="HR professional" className="w-full rounded-xl" />
-            </div>
-            <div className="md:col-span-2 wow fadeInUp" data-wow-delay=".2s">
-              <h3 className="text-white leading-relaxed mb-6" style={{ fontSize: 'clamp(20px,2.5vw,28px)', fontWeight: 600 }}>
-                "AI is fundamentally reshaping how people find work. Those who embrace AI-powered tools in their job search will have an insurmountable advantage over those who don't."
-              </h3>
-              <span className="text-white/45 text-sm uppercase tracking-widest" style={{ fontWeight: 500 }}>— The Future of Work Report, 2026</span>
-            </div>
+        <div className="relative mx-auto max-w-3xl px-6 text-center" style={{ zIndex: 4 }}>
+          <div className="wow fadeInUp">
+            <div className="text-6xl font-black mb-6" style={{ color: 'oklch(0.59 0.245 291)', lineHeight: 1 }}>"</div>
+            <h3 className="text-white leading-relaxed mb-6" style={{ fontSize: 'clamp(20px,2.5vw,30px)', fontWeight: 600 }}>
+              AI is fundamentally reshaping how people find work. Those who embrace AI-powered tools in their job search will have an insurmountable advantage over those who don't.
+            </h3>
+            <span className="text-white/45 text-sm uppercase tracking-widest" style={{ fontWeight: 500 }}>— The Future of Work Report, 2026</span>
           </div>
         </div>
       </section>

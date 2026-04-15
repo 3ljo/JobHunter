@@ -255,30 +255,6 @@ export default function CVPage() {
           </div>
         </section>
 
-        {/* ── BOTTOM BAND: s9.webp full width ───────────────────────── */}
-        <div
-          className="relative overflow-hidden"
-          style={{ height: '320px', position: 'relative' }}
-        >
-          <img
-            src="/aivent/misc/s9.webp"
-            alt=""
-            className="absolute inset-0 w-full h-full object-cover"
-            style={{ opacity: 0.35 }}
-          />
-          <div className="absolute inset-0" style={{ background: 'linear-gradient(180deg,#0d1130 0%,rgba(13,17,48,0) 40%,rgba(13,17,48,0) 60%,#0d1130 100%)' }} />
-          <div className="absolute inset-0 flex items-center justify-center">
-            <div className="text-center px-6">
-              <p className="text-white/30 text-sm font-semibold uppercase tracking-widest mb-3">Trusted by job seekers worldwide</p>
-              <div className="flex items-center justify-center gap-8 flex-wrap">
-                {['10k+ CVs Analyzed', '94% ATS Pass Rate', 'Instant Results', 'PDF Export'].map((t) => (
-                  <span key={t} className="text-white/55 text-sm font-medium">{t}</span>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-
       </div>
     );
   }
