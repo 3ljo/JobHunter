@@ -14,6 +14,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Menu, X, LogOut, Settings, ChevronDown, Crown, Gift } from 'lucide-react';
+import LanguageSwitcher from './LanguageSwitcher';
 
 const navItems = [
   { href: '/dashboard',    label: 'Dashboard'    },
@@ -117,6 +118,9 @@ export default function Navbar() {
 
           {/* ── RIGHT SIDE ── */}
           <div className="flex items-center gap-2">
+
+            {/* Language switcher */}
+            <LanguageSwitcher />
 
             {/* User dropdown — styled like landing page CTA area */}
             <DropdownMenu>

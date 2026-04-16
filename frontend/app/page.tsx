@@ -5,6 +5,7 @@ import Link from 'next/link';
 
 import { ChevronDown, Menu, X, Tag, X as XIcon } from 'lucide-react';
 import axios from 'axios';
+import LanguageSwitcher from '@/components/layout/LanguageSwitcher';
 
 /* ── Scroll reveal ── */
 function useScrollReveal() {
@@ -299,6 +300,7 @@ export default function Home() {
 
           {/* Right side */}
           <div className="flex items-center gap-3">
+            <LanguageSwitcher />
             {isLoggedIn ? (
               <Link
                 href="/cv"

@@ -540,3 +540,25 @@
 .lds-roller-sm div:nth-child(7):after { top: 18.9px; left: 5.1px; }
 .lds-roller-sm div:nth-child(8) { animation-delay: -0.288s; }
 .lds-roller-sm div:nth-child(8):after { top: 16.8px; left: 3.6px; }
+
+/* ── Google Translate — nuke every visible element ── */
+.goog-te-banner-frame { display: none !important; }
+body { top: 0 !important; }
+#google_translate_element { position: fixed !important; left: -9999px !important; top: -9999px !important; }
+body > .skiptranslate { display: none !important; height: 0 !important; overflow: hidden !important; }
+body > .skiptranslate iframe,
+iframe.goog-te-banner-frame,
+iframe.skiptranslate { display: none !important; height: 0 !important; }
+#goog-gt-tt, .goog-te-balloon-frame, .goog-te-menu-frame,
+.goog-te-ftab-frame, div[id^="goog-gt-"] { display: none !important; }
+.goog-te-spinner-pos { display: none !important; position: fixed !important; left: -9999px !important; top: -9999px !important; }
+.goog-tooltip { display: none !important; }
+.goog-text-highlight { background: none !important; box-shadow: none !important; }
+/* Prevent body shift */
+body[style*="top"] { top: 0 !important; }
+
+/* Language list scrollbar */
+.lang-list::-webkit-scrollbar { width: 4px; }
+.lang-list::-webkit-scrollbar-track { background: transparent; }
+.lang-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 4px; }
+.lang-list::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
