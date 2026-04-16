@@ -26,7 +26,7 @@ const register = async (req, res) => {
     return res.status(400).json({ error: errors.array()[0].msg });
   }
 
-  const { email, password } = req.body;
+  const { email, password, referral_code } = req.body;
 
   try {
     const { data, error } = await supabase.auth.admin.createUser({
@@ -37,6 +37,12 @@ const register = async (req, res) => {
 
     if (error) {
       return res.status(400).json({ error: error.message });
+    }
+
+    // If a referral code was provided, link the referral
+    if (referral_code && data.user) {
+      const { applyReferralOnRegistration } = require('./referralController');
+      await applyReferralOnRegistration(data.user.id, referral_code);
     }
 
     return res.status(201).json({

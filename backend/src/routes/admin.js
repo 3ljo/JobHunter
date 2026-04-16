@@ -10,6 +10,8 @@ const {
   saveSettings,
   checkAdmin,
 } = require('../controllers/adminController');
+const { listPromos, createPromo, updatePromo, deletePromo } = require('../controllers/promoController');
+const { getAdminReferrals } = require('../controllers/referralController');
 
 // All routes require admin
 router.use(requireAdmin);
@@ -20,5 +22,14 @@ router.get('/users', getUsers);
 router.get('/usage', getUsageAnalytics);
 router.get('/settings', getSettings);
 router.put('/settings', saveSettings);
+
+// Promo codes
+router.get('/promos', listPromos);
+router.post('/promos', createPromo);
+router.put('/promos/:id', updatePromo);
+router.delete('/promos/:id', deletePromo);
+
+// Referrals
+router.get('/referrals', getAdminReferrals);
 
 module.exports = router;

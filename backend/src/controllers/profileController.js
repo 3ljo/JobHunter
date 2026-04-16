@@ -74,15 +74,28 @@ const createProfile = async (req, res) => {
   }
 };
 
-// Get authenticated user's usage stats
+// Get authenticated user's usage stats (subscription-aware limits)
 const getMyUsage = async (req, res) => {
   try {
-    const { getSetting } = require('../services/settingsService');
+    const { getPlanLimits } = require('../services/stripeService');
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
     const monthStart = new Date();
     monthStart.setDate(1);
     monthStart.setHours(0, 0, 0, 0);
+
+    // Look up user's subscription plan
+    let plan = 'free';
+    try {
+      const { data: sub } = await supabase
+        .from('subscriptions')
+        .select('plan, status')
+        .eq('user_id', req.user.id)
+        .single();
+      if (sub && sub.status === 'active') plan = sub.plan;
+    } catch { /* no subscription row — free plan */ }
+
+    const limits = getPlanLimits(plan);
 
     // Today's CV analyses
     const { count: cvToday } = await supabase
@@ -118,10 +131,11 @@ const getMyUsage = async (req, res) => {
 
     res.json({
       usage: {
+        plan,
         cv_today: cvToday || 0,
-        cv_limit: parseInt(getSetting('rate_limit_cv_per_day')) || 10,
+        cv_limit: limits.cv_limit,
         cl_today: clToday || 0,
-        cl_limit: parseInt(getSetting('rate_limit_cl_per_day')) || 20,
+        cl_limit: limits.cl_limit,
         month_total: monthTotal || 0,
         total_cvs: totalCVs || 0,
       },
@@ -130,8 +144,9 @@ const getMyUsage = async (req, res) => {
     // If api_usage table doesn't exist, return zeroes
     res.json({
       usage: {
-        cv_today: 0, cv_limit: 10,
-        cl_today: 0, cl_limit: 20,
+        plan: 'free',
+        cv_today: 0, cv_limit: 3,
+        cl_today: 0, cl_limit: 5,
         month_total: 0, total_cvs: 0,
       },
     });

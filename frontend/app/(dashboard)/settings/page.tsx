@@ -8,7 +8,10 @@ import { useAuthStore } from '@/store/authStore';
 import { changePassword, getMyUsage } from '@/lib/api';
 import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
-import { Settings, Lock, LogOut, Mail, Shield, Eye, EyeOff, BarChart3, FileText, FileSignature, Zap } from 'lucide-react';
+import { Settings, Lock, LogOut, Mail, Shield, Eye, EyeOff, BarChart3, FileText, FileSignature, Zap, Crown, ExternalLink, Gift, Copy, Check, Users } from 'lucide-react';
+import { useSubscriptionStore } from '@/store/subscriptionStore';
+import { createPortalSession, getMyReferralCode, getMyReferrals } from '@/lib/api';
+import Link from 'next/link';
 
 interface UsageData {
   cv_today: number;
@@ -28,12 +31,46 @@ export default function SettingsPage() {
   const [showNew, setShowNew] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [usage, setUsage] = useState<UsageData | null>(null);
+  const { subscription, fetchSubscription } = useSubscriptionStore();
+  const [portalLoading, setPortalLoading] = useState(false);
+  const [referralCode, setReferralCode] = useState<string | null>(null);
+  const [referralCount, setReferralCount] = useState(0);
+  const [referralCopied, setReferralCopied] = useState(false);
 
   useEffect(() => {
     getMyUsage()
       .then((res) => setUsage(res.data.usage))
       .catch(() => {});
-  }, []);
+    fetchSubscription();
+    getMyReferralCode()
+      .then((res) => {
+        setReferralCode(res.data.referral_code.code);
+        setReferralCount(res.data.referral_code.times_used || 0);
+      })
+      .catch(() => {});
+  }, [fetchSubscription]);
+
+  const referralLink = referralCode
+    ? `${typeof window !== 'undefined' ? window.location.origin : ''}/register?ref=${referralCode}`
+    : '';
+
+  const handleCopyReferral = (text: string) => {
+    navigator.clipboard.writeText(text);
+    setReferralCopied(true);
+    toast.success('Copied to clipboard!');
+    setTimeout(() => setReferralCopied(false), 2000);
+  };
+
+  const handleManageBilling = async () => {
+    setPortalLoading(true);
+    try {
+      const res = await createPortalSession();
+      window.location.href = res.data.url;
+    } catch {
+      toast.error('Failed to open billing portal');
+      setPortalLoading(false);
+    }
+  };
 
   const handleChangePassword = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -146,6 +183,147 @@ export default function SettingsPage() {
               </div>
               <span className="text-xl font-black text-foreground">{usage.total_cvs}</span>
               <p className="text-[10px] text-muted-foreground/50 mt-1">analyzed</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Subscription */}
+      <div className="relative overflow-hidden rounded-2xl border border-white/[0.07] bg-card p-6">
+        <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-violet-500/20 to-transparent" />
+        <h2 className="text-sm font-semibold text-foreground flex items-center gap-2 mb-4">
+          <Crown className="h-4 w-4 text-violet-400" />
+          Subscription
+        </h2>
+
+        <div className="flex items-center justify-between gap-4 flex-wrap">
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <span className="text-lg font-black text-foreground capitalize">
+                {subscription?.plan === 'pro_plus' ? 'Pro+' : subscription?.plan || 'Free'}
+              </span>
+              <span
+                className="text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full"
+                style={{
+                  background: subscription?.status === 'active' ? 'rgba(16,185,129,0.12)' : 'rgba(239,68,68,0.12)',
+                  color: subscription?.status === 'active' ? '#34d399' : '#f87171',
+                }}
+              >
+                {subscription?.status || 'active'}
+              </span>
+            </div>
+
+            {subscription?.plan !== 'free' && subscription?.current_period_end && (
+              <p className="text-xs text-muted-foreground/60">
+                {subscription.cancel_at_period_end ? 'Cancels' : 'Renews'} on{' '}
+                {new Date(subscription.current_period_end).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+                {subscription.billing_interval && ` (${subscription.billing_interval}ly)`}
+              </p>
+            )}
+
+            {subscription?.plan === 'free' && (
+              <p className="text-xs text-muted-foreground/60">Upgrade to unlock more analyses and features</p>
+            )}
+          </div>
+
+          <div className="flex items-center gap-2">
+            {subscription?.plan !== 'free' && (
+              <Button
+                onClick={handleManageBilling}
+                disabled={portalLoading}
+                variant="outline"
+                className="rounded-xl border-white/10 text-sm hover:bg-white/5 transition-all"
+              >
+                {portalLoading ? (
+                  <span className="flex items-center gap-2">
+                    <span className="h-3.5 w-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    Opening...
+                  </span>
+                ) : (
+                  <span className="flex items-center gap-2">
+                    <ExternalLink className="h-3.5 w-3.5" />
+                    Manage Billing
+                  </span>
+                )}
+              </Button>
+            )}
+            <Link
+              href="/pricing"
+              className="btn-aivent fx-slide"
+              data-hover={subscription?.plan === 'free' ? 'UPGRADE' : 'CHANGE PLAN'}
+            >
+              <span>{subscription?.plan === 'free' ? 'Upgrade' : 'Change Plan'}</span>
+            </Link>
+          </div>
+        </div>
+      </div>
+
+      {/* Referral Program */}
+      {referralCode && (
+        <div className="relative overflow-hidden rounded-2xl border border-white/[0.07] bg-card p-6">
+          <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-violet-500/20 to-transparent" />
+          <h2 className="text-sm font-semibold text-foreground flex items-center gap-2 mb-4">
+            <Gift className="h-4 w-4 text-violet-400" />
+            Referral Program
+          </h2>
+
+          <p className="text-xs text-muted-foreground/60 mb-4">
+            Share your code with friends. They get <span className="text-emerald-400 font-semibold">30% off</span> their first month, and you get a <span className="text-emerald-400 font-semibold">free month</span> when they subscribe.
+          </p>
+
+          {/* Referral code */}
+          <div className="mb-4">
+            <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground block mb-1.5">Your Referral Code</label>
+            <div className="flex items-center gap-2">
+              <div
+                className="flex-1 flex items-center h-10 rounded-xl px-4 text-sm font-mono font-bold text-white tracking-wider"
+                style={{ background: 'rgba(118,77,240,0.08)', border: '1px solid rgba(118,77,240,0.2)' }}
+              >
+                {referralCode}
+              </div>
+              <button
+                onClick={() => handleCopyReferral(referralCode)}
+                className="h-10 w-10 rounded-xl flex items-center justify-center transition-all"
+                style={{ background: 'rgba(118,77,240,0.1)', border: '1px solid rgba(118,77,240,0.2)' }}
+                title="Copy code"
+              >
+                {referralCopied ? <Check className="h-4 w-4 text-emerald-400" /> : <Copy className="h-4 w-4 text-violet-400" />}
+              </button>
+            </div>
+          </div>
+
+          {/* Shareable link */}
+          <div className="mb-4">
+            <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground block mb-1.5">Shareable Link</label>
+            <div className="flex items-center gap-2">
+              <div
+                className="flex-1 flex items-center h-10 rounded-xl px-4 text-xs text-white/60 truncate"
+                style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)' }}
+              >
+                {referralLink}
+              </div>
+              <button
+                onClick={() => handleCopyReferral(referralLink)}
+                className="h-10 w-10 rounded-xl flex items-center justify-center transition-all shrink-0"
+                style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}
+                title="Copy link"
+              >
+                <Copy className="h-4 w-4 text-muted-foreground" />
+              </button>
+            </div>
+          </div>
+
+          {/* Stats */}
+          <div
+            className="flex items-center gap-3 rounded-xl p-3"
+            style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)' }}
+          >
+            <Users className="h-4 w-4 text-muted-foreground" />
+            <div>
+              <span className="text-lg font-black text-foreground tabular-nums">{referralCount}</span>
+              <span className="text-xs text-muted-foreground/60 ml-1.5">
+                {referralCount === 1 ? 'person' : 'people'} referred
+              </span>
             </div>
           </div>
         </div>

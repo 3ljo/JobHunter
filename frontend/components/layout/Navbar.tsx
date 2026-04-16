@@ -1,9 +1,11 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/authStore';
+import { useSubscriptionStore } from '@/store/subscriptionStore';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -11,7 +13,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Menu, X, LogOut, Settings, ChevronDown } from 'lucide-react';
+import { Menu, X, LogOut, Settings, ChevronDown, Crown, Gift } from 'lucide-react';
 
 const navItems = [
   { href: '/dashboard',    label: 'Dashboard'    },
@@ -25,8 +27,17 @@ export default function Navbar() {
   const pathname   = usePathname();
   const router     = useRouter();
   const { user, logout }      = useAuthStore();
+  const { subscription, fetchSubscription } = useSubscriptionStore();
   const [scrolled,    setScrolled]    = useState(false);
   const [mobileOpen,  setMobileOpen]  = useState(false);
+
+  useEffect(() => {
+    fetchSubscription();
+  }, [fetchSubscription]);
+
+  const planLabel = subscription?.plan === 'pro_plus' ? 'Pro+' : subscription?.plan === 'pro' ? 'Pro' : 'Free';
+  const planColor = subscription?.plan === 'pro_plus' ? '#c084fc' : subscription?.plan === 'pro' ? '#764DF0' : 'rgba(255,255,255,0.4)';
+  const planBg = subscription?.plan === 'pro_plus' ? 'rgba(192,132,252,0.15)' : subscription?.plan === 'pro' ? 'rgba(118,77,240,0.15)' : 'rgba(255,255,255,0.06)';
 
   /* scroll detection — same as landing page */
   useEffect(() => {
@@ -140,6 +151,12 @@ export default function Navbar() {
                 <span className="hidden lg:block max-w-[100px] truncate">
                   {user?.email?.split('@')[0] ?? 'Account'}
                 </span>
+                <span
+                  className="hidden lg:block text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded"
+                  style={{ background: planBg, color: planColor }}
+                >
+                  {planLabel}
+                </span>
                 <ChevronDown className="h-3.5 w-3.5 opacity-50 shrink-0" />
               </DropdownMenuTrigger>
 
@@ -159,8 +176,22 @@ export default function Navbar() {
                 </div>
                 <DropdownMenuSeparator style={{ background: 'rgba(255,255,255,0.07)' }} />
                 <DropdownMenuItem
-                  onClick={() => router.push('/settings')}
+                  onClick={() => router.push('/referrals')}
                   className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm cursor-pointer mt-1 text-white/70 hover:text-white"
+                >
+                  <Gift className="h-4 w-4 opacity-60" />
+                  Referrals
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => router.push('/pricing')}
+                  className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm cursor-pointer text-white/70 hover:text-white"
+                >
+                  <Crown className="h-4 w-4 opacity-60" />
+                  Pricing
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => router.push('/settings')}
+                  className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm cursor-pointer text-white/70 hover:text-white"
                 >
                   <Settings className="h-4 w-4 opacity-60" />
                   Settings
@@ -216,6 +247,22 @@ export default function Navbar() {
             })}
 
             <div className="mt-5 space-y-2">
+              <Link
+                href="/referrals"
+                onClick={() => setMobileOpen(false)}
+                className="flex items-center gap-3 py-3 text-sm font-semibold text-white/55 hover:text-white transition-colors"
+              >
+                <Gift className="h-4 w-4" />
+                Referrals
+              </Link>
+              <Link
+                href="/pricing"
+                onClick={() => setMobileOpen(false)}
+                className="flex items-center gap-3 py-3 text-sm font-semibold text-white/55 hover:text-white transition-colors"
+              >
+                <Crown className="h-4 w-4" />
+                Pricing
+              </Link>
               <Link
                 href="/settings"
                 onClick={() => setMobileOpen(false)}

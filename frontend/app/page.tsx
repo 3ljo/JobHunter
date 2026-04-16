@@ -3,7 +3,8 @@
 import { useEffect, useState, useRef } from 'react';
 import Link from 'next/link';
 
-import { ChevronDown, Menu, X } from 'lucide-react';
+import { ChevronDown, Menu, X, Tag, X as XIcon } from 'lucide-react';
+import axios from 'axios';
 
 /* ── Scroll reveal ── */
 function useScrollReveal() {
@@ -62,11 +63,17 @@ export default function Home() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [activeSection, setActiveSection] = useState('hero');
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [promoBanner, setPromoBanner] = useState<{ code: string; discount_type: string; discount_amount: number; expires_at: string | null } | null>(null);
+  const [bannerDismissed, setBannerDismissed] = useState(false);
   const navScrolled = useNavbarScroll();
   useScrollReveal();
 
   useEffect(() => {
     setIsLoggedIn(!!localStorage.getItem('auth_token'));
+    // Fetch active promo banner
+    axios.get(`${process.env.NEXT_PUBLIC_API_URL}/api/promo/banner`)
+      .then((res) => { if (res.data.banner) setPromoBanner(res.data.banner); })
+      .catch(() => {});
   }, []);
 
   /* ── Active section tracking ── */
@@ -158,7 +165,7 @@ export default function Home() {
       period: '/month',
       features: ['3 CV analyses per day', '5 cover letters per day', 'ATS score & keyword report', 'PDF downloads'],
       cta: 'Get Started Free',
-      href: '/register',
+      href: isLoggedIn ? '/pricing' : '/register',
       highlight: false,
     },
     {
@@ -167,8 +174,8 @@ export default function Home() {
       price: '$9.99',
       period: '/month',
       features: ['25 CV analyses per day', 'Unlimited cover letters', 'Full ATS audit & optimization', 'AI quick edits', 'Priority AI processing', 'Full CV history & analytics'],
-      cta: 'Start Pro',
-      href: '/register',
+      cta: isLoggedIn ? 'Upgrade to Pro' : 'Start Pro',
+      href: isLoggedIn ? '/pricing' : '/register',
       highlight: true,
     },
     {
@@ -177,8 +184,8 @@ export default function Home() {
       price: '$14.99',
       period: '/month',
       features: ['Unlimited CV analyses', 'Unlimited cover letters', 'Full ATS audit & optimization', 'AI quick edits', 'Job application tracker', 'Priority AI processing', 'Full CV history & analytics', 'Advanced voice matching'],
-      cta: 'Start Pro+',
-      href: '/register',
+      cta: isLoggedIn ? 'Upgrade to Pro+' : 'Start Pro+',
+      href: isLoggedIn ? '/pricing' : '/register',
       highlight: false,
     },
   ];
@@ -196,17 +203,62 @@ export default function Home() {
   return (
     <div className="min-h-screen text-white overflow-x-hidden" style={{ background: '#0a0d24' }}>
 
-      {/* AIvent JS removed — it uses jQuery to manipulate the DOM (jarallax, header classes, etc.)
-         which conflicts with React and causes layout breakage on production builds. All effects
-         (scroll reveal, sticky nav, parallax) are handled in React/CSS instead. */}
+      {/* ══ PROMO BANNER ══ */}
+      {promoBanner && !bannerDismissed && (
+        <div
+          className="fixed top-0 left-0 right-0 z-[60] flex items-center justify-center px-4 py-2.5"
+          style={{
+            background: 'linear-gradient(90deg, oklch(0.48 0.22 291), oklch(0.59 0.245 291), oklch(0.48 0.22 291))',
+            boxShadow: '0 2px 20px rgba(118,77,240,0.4)',
+          }}
+        >
+          <div className="flex items-center gap-3 text-sm font-semibold text-white">
+            <Tag className="h-4 w-4 shrink-0" />
+            <span>
+              {promoBanner.discount_type === 'percent'
+                ? `${promoBanner.discount_amount}% OFF`
+                : `$${promoBanner.discount_amount} OFF`}
+              {' '} — Use code{' '}
+              <span
+                className="font-black tracking-wider px-2 py-0.5 rounded mx-1"
+                style={{ background: 'rgba(255,255,255,0.2)' }}
+              >
+                {promoBanner.code}
+              </span>
+              {' '}at checkout
+              {promoBanner.expires_at && (
+                <span className="opacity-70 ml-1">
+                  &middot; Ends {new Date(promoBanner.expires_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                </span>
+              )}
+            </span>
+            <Link
+              href={isLoggedIn ? '/pricing' : '/register'}
+              className="ml-2 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider shrink-0 transition-all hover:scale-105"
+              style={{ background: 'rgba(255,255,255,0.2)', color: '#fff' }}
+            >
+              {isLoggedIn ? 'Upgrade Now' : 'Get Started'}
+            </Link>
+          </div>
+          <button
+            onClick={() => setBannerDismissed(true)}
+            className="absolute right-4 top-1/2 -translate-y-1/2 text-white/60 hover:text-white transition-colors"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      )}
 
       {/* ══ NAVBAR ══ */}
       <header
-        className="fixed top-0 left-0 right-0 z-50 transition-all duration-300"
-        style={navScrolled
-          ? { background: 'rgba(16,20,53,0.93)', backdropFilter: 'blur(20px)', borderBottom: '1px solid rgba(255,255,255,0.08)' }
-          : { background: 'transparent', borderBottom: '1px solid transparent' }
-        }
+        className="fixed left-0 right-0 z-50 transition-all duration-300"
+        style={{
+          top: promoBanner && !bannerDismissed ? '40px' : '0',
+          ...(navScrolled
+            ? { background: 'rgba(16,20,53,0.93)', backdropFilter: 'blur(20px)', borderBottom: '1px solid rgba(255,255,255,0.08)' }
+            : { background: 'transparent', borderBottom: '1px solid transparent' }
+          ),
+        }}
       >
         <div className="mx-auto max-w-7xl px-6 flex items-center justify-between h-[72px]">
 

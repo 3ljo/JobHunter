@@ -5,5 +5,7 @@
   "ai_model_gemini": "gemini-2.0-flash",
   "max_tokens": 4000,
   "rate_limit_cv_per_day": 10,
-  "rate_limit_cl_per_day": 20
+  "rate_limit_cl_per_day": 20,
+  "usdt_wallet_address": "",
+  "usdt_network": "TRC-20"
 }

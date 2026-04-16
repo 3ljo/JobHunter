@@ -351,7 +351,7 @@
   width: max-content;
 }
 
-/* d-ticket pricing card */
+/* d-ticket pricing card (landing page style) */
 .d-ticket-card {
   border-radius: 10px;
   padding: 30px;
@@ -361,6 +361,49 @@
   position: relative;
   overflow: hidden;
 }
+
+/* d-ticket (tickets-2 style with bg image) */
+.d-ticket {
+  position: relative;
+  overflow: hidden;
+  padding: 30px;
+  background: url('/aivent/misc/l3.webp');
+  background-size: cover;
+  background-position: center;
+  border-radius: 10px;
+  box-shadow: 2px 2px 5px 0px rgba(0,0,0,1);
+}
+.d-ticket.s2 { background-image: url('/aivent/misc/l4.webp'); }
+.d-ticket.s3 { background-image: url('/aivent/misc/l5.webp'); }
+.d-ticket h2 { font-size: 36px; margin: 0; }
+
+/* bg-blur glass effect */
+.bg-blur {
+  background: rgba(0,0,0,0.15);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+}
+
+/* gradient-edge-bottom */
+.gradient-edge-bottom-color {
+  z-index: 1;
+  position: absolute;
+  bottom: 0;
+  width: 100%;
+  height: 30%;
+  background: linear-gradient(0deg, rgba(118,77,240,1) 0%, rgba(118,77,240,0) 100%);
+}
+
+/* id-color — primary accent */
+.id-color { color: oklch(0.72 0.19 291); }
+
+/* opacity helpers */
+.op-5 { opacity: 0.5; }
+.op-8 { opacity: 0.8; }
+
+/* border helpers */
+.border-white-op-3 { border: solid 1px rgba(255,255,255,0.3); }
+.border-white-bottom-op-2 { border-bottom: solid 1px rgba(255,255,255,0.2); }
 
 /* Schedule tabs */
 .sched-tab {

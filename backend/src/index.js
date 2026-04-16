@@ -14,6 +14,11 @@ const jobTrackerRoutes = require('./routes/jobTracker');
 const coverLetterRoutes = require('./routes/coverLetter');
 const adminRoutes = require('./routes/admin');
 
+const subscriptionRoutes = require('./routes/subscription');
+const promoRoutes = require('./routes/promo');
+const referralRoutes = require('./routes/referral');
+const { handleWebhook } = require('./controllers/subscriptionController');
+
 const app = express();
 const PORT = process.env.PORT || 5000;
 
@@ -22,6 +27,9 @@ app.use(cors({
   origin: process.env.FRONTEND_URL?.split(',').map(u => u.trim()),
   credentials: true,
 }));
+
+// Stripe webhook needs raw body — must be before express.json()
+app.post('/api/subscription/webhook', express.raw({ type: 'application/json' }), handleWebhook);
 
 // Parse JSON request bodies
 app.use(express.json());
@@ -39,6 +47,9 @@ app.use('/api/cv', cvRoutes);
 app.use('/api/tracker', jobTrackerRoutes);
 app.use('/api/cover-letter', coverLetterRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/subscription', subscriptionRoutes);
+app.use('/api/promo', promoRoutes);
+app.use('/api/referral', referralRoutes);
 
 // Global error handler
 app.use((err, req, res, next) => {

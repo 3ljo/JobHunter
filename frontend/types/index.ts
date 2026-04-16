@@ -76,6 +76,21 @@ export interface TrackerStats {
   saved: number;
 }
 
+export interface Subscription {
+  plan: 'free' | 'pro' | 'pro_plus';
+  status: 'active' | 'trialing' | 'past_due' | 'canceled' | 'unpaid' | 'incomplete';
+  billing_interval: 'month' | 'year' | null;
+  current_period_end: string | null;
+  cancel_at_period_end: boolean;
+  stripe_customer_id?: string;
+  stripe_subscription_id?: string;
+}
+
+export interface SubscriptionResponse {
+  subscription: Subscription;
+  limits: { cv_limit: number; cl_limit: number };
+}
+
 export interface ApiResponse<T> {
   message?: string;
   data?: T;

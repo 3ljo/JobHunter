@@ -1,15 +1,28 @@
 // Rate limiting middleware
-// Checks api_usage table to enforce daily limits from settings.json
+// Checks api_usage table to enforce daily limits based on user's subscription plan
 
 const supabase = require('../services/supabaseClient');
-const { getSetting } = require('../services/settingsService');
+const { getPlanLimits } = require('../services/stripeService');
 
-const createRateLimiter = (feature, settingKey) => {
+const createRateLimiter = (feature, limitKey) => {
   return async (req, res, next) => {
     try {
-      const limit = parseInt(getSetting(settingKey)) || 999;
       const userId = req.user?.id;
       if (!userId) return next();
+
+      // Look up user's subscription plan
+      let plan = 'free';
+      try {
+        const { data: sub } = await supabase
+          .from('subscriptions')
+          .select('plan, status')
+          .eq('user_id', userId)
+          .single();
+        if (sub && sub.status === 'active') plan = sub.plan;
+      } catch { /* no subscription row — free plan */ }
+
+      const limits = getPlanLimits(plan);
+      const limit = limits[limitKey];
 
       // Count today's usage for this user + feature
       const todayStart = new Date();
@@ -27,16 +40,18 @@ const createRateLimiter = (feature, settingKey) => {
       if (error) return next();
 
       if (count >= limit) {
+        const planName = plan === 'pro_plus' ? 'Pro+' : plan === 'pro' ? 'Pro' : 'Free';
         return res.status(429).json({
-          error: `Daily limit reached. You can use this feature ${limit} times per day. Try again tomorrow or upgrade your plan.`,
+          error: `Daily limit reached (${planName} plan: ${limit}/day). Upgrade your plan for more.`,
           limit,
           used: count,
+          plan,
           resetsAt: new Date(todayStart.getTime() + 24 * 60 * 60 * 1000).toISOString(),
         });
       }
 
       // Attach usage info for downstream use
-      req.rateLimitInfo = { used: count, limit, remaining: limit - count };
+      req.rateLimitInfo = { used: count, limit, remaining: limit - count, plan };
       next();
     } catch {
       // Don't block requests if rate limiting fails
@@ -45,7 +60,7 @@ const createRateLimiter = (feature, settingKey) => {
   };
 };
 
-const rateLimitCV = createRateLimiter('cv_analysis', 'rate_limit_cv_per_day');
-const rateLimitCL = createRateLimiter('cover_letter', 'rate_limit_cl_per_day');
+const rateLimitCV = createRateLimiter('cv_analysis', 'cv_limit');
+const rateLimitCL = createRateLimiter('cover_letter', 'cl_limit');
 
 module.exports = { rateLimitCV, rateLimitCL };

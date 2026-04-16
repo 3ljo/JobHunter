@@ -13,6 +13,8 @@ interface AppSettings {
   max_tokens: number;
   rate_limit_cv_per_day: number;
   rate_limit_cl_per_day: number;
+  usdt_wallet_address: string;
+  usdt_network: string;
 }
 
 const PROVIDERS = [
@@ -243,6 +245,52 @@ export default function BosiSettings() {
               className="w-24 px-3 py-1.5 rounded-lg text-xs text-white/70 text-right outline-none"
               style={{ background: '#141736', border: '1px solid rgba(255,255,255,0.1)' }}
             />
+          </div>
+        </div>
+      </div>
+
+      {/* USDT Payment Settings */}
+      <div>
+        <h3 className="text-white/70 text-xs uppercase tracking-widest font-semibold mb-4">
+          USDT Payment
+        </h3>
+        <div className="space-y-4">
+          <div
+            className="rounded-xl p-4"
+            style={{ background: '#1a1e42', border: '1px solid rgba(255,255,255,0.10)' }}
+          >
+            <p className="text-white/70 text-sm font-semibold mb-1">Wallet Address</p>
+            <p className="text-white/55 text-xs mb-2">USDT address shown to customers at checkout</p>
+            <input
+              type="text"
+              value={settings.usdt_wallet_address || ''}
+              onChange={(e) => { setSettings({ ...settings, usdt_wallet_address: e.target.value }); setSaved(false); }}
+              placeholder="e.g. TXqZ1r..."
+              className="w-full px-3 py-2 rounded-lg text-sm text-white font-mono placeholder:text-white/25 outline-none"
+              style={{ background: '#141736', border: '1px solid rgba(255,255,255,0.1)' }}
+            />
+          </div>
+
+          <div
+            className="rounded-xl p-4 flex items-center justify-between"
+            style={{ background: '#1a1e42', border: '1px solid rgba(255,255,255,0.10)' }}
+          >
+            <div>
+              <p className="text-white/70 text-sm font-semibold">Network / Chain</p>
+              <p className="text-white/55 text-xs">Which blockchain network to receive USDT on</p>
+            </div>
+            <select
+              value={settings.usdt_network || 'TRC-20'}
+              onChange={(e) => { setSettings({ ...settings, usdt_network: e.target.value }); setSaved(false); }}
+              className="px-3 py-1.5 rounded-lg text-xs text-white/70 outline-none cursor-pointer"
+              style={{ background: '#141736', border: '1px solid rgba(255,255,255,0.1)' }}
+            >
+              <option value="TRC-20">TRC-20 (Tron)</option>
+              <option value="ERC-20">ERC-20 (Ethereum)</option>
+              <option value="BEP-20">BEP-20 (BSC)</option>
+              <option value="SOL">Solana</option>
+              <option value="MATIC">Polygon</option>
+            </select>
           </div>
         </div>
       </div>

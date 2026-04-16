@@ -8,6 +8,7 @@ import {
   CVAnalysisResult,
   CVRecord,
   TrackerStats,
+  SubscriptionResponse,
 } from '@/types';
 
 const api = axios.create({
@@ -36,8 +37,8 @@ api.interceptors.response.use(
 );
 
 // Auth
-export const registerUser = (email: string, password: string) =>
-  api.post<{ message: string; user: User }>('/api/auth/register', { email, password });
+export const registerUser = (email: string, password: string, referral_code?: string) =>
+  api.post<{ message: string; user: User }>('/api/auth/register', { email, password, referral_code });
 
 export const loginUser = (email: string, password: string) =>
   api.post<{ user: User; session: { access_token: string } }>('/api/auth/login', { email, password });
@@ -147,6 +148,50 @@ export const changePassword = (newPassword: string) =>
 // Usage
 export const getMyUsage = () =>
   api.get('/api/profile/usage');
+
+// Promo codes
+export const validatePromoCode = (code: string) =>
+  api.post<{ valid: boolean; promo: { id: string; code: string; discount_type: 'percent' | 'fixed'; discount_amount: number } }>('/api/promo/validate', { code });
+
+// Referrals
+export const getMyReferralCode = () =>
+  api.get<{ referral_code: { id: string; user_id: string; code: string; times_used: number } }>('/api/referral/my-code');
+
+export const getMyReferrals = () =>
+  api.get<{ referrals: Array<{ id: string; referred_user_id: string; referred_email: string; referrer_reward_applied: boolean; referred_reward_applied: boolean; created_at: string }> }>('/api/referral/my-referrals');
+
+export const validateReferralCode = (code: string) =>
+  api.post<{ valid: boolean; referral_code: string }>('/api/referral/validate', { code });
+
+export const checkReferralDiscount = () =>
+  api.get<{ has_discount: boolean; discount_type?: string; discount_amount?: number; label?: string }>('/api/referral/check-discount');
+
+// Admin promo codes
+export const getAdminPromos = () =>
+  api.get('/api/admin/promos');
+
+export const createAdminPromo = (data: { code: string; discount_type: string; discount_amount: number; max_uses?: number; expires_at?: string }) =>
+  api.post('/api/admin/promos', data);
+
+export const updateAdminPromo = (id: string, data: Record<string, any>) =>
+  api.put(`/api/admin/promos/${id}`, data);
+
+export const deleteAdminPromo = (id: string) =>
+  api.delete(`/api/admin/promos/${id}`);
+
+// Admin referrals
+export const getAdminReferrals = () =>
+  api.get('/api/admin/referrals');
+
+// Subscription
+export const getSubscription = () =>
+  api.get<SubscriptionResponse>('/api/subscription');
+
+export const createCheckoutSession = (plan: string, interval: 'month' | 'year', payment_method?: string) =>
+  api.post<{ url: string }>('/api/subscription/checkout', { plan, interval, payment_method });
+
+export const createPortalSession = () =>
+  api.post<{ url: string }>('/api/subscription/portal');
 
 // Admin
 export const checkAdmin = () =>
