@@ -31,8 +31,8 @@ app.use(cors({
 // Stripe webhook needs raw body — must be before express.json()
 app.post('/api/subscription/webhook', express.raw({ type: 'application/json' }), handleWebhook);
 
-// Parse JSON request bodies
-app.use(express.json());
+// Parse JSON request bodies (2MB limit to accommodate base64 profile photos for CV templates)
+app.use(express.json({ limit: '2mb' }));
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {

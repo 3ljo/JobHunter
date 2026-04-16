@@ -76,8 +76,16 @@ export const getCVHistory = () =>
 export const deleteCV = (cvId: string) =>
   api.delete<{ message: string }>(`/api/cv/${cvId}`);
 
-export const downloadCVPdf = async (cvId: string) => {
-  const res = await api.get(`/api/cv/download/${cvId}`, { responseType: 'blob' });
+export interface CVExportOptions {
+  template?: string;
+  photo?: string | null;
+}
+
+export const downloadCVPdf = async (cvId: string, options: CVExportOptions = {}) => {
+  const res = await api.post(`/api/cv/download/${cvId}`, options, {
+    responseType: 'blob',
+    timeout: 60000,
+  });
   const blob = new Blob([res.data], { type: 'application/pdf' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -89,8 +97,11 @@ export const downloadCVPdf = async (cvId: string) => {
   URL.revokeObjectURL(url);
 };
 
-export const previewCVPdf = async (cvId: string): Promise<string> => {
-  const res = await api.get(`/api/cv/preview/${cvId}`, { responseType: 'blob' });
+export const previewCVPdf = async (cvId: string, options: CVExportOptions = {}): Promise<string> => {
+  const res = await api.post(`/api/cv/preview/${cvId}`, options, {
+    responseType: 'blob',
+    timeout: 60000,
+  });
   const blob = new Blob([res.data], { type: 'application/pdf' });
   return URL.createObjectURL(blob);
 };

@@ -2,8 +2,11 @@ import { create } from 'zustand';
 import { CVAnalysisResult } from '@/types';
 import { analyzeCV } from '@/lib/api';
 import toast from 'react-hot-toast';
+import { DEFAULT_TEMPLATE, type TemplateId } from '@/components/cv/templates';
 
 const STEPS = ['Parsing CV...', 'Auditing ATS...', 'Rewriting...', 'Humanizing...', 'Done'];
+const TEMPLATE_KEY = 'cv_template_id';
+const PHOTO_KEY = 'cv_photo_data';
 
 interface CVAnalysisState {
   loading: boolean;
@@ -11,8 +14,12 @@ interface CVAnalysisState {
   steps: string[];
   error: string | null;
   result: CVAnalysisResult | null;
+  template: TemplateId;
+  photo: string | null;
   startAnalysis: (file: File, jobDescription: string) => void;
   setResult: (result: CVAnalysisResult | null) => void;
+  setTemplate: (t: TemplateId) => void;
+  setPhoto: (photo: string | null) => void;
   reset: () => void;
 }
 
@@ -29,6 +36,15 @@ export const useCVAnalysisStore = create<CVAnalysisState>((set, get) => ({
     } catch {
       return null;
     }
+  })(),
+  template: (() => {
+    if (typeof window === 'undefined') return DEFAULT_TEMPLATE;
+    const saved = localStorage.getItem(TEMPLATE_KEY) as TemplateId | null;
+    return saved || DEFAULT_TEMPLATE;
+  })(),
+  photo: (() => {
+    if (typeof window === 'undefined') return null;
+    try { return localStorage.getItem(PHOTO_KEY); } catch { return null; }
   })(),
 
   startAnalysis: async (file: File, jobDescription: string) => {
@@ -77,6 +93,19 @@ export const useCVAnalysisStore = create<CVAnalysisState>((set, get) => ({
       sessionStorage.removeItem('cv_analysis_result');
     }
     set({ result });
+  },
+
+  setTemplate: (t) => {
+    try { localStorage.setItem(TEMPLATE_KEY, t); } catch {}
+    set({ template: t });
+  },
+
+  setPhoto: (photo) => {
+    try {
+      if (photo) localStorage.setItem(PHOTO_KEY, photo);
+      else localStorage.removeItem(PHOTO_KEY);
+    } catch {}
+    set({ photo });
   },
 
   reset: () => {

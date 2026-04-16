@@ -164,7 +164,16 @@ const deleteCVRecord = async (req, res) => {
   }
 };
 
-// GET /api/cv/download/:cv_id — Generate and stream PDF on-demand
+// Extract template + photo from request body or query (supports GET + POST)
+const readExportOptions = (req) => {
+  const src = (req.method === 'POST' ? req.body : req.query) || {};
+  return {
+    template: typeof src.template === 'string' ? src.template : undefined,
+    photo: typeof src.photo === 'string' ? src.photo : null,
+  };
+};
+
+// GET/POST /api/cv/download/:cv_id — Generate and stream PDF on-demand
 const downloadCVPdf = async (req, res) => {
   const { cv_id } = req.params;
 
@@ -186,7 +195,8 @@ const downloadCVPdf = async (req, res) => {
       return res.status(400).json({ error: 'No rewritten CV data available' });
     }
 
-    const pdfBuffer = await generateCVPdfBuffer(finalCV);
+    const opts = readExportOptions(req);
+    const pdfBuffer = await generateCVPdfBuffer(finalCV, opts);
 
     res.set({
       'Content-Type': 'application/pdf',
@@ -201,7 +211,7 @@ const downloadCVPdf = async (req, res) => {
   }
 };
 
-// GET /api/cv/preview/:cv_id — Generate and stream PDF inline for preview
+// GET/POST /api/cv/preview/:cv_id — Generate and stream PDF inline for preview
 const previewCVPdf = async (req, res) => {
   const { cv_id } = req.params;
 
@@ -223,7 +233,8 @@ const previewCVPdf = async (req, res) => {
       return res.status(400).json({ error: 'No rewritten CV data available' });
     }
 
-    const pdfBuffer = await generateCVPdfBuffer(finalCV);
+    const opts = readExportOptions(req);
+    const pdfBuffer = await generateCVPdfBuffer(finalCV, opts);
 
     res.set({
       'Content-Type': 'application/pdf',

@@ -1,18 +1,23 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import CVUpload from '@/components/cv/CVUpload';
 import CVPreview from '@/components/cv/CVPreview';
 import QuickEditBox from '@/components/cv/QuickEditBox';
 import ScoreRing from '@/components/cv/ScoreRing';
 import AnalysisSidebar from '@/components/cv/AnalysisSidebar';
+import TemplatePicker from '@/components/cv/TemplatePicker';
+import PhotoUpload from '@/components/cv/PhotoUpload';
+import { TEMPLATES } from '@/components/cv/templates';
 import { downloadCVPdf } from '@/lib/api';
 import { useCVAnalysisStore } from '@/store/cvAnalysisStore';
 import { useCoverLetterStore } from '@/store/coverLetterStore';
+import { useSubscriptionStore } from '@/store/subscriptionStore';
 import toast from 'react-hot-toast';
 import {
   Download, RotateCcw, ArrowRight, TrendingUp, FileSignature,
-  Sparkles, Copy, Check, X, Send,
+  Sparkles, Copy, Check, X, Send, Palette, ChevronDown,
 } from 'lucide-react';
 
 const tones = [
@@ -29,12 +34,21 @@ const glass = {
 } as const;
 
 export default function CVPage() {
+  const router = useRouter();
   const {
     result, setResult, reset: resetAnalysis,
     loading: analysisLoading, step: analysisStep, steps: analysisSteps,
+    template, photo, setTemplate, setPhoto,
   } = useCVAnalysisStore();
 
+  const { subscription } = useSubscriptionStore();
+  const isPro = subscription?.plan === 'pro' || subscription?.plan === 'pro_plus';
+
   const [downloading, setDownloading] = useState(false);
+  const [templateOpen, setTemplateOpen] = useState(false);
+
+  const activeTemplateMeta = TEMPLATES[template];
+  const showPhotoSlot = activeTemplateMeta?.supportsPhoto;
 
   const {
     inlineResult: clResult,
@@ -60,9 +74,15 @@ export default function CVPage() {
   const handleDownload = async () => {
     if (!result?.cv_record_id) return;
     setDownloading(true);
-    try { await downloadCVPdf(result.cv_record_id); toast.success('PDF downloaded'); }
-    catch { toast.error('Failed to download PDF'); }
-    finally { setDownloading(false); }
+    try {
+      const photoForExport = showPhotoSlot ? photo : null;
+      await downloadCVPdf(result.cv_record_id, { template, photo: photoForExport });
+      toast.success('PDF downloaded');
+    } catch {
+      toast.error('Failed to download PDF');
+    } finally {
+      setDownloading(false);
+    }
   };
 
   const handleReset       = () => { resetAnalysis(); setShowCL(false); resetInline(); };
@@ -463,14 +483,63 @@ export default function CVPage() {
 
         {/* two-column grid */}
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_420px] gap-6">
-          {/* CV Preview — sticky only on lg+, full-height on mobile */}
-          <div className="lg:sticky lg:top-20 min-w-0">
+          {/* CV Preview column */}
+          <div className="lg:sticky lg:top-20 min-w-0 space-y-4">
+
+            {/* Template + Photo toolbar */}
+            <div className="rounded-2xl overflow-hidden" style={glass}>
+              <button
+                type="button"
+                onClick={() => setTemplateOpen((v) => !v)}
+                className="w-full flex items-center justify-between px-4 sm:px-5 py-3 text-left"
+              >
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <Palette className="h-4 w-4 shrink-0" style={{ color: '#a78bfa' }} />
+                  <div className="min-w-0">
+                    <p className="text-[11px] font-bold uppercase tracking-widest text-white/40 leading-none">Template</p>
+                    <p className="text-sm font-semibold text-white truncate mt-1">{activeTemplateMeta?.name}</p>
+                  </div>
+                </div>
+                <ChevronDown
+                  className="h-4 w-4 shrink-0 transition-transform duration-200 text-white/40"
+                  style={{ transform: templateOpen ? 'rotate(180deg)' : 'rotate(0)' }}
+                />
+              </button>
+
+              {templateOpen && (
+                <div className="px-4 sm:px-5 pb-4 pt-1 border-t" style={{ borderColor: 'rgba(255,255,255,0.06)' }}>
+                  <div className="pt-4">
+                    <TemplatePicker
+                      value={template}
+                      onChange={(id) => {
+                        setTemplate(id);
+                        toast.success(`${TEMPLATES[id].name} applied`);
+                      }}
+                      isPro={isPro}
+                      onUpgrade={() => {
+                        toast('Upgrade to Pro to unlock this template', { icon: '👑' });
+                        router.push('/pricing');
+                      }}
+                    />
+                  </div>
+
+                  {showPhotoSlot && (
+                    <div className="mt-5 pt-5 border-t" style={{ borderColor: 'rgba(255,255,255,0.06)' }}>
+                      <p className="text-xs font-bold uppercase tracking-widest text-white/50 mb-3">Profile Photo</p>
+                      <PhotoUpload value={photo} onChange={setPhoto} />
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* CV Preview */}
             <div
-              className="rounded-2xl overflow-hidden lg:max-h-[calc(100vh-220px)] lg:overflow-y-auto"
+              className="rounded-2xl overflow-hidden lg:max-h-[calc(100vh-280px)] lg:overflow-y-auto"
               style={glass}
             >
               <div style={{ height: '1px', background: 'linear-gradient(90deg,transparent,rgba(118,77,240,0.5),transparent)' }} />
-              <CVPreview cv={finalCV} />
+              <CVPreview cv={finalCV} template={template} photo={showPhotoSlot ? photo : null} />
             </div>
           </div>
 

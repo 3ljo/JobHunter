@@ -11,7 +11,9 @@ const { rateLimitCV } = require('../middleware/rateLimit');
 router.post('/analyze', requireAuth, rateLimitCV, analyzeCV);
 router.get('/history', requireAuth, getCVHistory);
 router.get('/download/:cv_id', requireAuth, downloadCVPdf);
+router.post('/download/:cv_id', requireAuth, downloadCVPdf);
 router.get('/preview/:cv_id', requireAuth, previewCVPdf);
+router.post('/preview/:cv_id', requireAuth, previewCVPdf);
 router.post('/refine', requireAuth, refineCV);
 router.delete('/:cv_id', requireAuth, deleteCVRecord);
 
