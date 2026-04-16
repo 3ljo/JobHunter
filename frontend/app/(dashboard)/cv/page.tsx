@@ -17,7 +17,7 @@ import { useSubscriptionStore } from '@/store/subscriptionStore';
 import toast from 'react-hot-toast';
 import {
   Download, RotateCcw, ArrowRight, TrendingUp, FileSignature,
-  Sparkles, Copy, Check, X, Send, Palette, ChevronDown,
+  Sparkles, Copy, Check, X, Send, Palette,
 } from 'lucide-react';
 
 const tones = [
@@ -45,7 +45,6 @@ export default function CVPage() {
   const isPro = subscription?.plan === 'pro' || subscription?.plan === 'pro_plus';
 
   const [downloading, setDownloading] = useState(false);
-  const [templateOpen, setTemplateOpen] = useState(false);
 
   const activeTemplateMeta = TEMPLATES[template];
   const showPhotoSlot = activeTemplateMeta?.supportsPhoto;
@@ -261,7 +260,7 @@ export default function CVPage() {
     >
       {/* ── RESULTS HEADER — background/2.webp (different!) ────────── */}
       <section
-        className="relative overflow-hidden pt-10 pb-16 sm:pt-16 sm:pb-24"
+        className="relative overflow-hidden pt-8 pb-10 sm:pt-14 sm:pb-20"
         style={{
           backgroundImage: 'url(/aivent/background/2.webp)',
           backgroundSize: 'cover',
@@ -273,11 +272,11 @@ export default function CVPage() {
           style={{ height: '50%', background: 'linear-gradient(0deg,#0d1130 0%,transparent 100%)' }} />
 
         <div className="relative mx-auto max-w-7xl px-4 sm:px-6" style={{ zIndex: 2 }}>
-          <div className="text-center mb-8 sm:mb-10">
+          <div className="text-center mb-6 sm:mb-8">
             <span className="aivent-subtitle s2">Analysis Complete</span>
             <h1
               className="text-white leading-[1.1]"
-              style={{ fontSize: 'clamp(24px,6vw,46px)', fontWeight: 800, letterSpacing: '-0.02em' }}
+              style={{ fontSize: 'clamp(22px,5.5vw,42px)', fontWeight: 800, letterSpacing: '-0.02em' }}
             >
               Your ATS Score Report
             </h1>
@@ -482,60 +481,48 @@ export default function CVPage() {
         )}
 
         {/* two-column grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_420px] gap-6">
-          {/* CV Preview column */}
-          <div className="lg:sticky lg:top-20 min-w-0 space-y-4">
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_400px] gap-4 sm:gap-5 lg:gap-6">
+          {/* CV column */}
+          <div className="min-w-0 space-y-3 sm:space-y-4">
 
-            {/* Template + Photo toolbar */}
-            <div className="rounded-2xl overflow-hidden" style={glass}>
-              <button
-                type="button"
-                onClick={() => setTemplateOpen((v) => !v)}
-                className="w-full flex items-center justify-between px-4 sm:px-5 py-3 text-left"
-              >
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <Palette className="h-4 w-4 shrink-0" style={{ color: '#a78bfa' }} />
-                  <div className="min-w-0">
-                    <p className="text-[11px] font-bold uppercase tracking-widest text-white/40 leading-none">Template</p>
-                    <p className="text-sm font-semibold text-white truncate mt-1">{activeTemplateMeta?.name}</p>
-                  </div>
-                </div>
-                <ChevronDown
-                  className="h-4 w-4 shrink-0 transition-transform duration-200 text-white/40"
-                  style={{ transform: templateOpen ? 'rotate(180deg)' : 'rotate(0)' }}
-                />
-              </button>
+            {/* Template strip — always visible, compact */}
+            <div className="rounded-2xl overflow-hidden p-3 sm:p-4" style={glass}>
+              <div className="flex items-center gap-2 mb-2.5 sm:mb-3">
+                <Palette className="h-3.5 w-3.5 shrink-0" style={{ color: '#a78bfa' }} />
+                <p className="text-[10px] sm:text-[11px] font-bold uppercase tracking-widest text-white/55">
+                  Choose Template
+                </p>
+                <span
+                  className="text-[9px] font-bold px-1.5 py-0.5 rounded"
+                  style={{ background: 'rgba(52,211,153,0.12)', color: '#34d399', border: '1px solid rgba(52,211,153,0.22)' }}
+                >
+                  ATS-OPTIMIZED
+                </span>
+              </div>
 
-              {templateOpen && (
-                <div className="px-4 sm:px-5 pb-4 pt-1 border-t" style={{ borderColor: 'rgba(255,255,255,0.06)' }}>
-                  <div className="pt-4">
-                    <TemplatePicker
-                      value={template}
-                      onChange={(id) => {
-                        setTemplate(id);
-                        toast.success(`${TEMPLATES[id].name} applied`);
-                      }}
-                      isPro={isPro}
-                      onUpgrade={() => {
-                        toast('Upgrade to Pro to unlock this template', { icon: '👑' });
-                        router.push('/pricing');
-                      }}
-                    />
-                  </div>
+              <TemplatePicker
+                value={template}
+                onChange={(id) => {
+                  setTemplate(id);
+                  toast.success(`${TEMPLATES[id].name} applied`);
+                }}
+                isPro={isPro}
+                onUpgrade={() => {
+                  toast('Upgrade to Pro to unlock this template', { icon: '👑' });
+                  router.push('/pricing');
+                }}
+              />
 
-                  {showPhotoSlot && (
-                    <div className="mt-5 pt-5 border-t" style={{ borderColor: 'rgba(255,255,255,0.06)' }}>
-                      <p className="text-xs font-bold uppercase tracking-widest text-white/50 mb-3">Profile Photo</p>
-                      <PhotoUpload value={photo} onChange={setPhoto} />
-                    </div>
-                  )}
+              {showPhotoSlot && (
+                <div className="mt-3 pt-3 border-t" style={{ borderColor: 'rgba(255,255,255,0.06)' }}>
+                  <PhotoUpload value={photo} onChange={setPhoto} />
                 </div>
               )}
             </div>
 
-            {/* CV Preview */}
+            {/* CV Preview — sticky on large screens */}
             <div
-              className="rounded-2xl overflow-hidden lg:max-h-[calc(100vh-280px)] lg:overflow-y-auto"
+              className="rounded-2xl overflow-hidden lg:sticky lg:top-20 lg:max-h-[calc(100vh-180px)] lg:overflow-y-auto"
               style={glass}
             >
               <div style={{ height: '1px', background: 'linear-gradient(90deg,transparent,rgba(118,77,240,0.5),transparent)' }} />
@@ -544,9 +531,9 @@ export default function CVPage() {
           </div>
 
           {/* Analysis + Quick Edit */}
-          <div className="space-y-6 min-w-0">
-            <div className="rounded-2xl p-4 sm:p-6 overflow-hidden" style={glass}>
-              <div className="-mx-4 sm:-mx-6 mb-5" style={{ height: '1px', background: 'linear-gradient(90deg,transparent,rgba(118,77,240,0.5),transparent)' }} />
+          <div className="space-y-4 sm:space-y-5 min-w-0">
+            <div className="rounded-2xl p-4 sm:p-5 overflow-hidden" style={glass}>
+              <div className="-mx-4 sm:-mx-5 mb-4" style={{ height: '1px', background: 'linear-gradient(90deg,transparent,rgba(118,77,240,0.5),transparent)' }} />
               <AnalysisSidebar audit={result.audit} rewrite={result.rewrite} />
             </div>
             <QuickEditBox cvRecordId={result.cv_record_id} onRefine={handleRefine} />

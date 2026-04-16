@@ -14,87 +14,68 @@ export default function TemplatePicker({ value, onChange, isPro = false, onUpgra
   const list = Object.values(TEMPLATES);
 
   return (
-    <div>
-      <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-2">
-          <span className="text-xs font-bold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.5)' }}>
-            Template
-          </span>
-          <span
-            className="text-[10px] font-bold px-2 py-0.5 rounded"
-            style={{ background: 'rgba(52,211,153,0.12)', color: '#34d399', border: '1px solid rgba(52,211,153,0.25)' }}
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-2.5">
+      {list.map((t) => {
+        const isActive = value === t.id;
+        const locked = t.proOnly && !isPro;
+
+        return (
+          <button
+            key={t.id}
+            type="button"
+            onClick={() => {
+              if (locked) { onUpgrade?.(); return; }
+              onChange(t.id);
+            }}
+            className="relative text-left rounded-lg p-2 sm:p-2.5 transition-all duration-150"
+            style={{
+              background: isActive ? 'rgba(118,77,240,0.14)' : 'rgba(255,255,255,0.025)',
+              border: isActive ? '1px solid rgba(118,77,240,0.55)' : '1px solid rgba(255,255,255,0.06)',
+              cursor: locked ? 'not-allowed' : 'pointer',
+              opacity: locked ? 0.72 : 1,
+              boxShadow: isActive ? '0 0 0 3px rgba(118,77,240,0.10)' : 'none',
+            }}
           >
-            ATS-OPTIMIZED
-          </span>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-2 gap-2 sm:gap-3">
-        {list.map((t) => {
-          const isActive = value === t.id;
-          const locked = t.proOnly && !isPro;
-
-          return (
-            <button
-              key={t.id}
-              type="button"
-              onClick={() => {
-                if (locked) {
-                  onUpgrade?.();
-                  return;
-                }
-                onChange(t.id);
-              }}
-              className="relative text-left rounded-xl p-3 sm:p-3.5 transition-all duration-200"
-              style={{
-                background: isActive ? 'rgba(118,77,240,0.14)' : 'rgba(255,255,255,0.03)',
-                border: isActive ? '1px solid rgba(118,77,240,0.55)' : '1px solid rgba(255,255,255,0.08)',
-                cursor: locked ? 'not-allowed' : 'pointer',
-                opacity: locked ? 0.75 : 1,
-              }}
-            >
+            <div className="relative">
               <TemplateThumbnail id={t.id} />
-
-              <div className="flex items-center gap-1.5 mt-2.5">
-                <p className="text-[12px] sm:text-[13px] font-bold text-white truncate">{t.name}</p>
-                {t.proOnly && (
-                  <span
-                    className="inline-flex items-center gap-0.5 text-[9px] font-black px-1.5 py-[1px] rounded"
-                    style={{ background: 'rgba(234,179,8,0.14)', color: '#fbbf24', border: '1px solid rgba(234,179,8,0.3)' }}
-                  >
-                    {locked ? <Lock className="h-2.5 w-2.5" /> : <Crown className="h-2.5 w-2.5" />} PRO
-                  </span>
-                )}
-              </div>
-
-              <p className="text-[10px] sm:text-[11px] text-white/45 mt-0.5 line-clamp-2 leading-tight">
-                {t.description}
-              </p>
-
-              <div className="flex items-center justify-between mt-2">
-                <span className="text-[9px] font-bold uppercase tracking-wider text-white/35">{t.region}</span>
-                <span className="text-[10px] font-bold" style={{ color: '#34d399' }}>{t.atsScore}%</span>
-              </div>
-
+              {locked && (
+                <div
+                  className="absolute inset-0 flex items-center justify-center rounded-md"
+                  style={{ background: 'rgba(15,10,40,0.55)', backdropFilter: 'blur(1px)' }}
+                >
+                  <Lock className="h-4 w-4 text-white/80" />
+                </div>
+              )}
               {isActive && (
                 <span
-                  className="absolute top-2 right-2 flex h-5 w-5 items-center justify-center rounded-full"
-                  style={{ background: '#764df0', color: 'white' }}
+                  className="absolute top-1 right-1 flex h-4 w-4 items-center justify-center rounded-full"
+                  style={{ background: '#764df0' }}
                 >
-                  <Check className="h-3 w-3" />
+                  <Check className="h-2.5 w-2.5 text-white" />
                 </span>
               )}
-            </button>
-          );
-        })}
-      </div>
+            </div>
+
+            <div className="flex items-center gap-1 mt-2 min-w-0">
+              <p className="text-[11px] sm:text-[12px] font-semibold text-white truncate flex-1">{t.name}</p>
+              {t.proOnly && !locked && (
+                <Crown className="h-2.5 w-2.5 shrink-0" style={{ color: '#fbbf24' }} />
+              )}
+            </div>
+            <div className="flex items-center gap-1.5 mt-0.5">
+              <span className="text-[9px] font-bold" style={{ color: '#34d399' }}>ATS {t.atsScore}%</span>
+              <span className="text-[9px] text-white/35 truncate">· {t.region}</span>
+            </div>
+          </button>
+        );
+      })}
     </div>
   );
 }
 
-/* Tiny SVG thumbnails — each mirrors the template's visual identity */
+/* Compact SVG thumbnails — small, tight aspect for a horizontal strip */
 function TemplateThumbnail({ id }: { id: TemplateId }) {
-  const common = 'w-full aspect-[3/4] rounded-md overflow-hidden';
+  const common = 'w-full aspect-[4/5] rounded-md overflow-hidden';
   const paperStyle = { background: '#ffffff' };
 
   if (id === 'harvard') {
