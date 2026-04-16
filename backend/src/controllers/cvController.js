@@ -275,8 +275,13 @@ const refineCV = async (req, res) => {
       return res.status(400).json({ error: 'No CV data to refine' });
     }
 
-    // Single Claude call to apply changes
-    const refined = await refineCVWithInstructions(currentFinalCV, instructions, { userId: req.user.id, userEmail: req.user.email });
+    // Single Claude call to apply changes — pass the original raw CV text so the AI
+    // can recover content that was pruned in earlier rewrites (e.g. certifications)
+    const refined = await refineCVWithInstructions(
+      currentFinalCV,
+      instructions,
+      { userId: req.user.id, userEmail: req.user.email, originalRawText: cv.raw_text || '' }
+    );
 
     // Update the final_cv in ats_feedback
     const updatedFeedback = {

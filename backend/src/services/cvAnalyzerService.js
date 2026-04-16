@@ -428,20 +428,47 @@ Return ONLY this JSON structure:
 
 // Quick refine: single Claude call to apply user instructions to existing final CV
 const refineCVWithInstructions = async (finalCV, instructions, meta = {}) => {
+  const originalRawText = (meta && meta.originalRawText) || '';
+
   const refined = await callProvider(
-    `You are a CV editing assistant. You receive an existing CV as JSON and a set of user instructions.
+    `You are a CV editing assistant. You receive:
+1. The CURRENT CV (JSON) — the latest rewritten version shown to the user.
+2. The ORIGINAL CV TEXT — what the user originally uploaded, BEFORE any AI rewrites.
+3. User instructions.
+
 Apply the requested changes precisely. Do NOT change anything the user did not ask to change.
 
 Rules:
-- Preserve the exact same JSON structure
-- Only modify the fields the user's instructions target
-- If the user asks to change dates, update them exactly as requested
-- If the user asks to add skills, append them to the existing skills array
-- If the user asks to change the summary, rewrite only the summary
-- Keep all other fields identical
+- Preserve the exact same JSON structure.
+- Only modify the fields the user's instructions target; keep everything else identical.
+
+RESTORE / PUT-BACK requests (e.g. "put back my certifications", "restore the jobs you removed"):
+- Extract the exact details from the ORIGINAL CV TEXT and populate the field.
+- Never invent facts the user originally stated (employers, dates, education, etc.).
+- If the original text also lacks the requested content, leave the field empty and note it in changes_applied.
+
+ADD / SUGGEST requests (e.g. "add the best certifications for this role", "suggest skills for a DevOps engineer", "add industry-standard certifications"):
+- It IS ALLOWED to generate new, industry-standard suggestions relevant to the CV's
+  role, seniority, and skills.
+- For certifications, include ONLY real, recognized certifications (AWS Certified X,
+  Microsoft Certified Y, CompTIA Z, PMP, CISSP, Google Professional, Scrum, etc.).
+  Include the full official name. Do NOT invent fake certifications.
+- For skills, pick widely recognized industry-standard skills that align with the role.
+- Keep the list focused: 4–7 items max unless the user asked for more.
+- NEVER fabricate work experience, job titles, employers, dates, or education —
+  those must come from the user's original CV text.
+
+Formatting:
+- If the user asks to change dates, update them exactly as requested.
+- If the user asks to add skills, append them to the existing skills array (dedupe).
+- If the user asks to change the summary, rewrite only the summary.
+- Populate \`changes_applied\` with short human-readable descriptions of what was changed.
 - Return valid JSON only. No markdown, no explanation.`,
-    `Current CV:
+    `CURRENT CV (JSON):
 ${JSON.stringify(finalCV, null, 2)}
+
+ORIGINAL CV TEXT (source of truth for anything missing from the current CV):
+${originalRawText ? originalRawText.slice(0, 8000) : '(not available)'}
 
 User instructions:
 ${instructions}
