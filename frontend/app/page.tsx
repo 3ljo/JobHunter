@@ -385,9 +385,14 @@ export default function Home() {
         <div className="relative mx-auto max-w-7xl px-4 sm:px-6 pb-16 sm:pb-24" style={{ zIndex: 2 }}>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 items-center">
 
-            {/* Left — c2.webp hero image — hidden on small mobile to save space */}
-            <div className="wow fadeInUp hidden sm:block lg:block" data-wow-delay=".3s">
-              <img src="/aivent/misc/c2.webp" alt="AI Job Search" className="w-full" style={{ maxHeight: '560px', objectFit: 'contain' }} />
+            {/* Left — c2.webp hero robot image */}
+            <div className="wow fadeInUp order-first lg:order-none text-center lg:text-left" data-wow-delay=".3s">
+              <img
+                src="/aivent/misc/c2.webp"
+                alt="AI Job Search"
+                className="w-full mx-auto max-h-[280px] sm:max-h-[400px] lg:max-h-[560px]"
+                style={{ objectFit: 'contain' }}
+              />
             </div>
 
             {/* Right — headline + CTA */}
