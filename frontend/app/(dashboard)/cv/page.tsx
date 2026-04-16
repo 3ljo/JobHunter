@@ -520,12 +520,17 @@ export default function CVPage() {
               )}
             </div>
 
-            {/* CV Preview — sticky on large screens */}
+            {/* CV Preview — horizontal pages, sticky on large screens */}
             <div
-              className="rounded-2xl overflow-hidden lg:sticky lg:top-20 lg:max-h-[calc(100vh-180px)] lg:overflow-y-auto"
+              className="rounded-2xl overflow-hidden lg:sticky lg:top-20"
               style={glass}
             >
               <div style={{ height: '1px', background: 'linear-gradient(90deg,transparent,rgba(118,77,240,0.5),transparent)' }} />
+              <div className="flex items-center justify-between px-3 sm:px-4 py-2 text-[10px] font-bold uppercase tracking-widest text-white/35">
+                <span>Preview</span>
+                <span className="hidden sm:inline">Swipe pages →</span>
+                <span className="sm:hidden">← Swipe →</span>
+              </div>
               <CVPreview cv={finalCV} template={template} photo={showPhotoSlot ? photo : null} />
             </div>
           </div>
