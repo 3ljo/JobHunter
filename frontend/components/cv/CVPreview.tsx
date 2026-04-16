@@ -6,13 +6,13 @@ export default function CVPreview({ cv }: { cv: any }) {
   const contactParts = [cv.email, cv.phone, cv.location, cv.linkedin].filter(Boolean);
 
   return (
-    <div className="rounded-xl bg-white p-6 md:p-8 ring-1 ring-zinc-800" style={{ fontFamily: 'Calibri, sans-serif' }}>
+    <div className="rounded-xl bg-white p-4 sm:p-6 md:p-8 ring-1 ring-zinc-800 break-words" style={{ fontFamily: 'Calibri, sans-serif', wordBreak: 'break-word', overflowWrap: 'anywhere' }}>
       {/* Name */}
-      <h1 className="text-center text-xl md:text-2xl font-bold text-gray-900">{cv.full_name}</h1>
+      <h1 className="text-center text-lg sm:text-xl md:text-2xl font-bold text-gray-900">{cv.full_name}</h1>
 
       {/* Contact */}
       {contactParts.length > 0 && (
-        <p className="text-center text-xs md:text-sm text-gray-500 mt-1">{contactParts.join(' | ')}</p>
+        <p className="text-center text-xs md:text-sm text-gray-500 mt-1 break-all">{contactParts.join(' | ')}</p>
       )}
 
       <hr className="my-4 border-gray-900" />

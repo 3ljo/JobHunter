@@ -45,7 +45,7 @@ export default function CVUpload() {
       {!file ? (
         <div
           {...getRootProps()}
-          className="cursor-pointer rounded-xl p-10 text-center transition-all duration-200"
+          className="cursor-pointer rounded-xl p-6 sm:p-10 text-center transition-all duration-200"
           style={{
             border: isDragActive
               ? '2px dashed rgba(118,77,240,0.8)'
@@ -79,7 +79,7 @@ export default function CVUpload() {
         </div>
       ) : (
         <div
-          className="flex items-center gap-4 rounded-xl px-5 py-4"
+          className="flex items-center gap-3 sm:gap-4 rounded-xl px-4 sm:px-5 py-4"
           style={{
             background: 'rgba(118,77,240,0.08)',
             border: '1px solid rgba(118,77,240,0.22)',

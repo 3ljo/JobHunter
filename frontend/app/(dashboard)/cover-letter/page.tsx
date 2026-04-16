@@ -74,6 +74,7 @@ export default function CoverLetterPage() {
     <div
       style={{
         width: '100vw',
+        maxWidth: '100vw',
         marginLeft: 'calc(-50vw + 50%)',
         marginTop: '-32px',
         marginBottom: '-32px',
@@ -81,18 +82,17 @@ export default function CoverLetterPage() {
         position: 'relative',
         zIndex: 2,
         minHeight: 'calc(100vh - 56px)',
+        overflowX: 'hidden',
       }}
     >
 
       {/* ══ HERO SECTION ═══════════════════════════════ */}
       <section
-        className="relative overflow-hidden"
+        className="relative overflow-hidden pt-12 sm:pt-[72px] pb-8 sm:pb-10"
         style={{
           backgroundImage: isLoadingPhase ? 'none' : 'url(/aivent/background/4.webp)',
           backgroundSize: 'cover',
           backgroundPosition: 'center top',
-          paddingTop: '72px',
-          paddingBottom: '40px',
           minHeight: 'calc(100vh - 56px)',
           display: 'flex',
           flexDirection: 'column' as const,
@@ -116,7 +116,7 @@ export default function CoverLetterPage() {
         <div className="absolute bottom-0 left-0 right-0"
           style={{ height: '45%', background: 'linear-gradient(0deg,#0a0d28 0%,transparent 100%)', zIndex: 1 }} />
 
-        <div className="relative mx-auto max-w-7xl px-6" style={{ zIndex: 2 }}>
+        <div className="relative mx-auto max-w-7xl px-4 sm:px-6" style={{ zIndex: 2 }}>
 
           {/* ── LOADING STATE: centered with video bg ── */}
           {isLoadingPhase && (
@@ -124,7 +124,7 @@ export default function CoverLetterPage() {
               <span className="aivent-subtitle s2">AI-Generated</span>
               <h1
                 className="text-white leading-[1.1] mb-4 text-center"
-                style={{ fontSize: 'clamp(32px,4.5vw,52px)', fontWeight: 800, letterSpacing: '-0.02em' }}
+                style={{ fontSize: 'clamp(28px,6vw,52px)', fontWeight: 800, letterSpacing: '-0.02em' }}
               >
                 Generating...
               </h1>
@@ -159,24 +159,24 @@ export default function CoverLetterPage() {
 
           {/* ── FORM PHASE: left-aligned with image bg ── */}
           {isFormPhase && (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-16 items-center">
 
               {/* LEFT — form */}
               <div>
                 <span className="aivent-subtitle">AI-Generated</span>
                 <h1
                   className="text-white leading-[1.1] mb-3"
-                  style={{ fontSize: 'clamp(32px,4.5vw,52px)', fontWeight: 800, letterSpacing: '-0.02em' }}
+                  style={{ fontSize: 'clamp(28px,6vw,52px)', fontWeight: 800, letterSpacing: '-0.02em' }}
                 >
                   Cover Letter Generator
                 </h1>
-                <p className="mb-8" style={{ color: 'rgba(255,255,255,0.45)', fontSize: '16px', lineHeight: 1.7 }}>
+                <p className="mb-8" style={{ color: 'rgba(255,255,255,0.45)', fontSize: '15px', lineHeight: 1.7 }}>
                   Upload your CV, paste the job description, pick a tone — done in seconds.
                 </p>
 
                 <div className="rounded-2xl overflow-hidden" style={glass}>
                   <div style={{ height: '2px', background: 'linear-gradient(90deg,transparent,rgba(118,77,240,0.9),transparent)' }} />
-                  <div className="p-7 space-y-5">
+                  <div className="p-4 sm:p-7 space-y-5">
 
                     {/* CV upload */}
                     <div>
@@ -187,7 +187,7 @@ export default function CoverLetterPage() {
                       {!file ? (
                         <div
                           {...getRootProps()}
-                          className="cursor-pointer rounded-xl p-8 text-center transition-all duration-200"
+                          className="cursor-pointer rounded-xl p-5 sm:p-8 text-center transition-all duration-200"
                           style={{
                             border: isDragActive ? '2px dashed rgba(118,77,240,0.8)' : '2px dashed rgba(255,255,255,0.1)',
                             background: isDragActive ? 'rgba(118,77,240,0.08)' : 'rgba(255,255,255,0.02)',
@@ -379,15 +379,15 @@ export default function CoverLetterPage() {
               {/* letter body */}
               <div className="rounded-2xl overflow-hidden mb-5" style={glass}>
                 <div style={{ height: '2px', background: 'linear-gradient(90deg,transparent,rgba(118,77,240,0.9),transparent)' }} />
-                <div className="p-8">
-                  <p className="text-sm leading-relaxed whitespace-pre-wrap" style={{ color: 'rgba(255,255,255,0.82)' }}>
+                <div className="p-5 sm:p-8">
+                  <p className="text-sm leading-relaxed whitespace-pre-wrap break-words" style={{ color: 'rgba(255,255,255,0.82)', overflowWrap: 'anywhere' }}>
                     {result}
                   </p>
                 </div>
               </div>
 
               {/* refine bar */}
-              <div className="rounded-2xl p-5" style={{ background: 'rgba(118,77,240,0.05)', border: '1px solid rgba(118,77,240,0.15)' }}>
+              <div className="rounded-2xl p-4 sm:p-5" style={{ background: 'rgba(118,77,240,0.05)', border: '1px solid rgba(118,77,240,0.15)' }}>
                 <p className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: 'rgba(255,255,255,0.3)' }}>
                   Refine with AI
                 </p>

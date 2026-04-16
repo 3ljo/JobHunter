@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Manrope } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "react-hot-toast";
@@ -12,6 +12,13 @@ const manrope = Manrope({
 export const metadata: Metadata = {
   title: "JobHunter — AI-Powered Job Search",
   description: "Land your dream job with AI-powered CV analysis, cover letter generation, and smart job tracking.",
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 5,
+  viewportFit: "cover",
 };
 
 export default function RootLayout({

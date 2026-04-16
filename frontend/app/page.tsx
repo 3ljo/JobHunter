@@ -377,16 +377,16 @@ export default function Home() {
       </header>
 
       {/* ══ HERO — Demo 6 split layout ══ */}
-      <section id="hero" className="relative overflow-hidden" style={{ paddingTop: '110px', paddingBottom: 0 }}>
+      <section id="hero" className="relative overflow-hidden pt-20 sm:pt-[110px]" style={{ paddingBottom: 0 }}>
         <div className="absolute inset-0" style={{ backgroundImage: 'url(/aivent/background/8.webp)', backgroundSize: 'cover', backgroundPosition: 'center', backgroundAttachment: 'fixed' }} />
         <div className="absolute inset-0" style={{ background: 'rgba(16,20,53,0.60)' }} />
         <div className="absolute bottom-0 left-0 right-0" style={{ height: '35%', background: 'linear-gradient(0deg,#101435 0%,transparent 100%)' }} />
 
-        <div className="relative mx-auto max-w-7xl px-6 pb-24" style={{ zIndex: 2 }}>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+        <div className="relative mx-auto max-w-7xl px-4 sm:px-6 pb-16 sm:pb-24" style={{ zIndex: 2 }}>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 items-center">
 
-            {/* Left — c2.webp hero image */}
-            <div className="wow fadeInUp" data-wow-delay=".3s">
+            {/* Left — c2.webp hero image — hidden on small mobile to save space */}
+            <div className="wow fadeInUp hidden sm:block lg:block" data-wow-delay=".3s">
               <img src="/aivent/misc/c2.webp" alt="AI Job Search" className="w-full" style={{ maxHeight: '560px', objectFit: 'contain' }} />
             </div>
 
@@ -395,7 +395,7 @@ export default function Home() {
               <span className="aivent-subtitle s2 wow fadeInUp" data-wow-delay=".0s">Welcome to JobHunter</span>
               <h1
                 className="wow fadeInUp text-white leading-[1.1] mb-6"
-                style={{ fontSize: 'clamp(38px,5vw,62px)', letterSpacing: '-0.02em', fontWeight: 800 }}
+                style={{ fontSize: 'clamp(30px,7vw,62px)', letterSpacing: '-0.02em', fontWeight: 800 }}
                 data-wow-delay=".2s"
               >
                 Land Your Dream Job with Artificial Intelligence
@@ -435,7 +435,7 @@ export default function Home() {
       </section>
 
       {/* ══ ABOUT ══ */}
-      <section className="py-28 px-6" style={{ background: '#101435', position: 'relative', zIndex: 1 }}>
+      <section className="py-14 sm:py-28 px-4 sm:px-6" style={{ background: '#101435', position: 'relative', zIndex: 1 }}>
         <div className="mx-auto max-w-6xl">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
             <div>
@@ -519,7 +519,7 @@ export default function Home() {
       </div>
 
       {/* ══ FEATURES (image cards) ══ */}
-      <section id="features" className="py-32 px-6" style={{ background: '#101435', position: 'relative', zIndex: 1 }}>
+      <section id="features" className="py-16 sm:py-32 px-4 sm:px-6" style={{ background: '#101435', position: 'relative', zIndex: 1 }}>
         <div className="mx-auto max-w-6xl">
           <div className="text-center mb-16">
             <span className="aivent-subtitle" data-reveal>Why JobHunter</span>
@@ -570,7 +570,7 @@ export default function Home() {
       </section>
 
       {/* ══ SUCCESS STORIES ══ */}
-      <section className="py-32 px-6" style={{ background: '#101435', position: 'relative', zIndex: 1 }}>
+      <section className="py-16 sm:py-32 px-4 sm:px-6" style={{ background: '#101435', position: 'relative', zIndex: 1 }}>
         <div className="mx-auto max-w-6xl">
           <div className="text-center mb-16">
             <span className="aivent-subtitle" data-reveal>Success Stories</span>
@@ -616,7 +616,7 @@ export default function Home() {
       </section>
 
       {/* ══ HOW IT WORKS ══ */}
-      <section id="journey" className="py-32 px-6" style={{ background: '#101435', position: 'relative', zIndex: 1 }}>
+      <section id="journey" className="py-16 sm:py-32 px-4 sm:px-6" style={{ background: '#101435', position: 'relative', zIndex: 1 }}>
         <div className="mx-auto max-w-6xl">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
 
@@ -677,7 +677,7 @@ export default function Home() {
       {/* ══ PRICING ══ */}
       <section
         id="pricing"
-        className="relative py-32 px-6"
+        className="relative py-16 sm:py-32 px-4 sm:px-6"
         style={{ backgroundImage: 'url(/aivent/background/7.webp)', backgroundSize: 'cover', backgroundPosition: 'center', backgroundAttachment: 'fixed' }}
       >
         <div className="absolute inset-0" style={{ background: 'rgba(0,0,0,0.80)' }} />
@@ -723,7 +723,7 @@ export default function Home() {
       </section>
 
       {/* ══ FAQ ══ */}
-      <section id="faq" className="py-32 px-6" style={{ background: '#101435', position: 'relative', zIndex: 1 }}>
+      <section id="faq" className="py-16 sm:py-32 px-4 sm:px-6" style={{ background: '#101435', position: 'relative', zIndex: 1 }}>
         <div className="mx-auto max-w-6xl">
           <div className="grid grid-cols-1 lg:grid-cols-5 gap-16">
             <div className="lg:col-span-2">

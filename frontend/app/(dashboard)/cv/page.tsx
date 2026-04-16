@@ -92,6 +92,7 @@ export default function CVPage() {
       <div
         style={{
           width: '100vw',
+          maxWidth: '100vw',
           marginLeft: 'calc(-50vw + 50%)',
           marginTop: '-32px',
           marginBottom: '-32px',
@@ -99,17 +100,16 @@ export default function CVPage() {
           position: 'relative',
           zIndex: 2,
           minHeight: 'calc(100vh - 56px)',
+          overflowX: 'hidden',
         }}
       >
         {/* ── HERO SECTION ──────── */}
         <section
-          className="relative overflow-hidden"
+          className="relative overflow-hidden pt-12 sm:pt-[72px] pb-8 sm:pb-10"
           style={{
             backgroundImage: analysisLoading ? 'none' : 'url(/aivent/background/6.webp)',
             backgroundSize: 'cover',
             backgroundPosition: 'center top',
-            paddingTop: '72px',
-            paddingBottom: '40px',
             minHeight: 'calc(100vh - 56px)',
             display: 'flex',
             flexDirection: 'column' as const,
@@ -135,7 +135,7 @@ export default function CVPage() {
           <div className="absolute bottom-0 left-0 right-0"
             style={{ height: '40%', background: 'linear-gradient(0deg,#0d1130 0%,transparent 100%)', zIndex: 1 }} />
 
-          <div className="relative mx-auto max-w-7xl px-6" style={{ zIndex: 2 }}>
+          <div className="relative mx-auto max-w-7xl px-4 sm:px-6" style={{ zIndex: 2 }}>
 
             {/* ── LOADING STATE: centered with video bg ── */}
             {analysisLoading ? (
@@ -143,17 +143,17 @@ export default function CVPage() {
                 <span className="aivent-subtitle s2">AI-Powered</span>
                 <h1
                   className="text-white leading-[1.1] mb-4 text-center"
-                  style={{ fontSize: 'clamp(32px,4.5vw,52px)', fontWeight: 800, letterSpacing: '-0.02em' }}
+                  style={{ fontSize: 'clamp(28px,6vw,52px)', fontWeight: 800, letterSpacing: '-0.02em' }}
                 >
                   Analyzing Your CV...
                 </h1>
-                <p className="text-center mb-10" style={{ color: 'rgba(255,255,255,0.50)', fontSize: '16px', lineHeight: 1.7, maxWidth: '480px' }}>
+                <p className="text-center mb-10 px-2" style={{ color: 'rgba(255,255,255,0.50)', fontSize: '15px', lineHeight: 1.7, maxWidth: '480px' }}>
                   Your analysis is running. You can switch tabs — it won't be interrupted.
                 </p>
 
                 <div className="rounded-2xl overflow-hidden w-full" style={{ ...glass, maxWidth: '480px' }}>
                   <div style={{ height: '2px', background: 'linear-gradient(90deg,transparent,rgba(118,77,240,0.9),transparent)' }} />
-                  <div className="p-7 space-y-4">
+                  <div className="p-5 sm:p-7 space-y-4">
                     <p className="text-xs font-bold uppercase tracking-widest mb-6" style={{ color: 'rgba(255,255,255,0.3)' }}>
                       Analysis Progress
                     </p>
@@ -186,22 +186,22 @@ export default function CVPage() {
               </div>
             ) : (
               /* ── UPLOAD STATE: left-aligned with image bg ── */
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-16 items-center">
                 <div>
                   <span className="aivent-subtitle">AI-Powered</span>
                   <h1
                     className="text-white leading-[1.1] mb-3"
-                    style={{ fontSize: 'clamp(32px,4.5vw,52px)', fontWeight: 800, letterSpacing: '-0.02em' }}
+                    style={{ fontSize: 'clamp(28px,6vw,52px)', fontWeight: 800, letterSpacing: '-0.02em' }}
                   >
                     ATS CV Analyzer
                   </h1>
-                  <p className="mb-8" style={{ color: 'rgba(255,255,255,0.45)', fontSize: '16px', lineHeight: 1.7 }}>
+                  <p className="mb-8" style={{ color: 'rgba(255,255,255,0.45)', fontSize: '15px', lineHeight: 1.7 }}>
                     Upload your CV + paste a job description. Get ATS score, keyword gaps, and a fully rewritten CV in seconds.
                   </p>
 
                   <div className="rounded-2xl overflow-hidden" style={glass}>
                     <div style={{ height: '2px', background: 'linear-gradient(90deg,transparent,rgba(118,77,240,0.9),transparent)' }} />
-                    <div className="p-7">
+                    <div className="p-4 sm:p-7">
                       <CVUpload />
                     </div>
                   </div>
@@ -229,35 +229,35 @@ export default function CVPage() {
     <div
       style={{
         width: '100vw',
+        maxWidth: '100vw',
         marginLeft: 'calc(-50vw + 50%)',
         marginTop: '-32px',
         background: '#0d1130',
         position: 'relative',
         zIndex: 2,
-        paddingBottom: '80px',
+        paddingBottom: '60px',
+        overflowX: 'hidden',
       }}
     >
       {/* ── RESULTS HEADER — background/2.webp (different!) ────────── */}
       <section
-        className="relative overflow-hidden"
+        className="relative overflow-hidden pt-10 pb-16 sm:pt-16 sm:pb-24"
         style={{
           backgroundImage: 'url(/aivent/background/2.webp)',
           backgroundSize: 'cover',
           backgroundPosition: 'center',
-          paddingTop: '64px',
-          paddingBottom: '96px',
         }}
       >
         <div className="absolute inset-0" style={{ background: 'rgba(8,11,35,0.85)' }} />
         <div className="absolute bottom-0 left-0 right-0"
           style={{ height: '50%', background: 'linear-gradient(0deg,#0d1130 0%,transparent 100%)' }} />
 
-        <div className="relative mx-auto max-w-7xl px-6" style={{ zIndex: 2 }}>
-          <div className="text-center mb-10">
+        <div className="relative mx-auto max-w-7xl px-4 sm:px-6" style={{ zIndex: 2 }}>
+          <div className="text-center mb-8 sm:mb-10">
             <span className="aivent-subtitle s2">Analysis Complete</span>
             <h1
               className="text-white leading-[1.1]"
-              style={{ fontSize: 'clamp(28px,4vw,46px)', fontWeight: 800, letterSpacing: '-0.02em' }}
+              style={{ fontSize: 'clamp(24px,6vw,46px)', fontWeight: 800, letterSpacing: '-0.02em' }}
             >
               Your ATS Score Report
             </h1>
@@ -266,15 +266,15 @@ export default function CVPage() {
           {/* score card */}
           <div className="mx-auto max-w-3xl rounded-2xl overflow-hidden" style={glass}>
             <div style={{ height: '2px', background: 'linear-gradient(90deg,transparent,rgba(118,77,240,0.9),transparent)' }} />
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-6 px-8 py-6">
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-5 sm:gap-6 px-4 sm:px-8 py-5 sm:py-6">
 
               {/* scores */}
-              <div className="flex items-center gap-6">
+              <div className="flex items-center justify-center gap-4 sm:gap-6 flex-wrap">
                 <div className="text-center">
                   <span
                     className="font-black tabular-nums block"
                     style={{
-                      fontSize: '42px',
+                      fontSize: 'clamp(32px,8vw,42px)',
                       lineHeight: 1,
                       background: 'linear-gradient(135deg, #a78bfa, #7c3aed)',
                       WebkitBackgroundClip: 'text',
@@ -296,7 +296,7 @@ export default function CVPage() {
                   <span
                     className="font-black tabular-nums block"
                     style={{
-                      fontSize: '42px',
+                      fontSize: 'clamp(32px,8vw,42px)',
                       lineHeight: 1,
                       background: 'linear-gradient(135deg, #764DF0, #5b21b6)',
                       WebkitBackgroundClip: 'text',
@@ -310,7 +310,7 @@ export default function CVPage() {
               </div>
 
               {/* actions */}
-              <div className="flex flex-wrap items-center gap-2">
+              <div className="flex flex-wrap items-center justify-center gap-2 w-full sm:w-auto">
                 <button
                   onClick={handleDownload}
                   disabled={downloading}
@@ -349,16 +349,16 @@ export default function CVPage() {
       </section>
 
       {/* ── CONTENT ───────────────────────────────────────────────── */}
-      <div className="mx-auto max-w-7xl px-6 space-y-6" style={{ position: 'relative', zIndex: 1 }}>
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 space-y-6" style={{ position: 'relative', zIndex: 1 }}>
 
         {/* cover letter panel */}
         {(showCL || clLoading) && (
           <div className="rounded-2xl overflow-hidden" style={{ background: 'rgba(118,77,240,0.04)', border: '1px solid rgba(118,77,240,0.2)' }}>
             <div style={{ height: '1px', background: 'linear-gradient(90deg,transparent,rgba(118,77,240,0.7),transparent)' }} />
-            <div className="flex items-center justify-between px-6 py-4" style={{ borderBottom: '1px solid rgba(118,77,240,0.1)' }}>
-              <div className="flex items-center gap-2.5">
-                <FileSignature className="h-4 w-4" style={{ color: '#a78bfa' }} />
-                <h3 className="text-sm font-bold" style={{ color: 'rgba(255,255,255,0.8)' }}>Cover Letter Generator</h3>
+            <div className="flex items-center justify-between px-4 sm:px-6 py-4" style={{ borderBottom: '1px solid rgba(118,77,240,0.1)' }}>
+              <div className="flex items-center gap-2.5 min-w-0">
+                <FileSignature className="h-4 w-4 shrink-0" style={{ color: '#a78bfa' }} />
+                <h3 className="text-sm font-bold truncate" style={{ color: 'rgba(255,255,255,0.8)' }}>Cover Letter Generator</h3>
               </div>
               <button
                 onClick={() => setShowCL(false)}
@@ -371,10 +371,10 @@ export default function CVPage() {
               </button>
             </div>
 
-            <div className="p-6">
+            <div className="p-4 sm:p-6">
               {!clResult ? (
-                <div className="flex items-center gap-4 flex-wrap">
-                  <div className="flex items-center gap-2">
+                <div className="flex items-center gap-3 sm:gap-4 flex-wrap">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <span className="text-xs font-bold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.25)' }}>Tone</span>
                     {tones.map((t) => (
                       <button
@@ -394,7 +394,7 @@ export default function CVPage() {
                   <button
                     onClick={handleGenerateCL}
                     disabled={clLoading}
-                    className="flex items-center gap-2 rounded-lg px-4 py-2 text-xs font-bold ml-auto transition-all duration-200"
+                    className="flex items-center gap-2 rounded-lg px-4 py-2 text-xs font-bold sm:ml-auto transition-all duration-200"
                     style={{
                       background: clLoading ? 'rgba(118,77,240,0.12)' : 'rgba(118,77,240,0.2)',
                       border: '1px solid rgba(118,77,240,0.35)',
@@ -411,7 +411,7 @@ export default function CVPage() {
                 </div>
               ) : (
                 <div className="space-y-4">
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <button
                       onClick={handleCopyCL}
                       className="flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold"
@@ -463,11 +463,11 @@ export default function CVPage() {
 
         {/* two-column grid */}
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_420px] gap-6">
-          {/* CV Preview */}
-          <div className="sticky top-20">
+          {/* CV Preview — sticky only on lg+, full-height on mobile */}
+          <div className="lg:sticky lg:top-20 min-w-0">
             <div
-              className="rounded-2xl overflow-hidden"
-              style={{ ...glass, maxHeight: 'calc(100vh - 220px)', overflowY: 'auto' }}
+              className="rounded-2xl overflow-hidden lg:max-h-[calc(100vh-220px)] lg:overflow-y-auto"
+              style={glass}
             >
               <div style={{ height: '1px', background: 'linear-gradient(90deg,transparent,rgba(118,77,240,0.5),transparent)' }} />
               <CVPreview cv={finalCV} />
@@ -475,9 +475,9 @@ export default function CVPage() {
           </div>
 
           {/* Analysis + Quick Edit */}
-          <div className="space-y-6">
-            <div className="rounded-2xl p-6 overflow-hidden" style={glass}>
-              <div style={{ height: '1px', background: 'linear-gradient(90deg,transparent,rgba(118,77,240,0.5),transparent)', margin: '-24px -24px 20px' }} />
+          <div className="space-y-6 min-w-0">
+            <div className="rounded-2xl p-4 sm:p-6 overflow-hidden" style={glass}>
+              <div className="-mx-4 sm:-mx-6 mb-5" style={{ height: '1px', background: 'linear-gradient(90deg,transparent,rgba(118,77,240,0.5),transparent)' }} />
               <AnalysisSidebar audit={result.audit} rewrite={result.rewrite} />
             </div>
             <QuickEditBox cvRecordId={result.cv_record_id} onRefine={handleRefine} />

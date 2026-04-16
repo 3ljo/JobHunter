@@ -60,11 +60,13 @@ export default function DashboardPage() {
     <div
       style={{
         width: '100vw',
+        maxWidth: '100vw',
         marginLeft: 'calc(-50vw + 50%)',
         marginTop: '-32px',
         background: '#101435',
         position: 'relative',
         zIndex: 2,
+        overflowX: 'hidden',
       }}
     >
 
@@ -72,12 +74,11 @@ export default function DashboardPage() {
           HERO — centered text, no image
       ══════════════════════════════════════════════════════════ */}
       <section
-        className="relative overflow-hidden"
+        className="relative overflow-hidden pt-14 sm:pt-[100px]"
         style={{
           backgroundImage: 'url(/aivent/background/8.webp)',
           backgroundSize: 'cover',
           backgroundPosition: 'center',
-          paddingTop: '100px',
           paddingBottom: 0,
         }}
       >
@@ -86,25 +87,25 @@ export default function DashboardPage() {
         {/* bottom fade into #101435 */}
         <div className="absolute bottom-0 left-0 right-0" style={{ height: '40%', background: 'linear-gradient(0deg,#101435 0%,transparent 100%)' }} />
 
-        <div className="relative mx-auto max-w-4xl px-6 pb-0 text-center" style={{ zIndex: 2 }}>
+        <div className="relative mx-auto max-w-4xl px-4 sm:px-6 pb-0 text-center" style={{ zIndex: 2 }}>
           <span className="aivent-subtitle s2">Welcome back</span>
           <h1
-            className="text-white leading-[1.1] mb-5"
-            style={{ fontSize: 'clamp(40px,5.5vw,64px)', fontWeight: 800, letterSpacing: '-0.02em' }}
+            className="text-white leading-[1.1] mb-5 break-words"
+            style={{ fontSize: 'clamp(30px,8vw,64px)', fontWeight: 800, letterSpacing: '-0.02em', overflowWrap: 'anywhere' }}
           >
             Hello,{' '}
             <span style={{ color: '#764DF0' }}>{firstName}</span>
           </h1>
-          <p className="text-white/55 text-lg leading-relaxed mb-10 mx-auto" style={{ fontWeight: 400, maxWidth: '36rem' }}>
+          <p className="text-white/55 text-base sm:text-lg leading-relaxed mb-10 mx-auto" style={{ fontWeight: 400, maxWidth: '36rem' }}>
             Your AI-powered command center. Analyze CVs, generate cover letters, and track every application from one place.
           </p>
         </div>
 
         {/* ── glassmorphism stats bar ── */}
-        <div className="relative px-6" style={{ zIndex: 3 }}>
+        <div className="relative px-4 sm:px-6" style={{ zIndex: 3 }}>
           <div className="mx-auto max-w-5xl">
             <div
-              className="grid grid-cols-2 lg:grid-cols-4 divide-x rounded-t-xl px-8 py-5"
+              className="grid grid-cols-2 lg:grid-cols-4 divide-x divide-white/[0.06] rounded-t-xl px-4 sm:px-8 py-5"
               style={{
                 background: 'rgba(0,0,0,0.28)',
                 backdropFilter: 'blur(14px)',
@@ -114,14 +115,14 @@ export default function DashboardPage() {
               }}
             >
               {statBoxes.map((s) => (
-                <div key={s.label} className="text-center px-4 py-1">
+                <div key={s.label} className="text-center px-2 sm:px-4 py-1">
                   <div
-                    className="text-3xl font-black tabular-nums mb-1 leading-none"
+                    className="text-2xl sm:text-3xl font-black tabular-nums mb-1 leading-none"
                     style={{ color: s.color }}
                   >
                     {s.value}
                   </div>
-                  <p className="text-white/50 text-xs uppercase tracking-widest" style={{ fontWeight: 600 }}>
+                  <p className="text-white/50 text-[10px] sm:text-xs uppercase tracking-widest" style={{ fontWeight: 600 }}>
                     {s.label}
                   </p>
                 </div>
@@ -134,7 +135,7 @@ export default function DashboardPage() {
       {/* ══════════════════════════════════════════════════════════
           TOOLS — feature card pattern
       ══════════════════════════════════════════════════════════ */}
-      <section className="py-24 px-6" style={{ background: '#101435', position: 'relative', zIndex: 1 }}>
+      <section className="py-14 sm:py-24 px-4 sm:px-6" style={{ background: '#101435', position: 'relative', zIndex: 1 }}>
         <div className="mx-auto max-w-6xl">
 
           <div className="text-center mb-14">
@@ -150,9 +151,9 @@ export default function DashboardPage() {
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+          <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-5">
             {TOOLS.map((tool) => (
-              <Link key={tool.href} href={tool.href} className="feature-card relative rounded-xl overflow-hidden block" style={{ minHeight: '280px' }}>
+              <Link key={tool.href} href={tool.href} className="feature-card relative rounded-xl overflow-hidden block" style={{ minHeight: '200px' }}>
                 {/* image background */}
                 <div
                   className="card-bg absolute inset-0 transition-colors duration-500"
@@ -176,9 +177,9 @@ export default function DashboardPage() {
                   <ArrowRight className="h-4 w-4 text-white/70" />
                 </div>
                 {/* text */}
-                <div className="absolute bottom-0 left-0 right-0 p-5" style={{ zIndex: 3 }}>
-                  <h4 className="text-white font-bold text-lg mb-1 tracking-tight">{tool.label}</h4>
-                  <p className="text-white/55 text-sm leading-snug" style={{ fontWeight: 400 }}>{tool.desc}</p>
+                <div className="absolute bottom-0 left-0 right-0 p-3 sm:p-5" style={{ zIndex: 3 }}>
+                  <h4 className="text-white font-bold text-sm sm:text-lg mb-0.5 sm:mb-1 tracking-tight">{tool.label}</h4>
+                  <p className="text-white/55 text-xs sm:text-sm leading-snug hidden sm:block" style={{ fontWeight: 400 }}>{tool.desc}</p>
                 </div>
               </Link>
             ))}
@@ -190,7 +191,7 @@ export default function DashboardPage() {
           RECENT APPLICATIONS
       ══════════════════════════════════════════════════════════ */}
       <section
-        className="py-24 px-6"
+        className="py-14 sm:py-24 px-4 sm:px-6"
         style={{
           backgroundImage: 'url(/aivent/background/7.webp)',
           backgroundSize: 'cover',
@@ -274,12 +275,12 @@ export default function DashboardPage() {
                   return (
                     <li
                       key={job.id}
-                      className="flex items-center justify-between px-6 py-4 transition-colors duration-200 hover:bg-white/[0.03] cursor-default"
+                      className="flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 transition-colors duration-200 hover:bg-white/[0.03] cursor-default"
                       style={{ borderBottom: i < jobs.length - 1 ? '1px solid rgba(255,255,255,0.05)' : 'none' }}
                     >
-                      <div className="flex items-center gap-4 min-w-0">
+                      <div className="flex items-center gap-3 sm:gap-4 min-w-0">
                         <div
-                          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-sm font-black text-violet-300"
+                          className="flex h-8 w-8 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-xl text-sm font-black text-violet-300"
                           style={{ background: 'rgba(118,77,240,0.15)', border: '1px solid rgba(118,77,240,0.2)' }}
                         >
                           {job.company_name?.charAt(0)?.toUpperCase() ?? 'C'}
@@ -289,9 +290,9 @@ export default function DashboardPage() {
                           <p className="text-white/35 text-xs truncate">{job.job_title}</p>
                         </div>
                       </div>
-                      <div className="flex items-center gap-3 shrink-0">
+                      <div className="flex items-center gap-2 sm:gap-3 shrink-0">
                         <span
-                          className="text-[11px] font-bold px-3 py-1 rounded-lg"
+                          className="text-[11px] font-bold px-2 sm:px-3 py-1 rounded-lg"
                           style={{ color: sc.color, background: sc.bg }}
                         >
                           {sc.label}
