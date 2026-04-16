@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef } from 'react';
 import Link from 'next/link';
-import Script from 'next/script';
+
 import { ChevronDown, Menu, X } from 'lucide-react';
 
 /* ── Scroll reveal ── */
@@ -196,9 +196,9 @@ export default function Home() {
   return (
     <div className="min-h-screen text-white overflow-x-hidden" style={{ background: '#0a0d24' }}>
 
-      {/* AIvent JS only — no CSS import (would conflict with Tailwind) */}
-      <Script src="/aivent/js/vendors.js" strategy="afterInteractive" />
-      <Script src="/aivent/js/designesia.js" strategy="afterInteractive" />
+      {/* AIvent JS removed — it uses jQuery to manipulate the DOM (jarallax, header classes, etc.)
+         which conflicts with React and causes layout breakage on production builds. All effects
+         (scroll reveal, sticky nav, parallax) are handled in React/CSS instead. */}
 
       {/* ══ NAVBAR ══ */}
       <header
@@ -245,46 +245,15 @@ export default function Home() {
             ))}
           </nav>
 
-          {/* Right side — desktop CTAs + mobile hamburger */}
-          <div className="flex items-center gap-3">
-
-            {/* Desktop CTA buttons */}
-            {isLoggedIn ? (
-              <Link
-                href="/dashboard"
-                className="btn-aivent fx-slide hidden lg:inline-flex"
-                data-hover="OPEN APP"
-              >
-                <span>Open App</span>
-              </Link>
-            ) : (
-              <div className="hidden lg:flex items-center gap-2">
-                <Link
-                  href="/login"
-                  className="px-5 py-2 text-sm font-bold text-white/75 hover:text-white transition-colors"
-                >
-                  Sign In
-                </Link>
-                <Link
-                  href="/register"
-                  className="btn-aivent fx-slide"
-                  data-hover="GET STARTED"
-                >
-                  <span>Get Started Free</span>
-                </Link>
-              </div>
-            )}
-
-            {/* Mobile hamburger */}
-            <button
-              className="lg:hidden flex items-center justify-center w-10 h-10 rounded-lg text-white/70 hover:text-white transition-colors"
-              style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }}
-              onClick={() => setMobileOpen(!mobileOpen)}
-              aria-label="Toggle menu"
-            >
-              {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-            </button>
-          </div>
+          {/* Mobile hamburger */}
+          <button
+            className="lg:hidden flex items-center justify-center w-10 h-10 rounded-lg text-white/70 hover:text-white transition-colors"
+            style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }}
+            onClick={() => setMobileOpen(!mobileOpen)}
+            aria-label="Toggle menu"
+          >
+            {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+          </button>
         </div>
 
         {/* Mobile dropdown */}
@@ -307,19 +276,13 @@ export default function Home() {
                 {link.label}
               </a>
             ))}
-            <div className="mt-4">
-              {isLoggedIn
-                ? <Link href="/cv" className="btn-aivent fx-slide w-full text-center block" data-hover="OPEN APP"><span>Open App</span></Link>
-                : <Link href="/register" className="btn-aivent fx-slide w-full text-center block" data-hover="GET STARTED"><span>Get Started</span></Link>
-              }
-            </div>
           </div>
         )}
       </header>
 
       {/* ══ HERO — Demo 6 split layout ══ */}
-      <section id="hero" className="relative overflow-hidden jarallax" style={{ paddingTop: '110px', paddingBottom: 0 }} data-jarallax data-speed="0.5" suppressHydrationWarning>
-        <img src="/aivent/background/8.webp" className="jarallax-img" alt="" style={{ position: 'absolute', objectFit: 'cover', width: '100%', height: '100%', top: 0, left: 0 }} />
+      <section id="hero" className="relative overflow-hidden" style={{ paddingTop: '110px', paddingBottom: 0 }}>
+        <div className="absolute inset-0" style={{ backgroundImage: 'url(/aivent/background/8.webp)', backgroundSize: 'cover', backgroundPosition: 'center', backgroundAttachment: 'fixed' }} />
         <div className="absolute inset-0" style={{ background: 'rgba(16,20,53,0.60)' }} />
         <div className="absolute bottom-0 left-0 right-0" style={{ height: '35%', background: 'linear-gradient(0deg,#101435 0%,transparent 100%)' }} />
 
@@ -344,12 +307,12 @@ export default function Home() {
               <p className="wow fadeInUp text-white/60 text-base leading-relaxed mb-8" style={{ fontWeight: 400, maxWidth: '32rem' }} data-wow-delay=".4s">
                 Upload your CV, paste any job description, and get an instant ATS score, keyword gap analysis, and a tailored cover letter. JobHunter gives every job seeker an unfair advantage.
               </p>
-              <div className="flex flex-wrap gap-4 wow fadeInUp" data-wow-delay=".6s">
+              <div className="flex flex-wrap items-center gap-4 wow fadeInUp" data-wow-delay=".6s">
                 {isLoggedIn
-                  ? <Link href="/cv" className="btn-aivent fx-slide" data-hover="OPEN DASHBOARD"><span>Open Dashboard</span></Link>
+                  ? <Link href="/cv" className="btn-aivent btn-lg fx-slide" data-hover="OPEN DASHBOARD"><span>Open Dashboard</span></Link>
                   : <>
-                      <Link href="/register" className="btn-aivent fx-slide" data-hover="START FREE"><span>Get Started Free</span></Link>
-                      <Link href="/login" className="btn-aivent btn-line fx-slide" data-hover="SIGN IN"><span>Sign In</span></Link>
+                      <Link href="/register" className="btn-aivent btn-lg fx-slide" data-hover="START FREE"><span>Get Started Free</span></Link>
+                      <Link href="/login" className="btn-aivent btn-line btn-lg fx-slide" data-hover="SIGN IN"><span>Sign In</span></Link>
                     </>
                 }
               </div>
@@ -489,13 +452,11 @@ export default function Home() {
 
       {/* ══ PARALLAX QUOTE ══ */}
       <section
-        className="relative overflow-hidden jarallax"
+        className="relative overflow-hidden"
         aria-label="quote"
         style={{ paddingTop: '140px', paddingBottom: '140px' }}
-        data-jarallax data-speed="0.5"
-        suppressHydrationWarning
       >
-        <img src="/aivent/background/1.webp" className="jarallax-img" alt="" style={{ position: 'absolute', objectFit: 'cover', width: '100%', height: '100%', top: 0, left: 0 }} />
+        <div className="absolute inset-0" style={{ backgroundImage: 'url(/aivent/background/1.webp)', backgroundSize: 'cover', backgroundPosition: 'center', backgroundAttachment: 'fixed' }} />
         {/* Overlays */}
         <div className="absolute inset-0" style={{ background: 'rgba(10,13,40,0.82)' }} />
         <div className="absolute top-0 left-0 right-0" style={{ height: '120px', background: 'linear-gradient(180deg,#101435 0%,transparent 100%)' }} />
@@ -538,13 +499,11 @@ export default function Home() {
 
       {/* ══ COMPANY LOGOS ══ */}
       <section
-        className="relative overflow-hidden jarallax"
+        className="relative overflow-hidden"
         aria-label="logos"
         style={{ paddingTop: '80px', paddingBottom: '80px' }}
-        suppressHydrationWarning
-        data-jarallax data-speed="0.5"
       >
-        <img src="/aivent/background/1.webp" className="jarallax-img" alt="" style={{ position: 'absolute', objectFit: 'cover', width: '100%', height: '100%', top: 0, left: 0 }} />
+        <div className="absolute inset-0" style={{ backgroundImage: 'url(/aivent/background/1.webp)', backgroundSize: 'cover', backgroundPosition: 'center', backgroundAttachment: 'fixed' }} />
         <div className="absolute inset-0" style={{ background: 'rgba(10,13,40,0.82)' }} />
         <div className="absolute top-0 left-0 right-0" style={{ height: '80px', background: 'linear-gradient(180deg,#101435 0%,transparent 100%)' }} />
         <div className="absolute bottom-0 left-0 right-0" style={{ height: '80px', background: 'linear-gradient(0deg,#101435 0%,transparent 100%)' }} />
@@ -684,12 +643,11 @@ export default function Home() {
 
       {/* ══ CTA / NEWSLETTER ══ */}
       <section
-        className="relative overflow-hidden jarallax text-center"
+        className="relative overflow-hidden text-center"
         aria-label="cta"
         style={{ paddingTop: '140px', paddingBottom: '140px' }}
-        data-jarallax data-speed="0.5"
       >
-        <img src="/aivent/background/3.webp" className="jarallax-img" alt="" style={{ position: 'absolute', objectFit: 'cover', width: '100%', height: '100%', top: 0, left: 0 }} />
+        <div className="absolute inset-0" style={{ backgroundImage: 'url(/aivent/background/3.webp)', backgroundSize: 'cover', backgroundPosition: 'center', backgroundAttachment: 'fixed' }} />
         <div className="absolute inset-0" style={{ background: 'rgba(10,13,40,0.82)' }} />
         <div className="absolute top-0 left-0 right-0" style={{ height: '120px', background: 'linear-gradient(180deg,#101435 0%,transparent 100%)' }} />
         <div className="absolute bottom-0 left-0 right-0" style={{ height: '120px', background: 'linear-gradient(0deg,#101435 0%,transparent 100%)' }} />
@@ -767,12 +725,8 @@ export default function Home() {
                 <li><Link href="/register" className="text-white/35 hover:text-white/70 transition-colors text-sm">Create Account</Link></li>
               </ul>
               <div className="mt-6">
-                <Link
-                  href="/register"
-                  className="inline-flex items-center gap-2 rounded-lg px-4 py-2 text-xs font-bold transition-all"
-                  style={{ background: 'rgba(118,77,240,0.2)', border: '1px solid rgba(118,77,240,0.35)', color: '#c4b5fd' }}
-                >
-                  Try Free
+                <Link href="/register" className="btn-aivent btn-line fx-slide text-xs !px-5 !py-2.5" data-hover="TRY FREE">
+                  <span>Try Free</span>
                 </Link>
               </div>
             </div>

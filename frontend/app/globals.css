@@ -192,28 +192,48 @@
 .btn-aivent {
   background: oklch(0.59 0.245 291);
   color: #fff;
-  font-size: 12px;
-  font-weight: 800;
-  letter-spacing: 2px;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
   text-transform: uppercase;
-  padding: 14px 28px;
-  border-radius: 6px;
-  border: none;
-  display: inline-block;
+  padding: 14px 32px;
+  border-radius: 8px;
+  border: 2px solid transparent;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   position: relative;
   overflow: hidden;
   cursor: pointer;
-  transition: background 0.3s;
+  transition: all 0.3s ease;
   text-decoration: none;
+  white-space: nowrap;
+  box-shadow: 0 4px 20px rgba(118,77,240,0.25);
 }
-.btn-aivent:hover { background: oklch(0.53 0.25 291); }
+.btn-aivent:hover {
+  background: oklch(0.53 0.25 291);
+  box-shadow: 0 6px 28px rgba(118,77,240,0.35);
+  transform: translateY(-1px);
+}
 .btn-aivent.btn-line {
   background: transparent;
-  border: 2px solid oklch(0.59 0.245 291);
+  border: 2px solid rgba(255,255,255,0.25);
   color: #fff;
+  box-shadow: none;
 }
 .btn-aivent.btn-line:hover {
-  background: oklch(0.59 0.245 291);
+  background: rgba(255,255,255,0.08);
+  border-color: rgba(255,255,255,0.4);
+  box-shadow: none;
+  transform: translateY(-1px);
+}
+
+/* Large variant for hero */
+.btn-aivent.btn-lg {
+  font-size: 14px;
+  padding: 16px 38px;
+  border-radius: 10px;
+  letter-spacing: 1.5px;
 }
 
 /* fx-slide button animation */
@@ -238,9 +258,9 @@
   opacity: 0;
   transform: translateY(-100%);
   transition: all 0.3s ease-in-out;
-  font-size: 12px;
-  font-weight: 800;
-  letter-spacing: 2px;
+  font-size: inherit;
+  font-weight: inherit;
+  letter-spacing: inherit;
 }
 .btn-aivent.fx-slide:hover::before {
   opacity: 1;
