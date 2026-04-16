@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useSubscriptionStore } from '@/store/subscriptionStore';
 import Link from 'next/link';
@@ -61,6 +61,14 @@ const plans = [
 ];
 
 export default function PricingPage() {
+  return (
+    <Suspense>
+      <PricingContent />
+    </Suspense>
+  );
+}
+
+function PricingContent() {
   const [interval, setInterval] = useState<'month' | 'year'>('month');
   const { subscription, fetchSubscription } = useSubscriptionStore();
   const searchParams = useSearchParams();

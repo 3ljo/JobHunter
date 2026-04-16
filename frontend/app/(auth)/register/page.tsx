@@ -1,13 +1,12 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { registerUser, loginUser, validateReferralCode } from '@/lib/api';
 import { useAuthStore } from '@/store/authStore';
-import { useSearchParams } from 'next/navigation';
 import toast from 'react-hot-toast';
 import { Mail, Lock, ShieldCheck, Check, Eye, EyeOff, Gift } from 'lucide-react';
 
@@ -42,6 +41,14 @@ function getStrengthTextColor(score: number): string {
 }
 
 export default function RegisterPage() {
+  return (
+    <Suspense>
+      <RegisterForm />
+    </Suspense>
+  );
+}
+
+function RegisterForm() {
   const router = useRouter();
   const { setToken, setUser } = useAuthStore();
   const [email, setEmail] = useState('');

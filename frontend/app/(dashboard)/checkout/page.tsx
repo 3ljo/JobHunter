@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useSubscriptionStore } from '@/store/subscriptionStore';
 import { createCheckoutSession, validatePromoCode, checkReferralDiscount } from '@/lib/api';
@@ -61,6 +61,14 @@ interface Discount {
 }
 
 export default function CheckoutPage() {
+  return (
+    <Suspense>
+      <CheckoutForm />
+    </Suspense>
+  );
+}
+
+function CheckoutForm() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const { fetchSubscription } = useSubscriptionStore();
