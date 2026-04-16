@@ -153,19 +153,20 @@ const callAI = async (systemPrompt, userMessage, maxTokensOverride, meta = {}) =
       error_message: err.message?.substring(0, 500),
     });
 
-    // Wrap with user-friendly error message
+    // Wrap with user-friendly error message — never expose raw API details to users
     const msg = err.message || '';
-    if (msg.includes('401') || msg.includes('authentication') || msg.includes('API key'))
-      throw new Error(`AI service authentication failed (${provider}). Please check your API key.`);
+    console.error(`AI error (${provider}):`, msg);
+    if (msg.includes('401') || msg.includes('authentication') || msg.includes('API key') || msg.includes('credentials') || msg.includes('apiKey'))
+      throw new Error('AI service is temporarily unavailable. Please try again later.');
     if (msg.includes('429') || msg.includes('rate') || msg.includes('quota') || msg.includes('Too Many Requests'))
-      throw new Error(`AI rate limit reached (${provider}). Please wait a moment and try again.`);
+      throw new Error('AI service is busy. Please wait a moment and try again.');
     if (msg.includes('529') || msg.includes('overloaded'))
-      throw new Error(`AI service is temporarily overloaded (${provider}). Please retry in a few seconds.`);
+      throw new Error('AI service is temporarily overloaded. Please retry in a few seconds.');
     if (msg.includes('fetch failed') || msg.includes('ECONNREFUSED') || msg.includes('network'))
-      throw new Error(`Could not reach AI service (${provider}). Check your internet connection.`);
+      throw new Error('Could not reach AI service. Please check your connection and try again.');
     if (msg.includes('billing') || msg.includes('credit'))
-      throw new Error(`AI billing issue (${provider}). Please check your account balance.`);
-    throw new Error(`AI request failed (${provider}): ${msg.substring(0, 200)}`);
+      throw new Error('AI service is temporarily unavailable. Please try again later.');
+    throw new Error('Something went wrong with the AI analysis. Please try again.');
   }
 };
 
