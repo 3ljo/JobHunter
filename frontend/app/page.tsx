@@ -145,15 +145,18 @@ export default function Home() {
     },
   ];
 
-  const logos = Array.from({ length: 10 }, (_, i) => `/aivent/logo-light/${i + 1}.webp`);
+  const logos = [
+    '/logos/indeed.svg', '/logos/glassdoor.svg', '/logos/linkedin-jobs.svg', '/logos/monster.svg', '/logos/ziprecruiter.svg',
+    '/logos/reed.svg', '/logos/totaljobs.svg', '/logos/careerbuilder.svg', '/logos/stepstone.svg', '/logos/simplyhired.svg',
+  ];
 
   const pricing = [
     {
       bg: '/aivent/misc/l3.webp',
       plan: 'Free',
       price: '$0',
-      period: 'Forever',
-      features: ['3 CV analyses per month', 'ATS score & keyword report', 'Basic cover letter', 'Job application tracker', 'Email support'],
+      period: '/month',
+      features: ['3 CV analyses per day', '5 cover letters per day', 'ATS score & keyword report', 'PDF downloads'],
       cta: 'Get Started Free',
       href: '/register',
       highlight: false,
@@ -161,20 +164,20 @@ export default function Home() {
     {
       bg: '/aivent/misc/l4.webp',
       plan: 'Pro',
-      price: '$19',
+      price: '$9.99',
       period: '/month',
-      features: ['Unlimited CV analyses', 'Advanced ATS optimization', 'Unlimited cover letters', 'All tone options (3)', 'Priority AI processing', 'Full CV history & analytics'],
+      features: ['25 CV analyses per day', 'Unlimited cover letters', 'Full ATS audit & optimization', 'AI quick edits', 'Priority AI processing', 'Full CV history & analytics'],
       cta: 'Start Pro',
       href: '/register',
       highlight: true,
     },
     {
       bg: '/aivent/misc/l5.webp',
-      plan: 'Teams',
-      price: '$49',
+      plan: 'Pro+',
+      price: '$14.99',
       period: '/month',
-      features: ['Everything in Pro', 'Up to 10 team members', 'Team dashboard & insights', 'Bulk CV analysis', 'API access', 'Dedicated account manager'],
-      cta: 'Contact Sales',
+      features: ['Unlimited CV analyses', 'Unlimited cover letters', 'Full ATS audit & optimization', 'AI quick edits', 'Job application tracker', 'Priority AI processing', 'Full CV history & analytics', 'Advanced voice matching'],
+      cta: 'Start Pro+',
       href: '/register',
       highlight: false,
     },
@@ -191,7 +194,7 @@ export default function Home() {
 
   /* ── Render ── */
   return (
-    <div className="min-h-screen text-white overflow-x-hidden" style={{ background: '#101435' }}>
+    <div className="min-h-screen text-white overflow-x-hidden" style={{ background: '#0a0d24' }}>
 
       {/* AIvent JS only — no CSS import (would conflict with Tailwind) */}
       <Script src="/aivent/js/vendors.js" strategy="afterInteractive" />
@@ -315,7 +318,7 @@ export default function Home() {
       </header>
 
       {/* ══ HERO — Demo 6 split layout ══ */}
-      <section id="hero" className="relative overflow-hidden jarallax" style={{ paddingTop: '110px', paddingBottom: 0 }} data-jarallax data-speed="0.5">
+      <section id="hero" className="relative overflow-hidden jarallax" style={{ paddingTop: '110px', paddingBottom: 0 }} data-jarallax data-speed="0.5" suppressHydrationWarning>
         <img src="/aivent/background/8.webp" className="jarallax-img" alt="" style={{ position: 'absolute', objectFit: 'cover', width: '100%', height: '100%', top: 0, left: 0 }} />
         <div className="absolute inset-0" style={{ background: 'rgba(16,20,53,0.60)' }} />
         <div className="absolute bottom-0 left-0 right-0" style={{ height: '35%', background: 'linear-gradient(0deg,#101435 0%,transparent 100%)' }} />
@@ -461,8 +464,8 @@ export default function Home() {
         <div className="mx-auto max-w-6xl">
           <div className="text-center mb-16">
             <span className="aivent-subtitle" data-reveal>Why JobHunter</span>
-            <h2 className="text-white tracking-tight" data-reveal data-delay="100" style={{ fontSize: 'clamp(32px,4vw,48px)', fontWeight: 800 }}>What You Will Gain</h2>
-            <p className="text-white/55 text-lg mt-4 max-w-2xl mx-auto" style={{ fontWeight: 400 }} data-reveal data-delay="200">
+            <h2 className="text-white tracking-tight wow fadeInUp" data-wow-delay=".1s" style={{ fontSize: 'clamp(32px,4vw,48px)', fontWeight: 800 }}>What You Will Gain</h2>
+            <p className="text-white/55 text-lg mt-4 max-w-2xl mx-auto wow fadeInUp" style={{ fontWeight: 400 }} data-wow-delay=".2s">
               From ATS-beating CVs to automated cover letters — every tool you need to land your next role faster.
             </p>
           </div>
@@ -490,6 +493,7 @@ export default function Home() {
         aria-label="quote"
         style={{ paddingTop: '140px', paddingBottom: '140px' }}
         data-jarallax data-speed="0.5"
+        suppressHydrationWarning
       >
         <img src="/aivent/background/1.webp" className="jarallax-img" alt="" style={{ position: 'absolute', objectFit: 'cover', width: '100%', height: '100%', top: 0, left: 0 }} />
         {/* Overlays */}
@@ -513,8 +517,8 @@ export default function Home() {
         <div className="mx-auto max-w-6xl">
           <div className="text-center mb-16">
             <span className="aivent-subtitle" data-reveal>Success Stories</span>
-            <h2 className="text-white tracking-tight" data-reveal data-delay="100" style={{ fontSize: 'clamp(32px,4vw,48px)', fontWeight: 800 }}>Meet Our Top Users</h2>
-            <p className="text-white/55 text-lg mt-4 max-w-2xl mx-auto" style={{ fontWeight: 400 }} data-reveal data-delay="200">Real job seekers who used JobHunter to land roles at the world's top companies.</p>
+            <h2 className="text-white tracking-tight wow fadeInUp" data-wow-delay=".1s" style={{ fontSize: 'clamp(32px,4vw,48px)', fontWeight: 800 }}>Meet Our Top Users</h2>
+            <p className="text-white/55 text-lg mt-4 max-w-2xl mx-auto wow fadeInUp" style={{ fontWeight: 400 }} data-wow-delay=".2s">Real job seekers who used JobHunter to land roles at the world's top companies.</p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {testimonials.map((t, i) => (
@@ -537,6 +541,7 @@ export default function Home() {
         className="relative overflow-hidden jarallax"
         aria-label="logos"
         style={{ paddingTop: '80px', paddingBottom: '80px' }}
+        suppressHydrationWarning
         data-jarallax data-speed="0.5"
       >
         <img src="/aivent/background/1.webp" className="jarallax-img" alt="" style={{ position: 'absolute', objectFit: 'cover', width: '100%', height: '100%', top: 0, left: 0 }} />
@@ -627,8 +632,8 @@ export default function Home() {
         <div className="relative mx-auto max-w-6xl" style={{ zIndex: 2 }}>
           <div className="text-center mb-16">
             <span className="aivent-subtitle s2" data-reveal>Pricing Plans</span>
-            <h2 className="text-white tracking-tight" data-reveal data-delay="100" style={{ fontSize: 'clamp(32px,4vw,48px)', fontWeight: 800 }}>Choose Your Plan</h2>
-            <p className="text-white/55 text-lg mt-4 max-w-2xl mx-auto" style={{ fontWeight: 400 }} data-reveal data-delay="200">Start free. Upgrade when you need more power.</p>
+            <h2 className="text-white tracking-tight wow fadeInUp" data-wow-delay=".1s" style={{ fontSize: 'clamp(32px,4vw,48px)', fontWeight: 800 }}>Choose Your Plan</h2>
+            <p className="text-white/55 text-lg mt-4 max-w-2xl mx-auto wow fadeInUp" style={{ fontWeight: 400 }} data-wow-delay=".2s">Start free. Upgrade when you need more power.</p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -668,9 +673,9 @@ export default function Home() {
           <div className="grid grid-cols-1 lg:grid-cols-5 gap-16">
             <div className="lg:col-span-2">
               <span className="aivent-subtitle" data-reveal>Everything You Need to Know</span>
-              <h2 className="text-white tracking-tight" data-reveal data-delay="100" style={{ fontSize: 'clamp(28px,3.5vw,40px)', fontWeight: 800 }}>Frequently Asked Questions</h2>
+              <h2 className="text-white tracking-tight wow fadeInUp" data-wow-delay=".1s" style={{ fontSize: 'clamp(28px,3.5vw,40px)', fontWeight: 800 }}>Frequently Asked Questions</h2>
             </div>
-            <div className="lg:col-span-3" data-reveal data-delay="200">
+            <div className="lg:col-span-3 wow fadeInUp" data-wow-delay=".2s">
               <Accordion items={faqItems} />
             </div>
           </div>
@@ -705,22 +710,85 @@ export default function Home() {
       </section>
 
       {/* ══ FOOTER ══ */}
-      <footer className="text-white py-16 px-6" style={{ background: '#0d1130', borderTop: '1px solid rgba(255,255,255,0.06)', position: 'relative', zIndex: 1 }}>
-        <div className="mx-auto max-w-6xl">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-8 text-center md:text-left">
-           
-            <div className="flex flex-col items-center gap-4">
-              <img src="/aivent/logo.webp" alt="JobHunter" style={{ height: '42px', width: 'auto' }} />
-              <div className="flex items-center gap-6 mt-1">
-                {['Sign In', 'Register', 'Features', 'Pricing'].map((l, i) => (
-                  <a key={l} href={['#login', '#register', '#features', '#pricing'][i]} className="text-white/35 hover:text-white/80 transition-colors uppercase tracking-widest" style={{ fontSize: '11px', fontWeight: 600 }}>{l}</a>
+      <footer style={{ background: '#0a0d24', position: 'relative', zIndex: 1 }}>
+        <div style={{ height: '1px', background: 'linear-gradient(90deg, transparent, rgba(118,77,240,0.4), transparent)' }} />
+
+        <div className="mx-auto max-w-6xl px-6 pt-16 pb-8">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-14">
+
+            {/* Brand */}
+            <div className="md:col-span-1">
+              <img src="/aivent/logo.webp" alt="JobHunter" style={{ height: '36px', width: 'auto', marginBottom: '16px' }} />
+              <p className="text-white/40 text-sm leading-relaxed" style={{ fontWeight: 400 }}>
+                AI-powered CV analysis, cover letter generation, and job tracking — all in one platform.
+              </p>
+            </div>
+
+            {/* Product */}
+            <div>
+              <h4 className="text-white/80 text-xs font-bold uppercase tracking-widest mb-5">Product</h4>
+              <ul className="space-y-3">
+                {[
+                  { label: 'CV Analyzer', href: '#features' },
+                  { label: 'Cover Letters', href: '#features' },
+                  { label: 'Job Tracker', href: '#features' },
+                  { label: 'Pricing', href: '#pricing' },
+                ].map((l) => (
+                  <li key={l.label}>
+                    <a href={l.href} className="text-white/35 hover:text-white/70 transition-colors text-sm" style={{ fontWeight: 400 }}>{l.label}</a>
+                  </li>
                 ))}
+              </ul>
+            </div>
+
+            {/* Company */}
+            <div>
+              <h4 className="text-white/80 text-xs font-bold uppercase tracking-widest mb-5">Company</h4>
+              <ul className="space-y-3">
+                {[
+                  { label: 'About', href: '#about' },
+                  { label: 'FAQ', href: '#faq' },
+                  { label: 'Contact', href: '/contact' },
+                  { label: 'Privacy Policy', href: '#' },
+                  { label: 'Terms of Service', href: '#' },
+                ].map((l) => (
+                  <li key={l.label}>
+                    <a href={l.href} className="text-white/35 hover:text-white/70 transition-colors text-sm" style={{ fontWeight: 400 }}>{l.label}</a>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {/* Get Started */}
+            <div>
+              <h4 className="text-white/80 text-xs font-bold uppercase tracking-widest mb-5">Get Started</h4>
+              <ul className="space-y-3">
+                <li><Link href="/login" className="text-white/35 hover:text-white/70 transition-colors text-sm">Sign In</Link></li>
+                <li><Link href="/register" className="text-white/35 hover:text-white/70 transition-colors text-sm">Create Account</Link></li>
+              </ul>
+              <div className="mt-6">
+                <Link
+                  href="/register"
+                  className="inline-flex items-center gap-2 rounded-lg px-4 py-2 text-xs font-bold transition-all"
+                  style={{ background: 'rgba(118,77,240,0.2)', border: '1px solid rgba(118,77,240,0.35)', color: '#c4b5fd' }}
+                >
+                  Try Free
+                </Link>
               </div>
             </div>
-           
+
           </div>
-          <div className="mt-10 pt-6 text-center" style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}>
-            <p className="text-white/25 text-xs tracking-wide" style={{ fontWeight: 400 }}>Copyright {new Date().getFullYear()} — JobHunter · AI-Powered Job Search</p>
+
+          {/* Bottom bar */}
+          <div className="pt-6 flex flex-col sm:flex-row items-center justify-between gap-4" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+            <p className="text-white/20 text-xs" style={{ fontWeight: 400 }}>
+              &copy; {new Date().getFullYear()} JobHunter. All rights reserved.
+            </p>
+            <div className="flex items-center gap-5">
+              <a href="https://x.com" target="_blank" rel="noopener noreferrer" className="text-white/20 hover:text-white/50 transition-colors text-xs">X / Twitter</a>
+              <a href="https://linkedin.com" target="_blank" rel="noopener noreferrer" className="text-white/20 hover:text-white/50 transition-colors text-xs">LinkedIn</a>
+              <Link href="/contact" className="text-white/20 hover:text-white/50 transition-colors text-xs">Contact</Link>
+            </div>
           </div>
         </div>
       </footer>

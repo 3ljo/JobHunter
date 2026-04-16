@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { Manrope } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "react-hot-toast";
-import ThemeInitializer from "@/components/layout/ThemeInitializer";
 
 const manrope = Manrope({
   variable: "--font-manrope",
@@ -23,13 +22,39 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${manrope.variable} h-full antialiased`}
-      suppressHydrationWarning
+      className={`${manrope.variable} dark h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
-        <ThemeInitializer />
         {children}
-        <Toaster position="top-right" toastOptions={{ duration: 3000 }} />
+        <Toaster
+          position="top-center"
+          toastOptions={{
+            duration: 3500,
+            style: {
+              background: 'rgba(13,17,48,0.92)',
+              backdropFilter: 'blur(16px)',
+              WebkitBackdropFilter: 'blur(16px)',
+              border: '1px solid rgba(255,255,255,0.08)',
+              color: 'rgba(255,255,255,0.85)',
+              fontSize: '13px',
+              fontWeight: 600,
+              fontFamily: 'var(--font-manrope), sans-serif',
+              letterSpacing: '0.01em',
+              borderRadius: '12px',
+              padding: '12px 18px',
+              boxShadow: '0 8px 32px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.04)',
+              maxWidth: '420px',
+            },
+            success: {
+              iconTheme: { primary: '#34d399', secondary: '#0d1130' },
+              style: { borderColor: 'rgba(52,211,153,0.20)' },
+            },
+            error: {
+              iconTheme: { primary: '#f87171', secondary: '#0d1130' },
+              style: { borderColor: 'rgba(248,113,113,0.20)' },
+            },
+          }}
+        />
       </body>
     </html>
   );

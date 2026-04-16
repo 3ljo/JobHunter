@@ -4,7 +4,7 @@
 const path = require('path');
 const fs = require('fs');
 const multer = require('multer');
-const anthropic = require('../services/anthropicClient');
+const { callAI } = require('../services/aiClient');
 const { parsePDF } = require('../services/cvParserService');
 
 // Configure multer for PDF uploads
@@ -57,20 +57,17 @@ const generateCoverLetter = async (req, res) => {
   }
 
   try {
-    const response = await anthropic.messages.create({
-      model: 'claude-sonnet-4-20250514',
-      max_tokens: 2000,
-      messages: [{ role: 'user', content: buildPrompt(cv_text, job_description, tone) }],
-    });
+    const text = await callAI(
+      'You are an expert career coach and cover letter writer.',
+      buildPrompt(cv_text, job_description, tone),
+      2000,
+      { userId: req.user?.id, userEmail: req.user?.email, feature: 'cover_letter' }
+    );
 
-    return res.status(200).json({ cover_letter: response.content[0].text });
+    return res.status(200).json({ cover_letter: text });
   } catch (err) {
-    console.error('Cover letter generation error:', err.message, err.status || '');
-    const message = err.status === 401 ? 'AI service authentication error — check API key'
-      : err.status === 429 ? 'AI rate limit reached — please try again in a moment'
-      : err.status === 529 ? 'AI service is temporarily overloaded — please retry'
-      : `Failed to generate cover letter: ${err.message}`;
-    return res.status(500).json({ error: message });
+    console.error('Cover letter generation error:', err.message);
+    return res.status(500).json({ error: `Failed to generate cover letter: ${err.message}` });
   }
 };
 
@@ -100,20 +97,17 @@ const generateFromPdf = async (req, res) => {
 
     const cvText = await parsePDF(uploadedFilePath);
 
-    const response = await anthropic.messages.create({
-      model: 'claude-sonnet-4-20250514',
-      max_tokens: 2000,
-      messages: [{ role: 'user', content: buildPrompt(cvText, jobDescription, tone) }],
-    });
+    const text = await callAI(
+      'You are an expert career coach and cover letter writer.',
+      buildPrompt(cvText, jobDescription, tone),
+      2000,
+      { userId: req.user?.id, userEmail: req.user?.email, feature: 'cover_letter' }
+    );
 
-    return res.status(200).json({ cover_letter: response.content[0].text });
+    return res.status(200).json({ cover_letter: text });
   } catch (err) {
-    console.error('Cover letter PDF generation error:', err.message, err.status || '');
-    const message = err.status === 401 ? 'AI service authentication error — check API key'
-      : err.status === 429 ? 'AI rate limit reached — please try again in a moment'
-      : err.status === 529 ? 'AI service is temporarily overloaded — please retry'
-      : `Failed to generate cover letter: ${err.message}`;
-    return res.status(500).json({ error: message });
+    console.error('Cover letter PDF generation error:', err.message);
+    return res.status(500).json({ error: `Failed to generate cover letter: ${err.message}` });
   } finally {
     if (uploadedFilePath && fs.existsSync(uploadedFilePath)) {
       fs.unlinkSync(uploadedFilePath);
@@ -130,25 +124,17 @@ const refineCoverLetter = async (req, res) => {
   }
 
   try {
-    const response = await anthropic.messages.create({
-      model: 'claude-sonnet-4-20250514',
-      max_tokens: 2000,
-      messages: [
-        {
-          role: 'user',
-          content: `Here is a cover letter:\n\n${cover_letter}\n\nApply the following changes:\n${instructions}\n\nReturn ONLY the updated cover letter text, nothing else.`,
-        },
-      ],
-    });
+    const text = await callAI(
+      'You are an expert cover letter editor. Apply changes precisely and return only the updated letter.',
+      `Here is a cover letter:\n\n${cover_letter}\n\nApply the following changes:\n${instructions}\n\nReturn ONLY the updated cover letter text, nothing else.`,
+      2000,
+      { userId: req.user?.id, userEmail: req.user?.email, feature: 'cl_refine' }
+    );
 
-    return res.status(200).json({ cover_letter: response.content[0].text });
+    return res.status(200).json({ cover_letter: text });
   } catch (err) {
-    console.error('Cover letter refine error:', err.message, err.status || '');
-    const message = err.status === 401 ? 'AI service authentication error — check API key'
-      : err.status === 429 ? 'AI rate limit reached — please try again in a moment'
-      : err.status === 529 ? 'AI service is temporarily overloaded — please retry'
-      : `Failed to refine cover letter: ${err.message}`;
-    return res.status(500).json({ error: message });
+    console.error('Cover letter refine error:', err.message);
+    return res.status(500).json({ error: `Failed to refine cover letter: ${err.message}` });
   }
 };
 

@@ -54,7 +54,7 @@ const analyzeCV = async (req, res) => {
     const cvText = await parsePDF(uploadedFilePath);
 
     // Stages 2-7: Run the full AI analysis pipeline
-    const result = await analyzeCVWithJD(cvText, jobDescription);
+    const result = await analyzeCVWithJD(cvText, jobDescription, { userId: req.user.id, userEmail: req.user.email });
 
     // Save record to cvs table (no file storage — PDF is generated on-demand)
     const insertData = {
@@ -265,7 +265,7 @@ const refineCV = async (req, res) => {
     }
 
     // Single Claude call to apply changes
-    const refined = await refineCVWithInstructions(currentFinalCV, instructions);
+    const refined = await refineCVWithInstructions(currentFinalCV, instructions, { userId: req.user.id, userEmail: req.user.email });
 
     // Update the final_cv in ats_feedback
     const updatedFeedback = {

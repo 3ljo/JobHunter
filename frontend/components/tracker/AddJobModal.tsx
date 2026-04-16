@@ -133,7 +133,7 @@ export default function AddJobModal({ onAdded }: AddJobModalProps) {
           >
             {loading ? (
               <span className="flex items-center gap-2">
-                <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                <span className="lds-roller-sm" style={{ color: '#fff' }}><span /><span /><span /><span /><span /><span /><span /><span /></span>
                 Adding...
               </span>
             ) : (

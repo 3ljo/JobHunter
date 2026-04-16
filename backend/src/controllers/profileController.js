@@ -74,4 +74,68 @@ const createProfile = async (req, res) => {
   }
 };
 
-module.exports = { getProfile, updateProfile, createProfile };
+// Get authenticated user's usage stats
+const getMyUsage = async (req, res) => {
+  try {
+    const { getSetting } = require('../services/settingsService');
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+    const monthStart = new Date();
+    monthStart.setDate(1);
+    monthStart.setHours(0, 0, 0, 0);
+
+    // Today's CV analyses
+    const { count: cvToday } = await supabase
+      .from('api_usage')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', req.user.id)
+      .eq('feature', 'cv_analysis')
+      .eq('success', true)
+      .gte('created_at', todayStart.toISOString());
+
+    // Today's cover letters
+    const { count: clToday } = await supabase
+      .from('api_usage')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', req.user.id)
+      .eq('feature', 'cover_letter')
+      .eq('success', true)
+      .gte('created_at', todayStart.toISOString());
+
+    // This month total
+    const { count: monthTotal } = await supabase
+      .from('api_usage')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', req.user.id)
+      .eq('success', true)
+      .gte('created_at', monthStart.toISOString());
+
+    // Total CVs saved
+    const { count: totalCVs } = await supabase
+      .from('cvs')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', req.user.id);
+
+    res.json({
+      usage: {
+        cv_today: cvToday || 0,
+        cv_limit: parseInt(getSetting('rate_limit_cv_per_day')) || 10,
+        cl_today: clToday || 0,
+        cl_limit: parseInt(getSetting('rate_limit_cl_per_day')) || 20,
+        month_total: monthTotal || 0,
+        total_cvs: totalCVs || 0,
+      },
+    });
+  } catch (err) {
+    // If api_usage table doesn't exist, return zeroes
+    res.json({
+      usage: {
+        cv_today: 0, cv_limit: 10,
+        cl_today: 0, cl_limit: 20,
+        month_total: 0, total_cvs: 0,
+      },
+    });
+  }
+};
+
+module.exports = { getProfile, updateProfile, createProfile, getMyUsage };

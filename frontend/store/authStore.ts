@@ -18,7 +18,7 @@ export const useAuthStore = create<AuthState>((set) => ({
   isLoading: true,
   isAuthenticated: false,
 
-  setUser: (user) => set({ user, isAuthenticated: !!user }),
+  setUser: (user) => set({ user, isAuthenticated: !!user, isLoading: false }),
 
   setToken: (token) => {
     if (token) {
@@ -35,6 +35,11 @@ export const useAuthStore = create<AuthState>((set) => ({
   },
 
   initializeAuth: () => {
+    const { user } = useAuthStore.getState();
+    if (user) {
+      set({ isLoading: false });
+      return;
+    }
     const token = localStorage.getItem('auth_token');
     if (token) {
       set({ token, isLoading: true });

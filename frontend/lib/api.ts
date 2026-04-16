@@ -25,13 +25,12 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    // 401 redirect disabled for local preview
-    // if (error.response?.status === 401) {
-    //   useAuthStore.getState().logout();
-    //   if (typeof window !== 'undefined') {
-    //     window.location.href = '/login';
-    //   }
-    // }
+    if (error.response?.status === 401) {
+      useAuthStore.getState().logout();
+      if (typeof window !== 'undefined') {
+        window.location.href = '/login';
+      }
+    }
     return Promise.reject(error);
   }
 );
@@ -144,5 +143,28 @@ export const refineCoverLetter = (data: { cover_letter: string; instructions: st
 // Password
 export const changePassword = (newPassword: string) =>
   api.post<{ message: string }>('/api/auth/change-password', { new_password: newPassword });
+
+// Usage
+export const getMyUsage = () =>
+  api.get('/api/profile/usage');
+
+// Admin
+export const checkAdmin = () =>
+  api.get<{ isAdmin: boolean; email: string }>('/api/admin/check');
+
+export const getAdminDashboard = () =>
+  api.get('/api/admin/dashboard');
+
+export const getAdminUsers = () =>
+  api.get('/api/admin/users');
+
+export const getAdminUsage = (days = 30) =>
+  api.get(`/api/admin/usage?days=${days}`);
+
+export const getAdminSettings = () =>
+  api.get('/api/admin/settings');
+
+export const updateAdminSettings = (settings: Record<string, any>) =>
+  api.put('/api/admin/settings', settings);
 
 export default api;

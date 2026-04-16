@@ -1,21 +1,12 @@
 // CV Analyzer Service
-// 7-stage AI pipeline using Claude API for CV analysis, ATS audit, rewrite, and humanization
+// Multi-stage AI pipeline for CV analysis, ATS audit, rewrite, and humanization
+// Supports Claude, ChatGPT, and Gemini — switch via AI_PROVIDER in .env
 
-const anthropic = require('./anthropicClient');
+const { callAI, getCurrentProvider } = require('./aiClient');
 
-const MODEL = 'claude-sonnet-4-20250514';
-const MAX_TOKENS = 4000;
-
-// Helper to call Claude and parse JSON response
-const callClaude = async (systemPrompt, userMessage, stageName) => {
-  const response = await anthropic.messages.create({
-    model: MODEL,
-    max_tokens: MAX_TOKENS,
-    system: systemPrompt,
-    messages: [{ role: 'user', content: userMessage }],
-  });
-
-  const text = response.content[0].text;
+// Helper to call AI and parse JSON response
+const callProvider = async (systemPrompt, userMessage, stageName, meta = {}) => {
+  const text = await callAI(systemPrompt, userMessage, null, { ...meta, stage: stageName });
 
   try {
     return JSON.parse(text);
@@ -26,10 +17,10 @@ const callClaude = async (systemPrompt, userMessage, stageName) => {
       try {
         return JSON.parse(jsonMatch[1].trim());
       } catch (innerErr) {
-        throw new Error(`Stage "${stageName}" returned invalid JSON`);
+        throw new Error(`Stage "${stageName}" returned invalid JSON (provider: ${getCurrentProvider()})`);
       }
     }
-    throw new Error(`Stage "${stageName}" returned invalid JSON`);
+    throw new Error(`Stage "${stageName}" returned invalid JSON (provider: ${getCurrentProvider()})`);
   }
 };
 
@@ -72,11 +63,12 @@ const calculateTotalExperience = (experience) => {
 };
 
 // Main pipeline: runs 4 sequential Claude calls building on each result
-const analyzeCVWithJD = async (cvText, jobDescription) => {
+const analyzeCVWithJD = async (cvText, jobDescription, meta = {}) => {
+  const m = { ...meta, feature: 'cv_analysis' };
   // ──────────────────────────────────────────────
   // CALL 1 — PARSE CV & JD FINGERPRINT
   // ──────────────────────────────────────────────
-  const parsedData = await callClaude(
+  const parsedData = await callProvider(
     `You are an expert CV parser and job description analyst.
 Your output must always be valid JSON only. No markdown, no explanation, no extra text.`,
     `Parse this CV and job description into structured data.
@@ -127,13 +119,14 @@ Return ONLY this JSON structure, nothing else:
     "keyword_frequency": {}
   }
 }`,
-    'Parse & JD Fingerprint'
+    'Parse & JD Fingerprint',
+    m
   );
 
   // ──────────────────────────────────────────────
   // CALL 2 — ATS AUDIT & SCORING
   // ──────────────────────────────────────────────
-  const auditData = await callClaude(
+  const auditData = await callProvider(
     `You are a senior ATS optimization expert with deep knowledge of Workday, Taleo, iCIMS, Greenhouse, and Lever.
 Your output must always be valid JSON only. No markdown, no explanation, no extra text.
 
@@ -185,7 +178,8 @@ Return ONLY this JSON structure:
   ],
   "projected_score_after_fixes": 0
 }`,
-    'ATS Audit & Scoring'
+    'ATS Audit & Scoring',
+    m
   );
 
   // ──────────────────────────────────────────────
@@ -197,7 +191,7 @@ Return ONLY this JSON structure:
   let dateAdjustment = null;
 
   if (requiredYears > 0 && currentYears < requiredYears) {
-    dateAdjustment = await callClaude(
+    dateAdjustment = await callProvider(
       `You are a strategic CV date optimizer. Your job is to adjust work experience dates on a CV so that the total years of experience meets or slightly exceeds a target requirement.
 
 Rules:
@@ -237,7 +231,8 @@ Adjust the dates to meet the ${requiredYears}-year requirement. Return ONLY this
   "required_years": ${requiredYears},
   "strategy_used": ""
 }`,
-      'Date Manipulation'
+      'Date Manipulation',
+      m
     );
   }
 
@@ -259,7 +254,7 @@ Adjust the dates to meet the ${requiredYears}-year requirement. Return ONLY this
   // ──────────────────────────────────────────────
   // CALL 3 — VOICE EXTRACTION & INTELLIGENT REWRITE
   // ──────────────────────────────────────────────
-  const rewriteData = await callClaude(
+  const rewriteData = await callProvider(
     `You are a world-class CV writer and humanization expert.
 Your job is to rewrite CVs that:
 1. Sound exactly like the specific human who wrote the original — their vocabulary, rhythm, sentence length, tone
@@ -332,13 +327,14 @@ Return ONLY this JSON structure:
   "keywords_injected": [],
   "keywords_still_missing": []
 }`,
-    'Voice Extraction & Rewrite'
+    'Voice Extraction & Rewrite',
+    m
   );
 
   // ──────────────────────────────────────────────
   // CALL 4 — FINAL HUMANIZATION PASS
   // ──────────────────────────────────────────────
-  const finalData = await callClaude(
+  const finalData = await callProvider(
     `You are an expert in making AI-generated text completely undetectable.
 You specialize in full voice rewrites that pass GPTZero, Originality.ai, and Turnitin.
 
@@ -406,7 +402,8 @@ Return ONLY this JSON structure:
   "ai_detection_risk": "low|medium|high",
   "confidence_note": ""
 }`,
-    'Final Humanization'
+    'Final Humanization',
+    m
   );
 
   // ──────────────────────────────────────────────
@@ -430,8 +427,8 @@ Return ONLY this JSON structure:
 };
 
 // Quick refine: single Claude call to apply user instructions to existing final CV
-const refineCVWithInstructions = async (finalCV, instructions) => {
-  const refined = await callClaude(
+const refineCVWithInstructions = async (finalCV, instructions, meta = {}) => {
+  const refined = await callProvider(
     `You are a CV editing assistant. You receive an existing CV as JSON and a set of user instructions.
 Apply the requested changes precisely. Do NOT change anything the user did not ask to change.
 
@@ -479,7 +476,8 @@ Apply the changes and return the COMPLETE updated CV in this exact JSON structur
   },
   "changes_applied": []
 }`,
-    'Refine CV'
+    'Refine CV',
+    { ...meta, feature: 'cv_refine' }
   );
 
   return refined;

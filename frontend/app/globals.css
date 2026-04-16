@@ -2,8 +2,6 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
-@custom-variant dark (&:is(.dark *));
-
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -47,43 +45,8 @@
   --color-text-faint: var(--text-faint);
 }
 
-/* Light mode */
+/* AIvent navy palette */
 :root {
-  --background: oklch(0.97 0.004 262);
-  --foreground: oklch(0.14 0.025 262);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.14 0.025 262);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.14 0.025 262);
-  --primary: oklch(0.54 0.245 291);
-  --primary-foreground: oklch(1 0 0);
-  --secondary: oklch(0.94 0.008 262);
-  --secondary-foreground: oklch(0.2 0.015 262);
-  --muted: oklch(0.94 0.008 262);
-  --muted-foreground: oklch(0.45 0.005 262);
-  --accent: oklch(0.94 0.01 270);
-  --accent-foreground: oklch(0.2 0.015 262);
-  --destructive: oklch(0.58 0.22 22);
-  --border: oklch(0 0 0 / 8%);
-  --input: oklch(0 0 0 / 8%);
-  --ring: oklch(0.54 0.245 291);
-  --chart-1: oklch(0.54 0.245 291);
-  --chart-2: oklch(0.5 0.2 290);
-  --chart-3: oklch(0.45 0.18 280);
-  --chart-4: oklch(0.7 0 0);
-  --chart-5: oklch(0.8 0 0);
-  --radius: 0.625rem;
-  --surface: oklch(0.95 0.004 262);
-  --surface-hover: oklch(0.92 0.005 262);
-  --surface-border: oklch(0 0 0 / 6%);
-  --text-primary: oklch(0.14 0.025 262);
-  --text-secondary: oklch(0.35 0.01 262);
-  --text-muted: oklch(0.5 0 0);
-  --text-faint: oklch(0.65 0 0);
-}
-
-/* Dark mode — AIvent navy palette */
-.dark {
   /* AIvent bg-dark-1: #101435 */
   --background: oklch(0.12 0.065 262);
   --foreground: oklch(0.93 0.008 262);
@@ -396,3 +359,121 @@
 .speaker-card:hover .speaker-overlay { opacity: 1; }
 .speaker-card img { transition: transform 0.5s ease; }
 .speaker-card:hover img { transform: scale(1.08); }
+
+/* AIvent preloader — LDS roller */
+.lds-roller {
+  display: inline-block;
+  position: relative;
+  width: 80px;
+  height: 80px;
+}
+.lds-roller div {
+  animation: lds-roller 1.2s cubic-bezier(0.5, 0, 0.5, 1) infinite;
+  transform-origin: 40px 40px;
+}
+.lds-roller div:after {
+  content: " ";
+  display: block;
+  position: absolute;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: oklch(0.59 0.245 291);
+  margin: -2px 0 0 -2px;
+}
+.lds-roller div:nth-child(1) { animation-delay: -0.036s; }
+.lds-roller div:nth-child(1):after { top: 63px; left: 63px; }
+.lds-roller div:nth-child(2) { animation-delay: -0.072s; }
+.lds-roller div:nth-child(2):after { top: 68px; left: 56px; }
+.lds-roller div:nth-child(3) { animation-delay: -0.108s; }
+.lds-roller div:nth-child(3):after { top: 71px; left: 48px; }
+.lds-roller div:nth-child(4) { animation-delay: -0.144s; }
+.lds-roller div:nth-child(4):after { top: 72px; left: 40px; }
+.lds-roller div:nth-child(5) { animation-delay: -0.18s; }
+.lds-roller div:nth-child(5):after { top: 71px; left: 32px; }
+.lds-roller div:nth-child(6) { animation-delay: -0.216s; }
+.lds-roller div:nth-child(6):after { top: 68px; left: 24px; }
+.lds-roller div:nth-child(7) { animation-delay: -0.252s; }
+.lds-roller div:nth-child(7):after { top: 63px; left: 17px; }
+.lds-roller div:nth-child(8) { animation-delay: -0.288s; }
+.lds-roller div:nth-child(8):after { top: 56px; left: 12px; }
+@keyframes lds-roller {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* lds-roller-md — 48px variant */
+.lds-roller-md {
+  display: inline-block;
+  position: relative;
+  width: 48px;
+  height: 48px;
+}
+.lds-roller-md div {
+  animation: lds-roller 1.2s cubic-bezier(0.5, 0, 0.5, 1) infinite;
+  transform-origin: 24px 24px;
+}
+.lds-roller-md div:after {
+  content: " ";
+  display: block;
+  position: absolute;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: oklch(0.59 0.245 291);
+  margin: -2px 0 0 -2px;
+}
+.lds-roller-md div:nth-child(1) { animation-delay: -0.036s; }
+.lds-roller-md div:nth-child(1):after { top: 37.8px; left: 37.8px; }
+.lds-roller-md div:nth-child(2) { animation-delay: -0.072s; }
+.lds-roller-md div:nth-child(2):after { top: 40.8px; left: 33.6px; }
+.lds-roller-md div:nth-child(3) { animation-delay: -0.108s; }
+.lds-roller-md div:nth-child(3):after { top: 42.6px; left: 28.8px; }
+.lds-roller-md div:nth-child(4) { animation-delay: -0.144s; }
+.lds-roller-md div:nth-child(4):after { top: 43.2px; left: 24px; }
+.lds-roller-md div:nth-child(5) { animation-delay: -0.18s; }
+.lds-roller-md div:nth-child(5):after { top: 42.6px; left: 19.2px; }
+.lds-roller-md div:nth-child(6) { animation-delay: -0.216s; }
+.lds-roller-md div:nth-child(6):after { top: 40.8px; left: 14.4px; }
+.lds-roller-md div:nth-child(7) { animation-delay: -0.252s; }
+.lds-roller-md div:nth-child(7):after { top: 37.8px; left: 10.2px; }
+.lds-roller-md div:nth-child(8) { animation-delay: -0.288s; }
+.lds-roller-md div:nth-child(8):after { top: 33.6px; left: 7.2px; }
+
+/* lds-roller-sm — 24px variant (inline / buttons) */
+.lds-roller-sm {
+  display: inline-block;
+  position: relative;
+  width: 24px;
+  height: 24px;
+}
+.lds-roller-sm div {
+  animation: lds-roller 1.2s cubic-bezier(0.5, 0, 0.5, 1) infinite;
+  transform-origin: 12px 12px;
+}
+.lds-roller-sm div:after {
+  content: " ";
+  display: block;
+  position: absolute;
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: currentColor;
+  margin: -1.5px 0 0 -1.5px;
+}
+.lds-roller-sm div:nth-child(1) { animation-delay: -0.036s; }
+.lds-roller-sm div:nth-child(1):after { top: 18.9px; left: 18.9px; }
+.lds-roller-sm div:nth-child(2) { animation-delay: -0.072s; }
+.lds-roller-sm div:nth-child(2):after { top: 20.4px; left: 16.8px; }
+.lds-roller-sm div:nth-child(3) { animation-delay: -0.108s; }
+.lds-roller-sm div:nth-child(3):after { top: 21.3px; left: 14.4px; }
+.lds-roller-sm div:nth-child(4) { animation-delay: -0.144s; }
+.lds-roller-sm div:nth-child(4):after { top: 21.6px; left: 12px; }
+.lds-roller-sm div:nth-child(5) { animation-delay: -0.18s; }
+.lds-roller-sm div:nth-child(5):after { top: 21.3px; left: 9.6px; }
+.lds-roller-sm div:nth-child(6) { animation-delay: -0.216s; }
+.lds-roller-sm div:nth-child(6):after { top: 20.4px; left: 7.2px; }
+.lds-roller-sm div:nth-child(7) { animation-delay: -0.252s; }
+.lds-roller-sm div:nth-child(7):after { top: 18.9px; left: 5.1px; }
+.lds-roller-sm div:nth-child(8) { animation-delay: -0.288s; }
+.lds-roller-sm div:nth-child(8):after { top: 16.8px; left: 3.6px; }

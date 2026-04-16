@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/authStore';
-import { useThemeStore } from '@/store/themeStore';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -12,7 +11,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Menu, X, LogOut, Settings, Sun, Moon, ChevronDown } from 'lucide-react';
+import { Menu, X, LogOut, Settings, ChevronDown } from 'lucide-react';
 
 const navItems = [
   { href: '/dashboard',    label: 'Dashboard'    },
@@ -26,7 +25,6 @@ export default function Navbar() {
   const pathname   = usePathname();
   const router     = useRouter();
   const { user, logout }      = useAuthStore();
-  const { theme, toggleTheme } = useThemeStore();
   const [scrolled,    setScrolled]    = useState(false);
   const [mobileOpen,  setMobileOpen]  = useState(false);
 
@@ -108,19 +106,6 @@ export default function Navbar() {
 
           {/* ── RIGHT SIDE ── */}
           <div className="flex items-center gap-2">
-
-            {/* Theme toggle — subtle icon button */}
-            <button
-              onClick={toggleTheme}
-              className="hidden md:flex h-9 w-9 items-center justify-center rounded-lg transition-colors duration-200 text-white/45 hover:text-white/90"
-              style={{ background: 'transparent' }}
-              aria-label="Toggle theme"
-            >
-              {theme === 'dark'
-                ? <Sun  className="h-[17px] w-[17px]" />
-                : <Moon className="h-[17px] w-[17px]" />
-              }
-            </button>
 
             {/* User dropdown — styled like landing page CTA area */}
             <DropdownMenu>
@@ -231,13 +216,6 @@ export default function Navbar() {
             })}
 
             <div className="mt-5 space-y-2">
-              <button
-                onClick={toggleTheme}
-                className="flex w-full items-center gap-3 py-3 text-sm font-semibold text-white/55 hover:text-white transition-colors"
-              >
-                {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-                {theme === 'dark' ? 'Light Mode' : 'Dark Mode'}
-              </button>
               <Link
                 href="/settings"
                 onClick={() => setMobileOpen(false)}

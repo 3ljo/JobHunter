@@ -3,11 +3,12 @@
 
 const express = require('express');
 const router = express.Router();
-const { getProfile, updateProfile } = require('../controllers/profileController');
+const { getProfile, updateProfile, getMyUsage } = require('../controllers/profileController');
 const requireAuth = require('../middleware/requireAuth');
 
 // All profile routes require authentication
 router.get('/', requireAuth, getProfile);
 router.put('/', requireAuth, updateProfile);
+router.get('/usage', requireAuth, getMyUsage);
 
 module.exports = router;

@@ -6,7 +6,7 @@ import { useAuthStore } from '@/store/authStore';
 import { getTrackerStats, getAllTrackerJobs, getCVHistory } from '@/lib/api';
 import { TrackerStats, TrackerJob } from '@/types';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
-import { Plus, ArrowRight } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 
 /* ─── config ──────────────────────────────────────────────────────── */
 const TOOLS = [
@@ -57,10 +57,6 @@ export default function DashboardPage() {
   ];
 
   return (
-    /*
-     * -mx-4 md:-mx-6 lg:-mx-8  breaks out of the layout container padding
-     * -mt-8  removes the layout's top padding so the hero goes edge-to-edge
-     */
     <div
       style={{
         width: '100vw',
@@ -73,7 +69,7 @@ export default function DashboardPage() {
     >
 
       {/* ══════════════════════════════════════════════════════════
-          HERO — same pattern as landing page hero section
+          HERO — centered text, no image
       ══════════════════════════════════════════════════════════ */}
       <section
         className="relative overflow-hidden"
@@ -90,45 +86,21 @@ export default function DashboardPage() {
         {/* bottom fade into #101435 */}
         <div className="absolute bottom-0 left-0 right-0" style={{ height: '40%', background: 'linear-gradient(0deg,#101435 0%,transparent 100%)' }} />
 
-        <div className="relative mx-auto max-w-7xl px-6 pb-0" style={{ zIndex: 2 }}>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-
-            {/* left — spinning orb */}
-            <div className="hidden lg:flex justify-center">
-              <img
-                src="/aivent/misc/c2.webp"
-                alt=""
-                className="w-full"
-                style={{ maxHeight: '480px', objectFit: 'contain' }}
-              />
-            </div>
-
-            {/* right — text */}
-            <div className="pb-16">
-              <span className="aivent-subtitle s2">Welcome back</span>
-              <h1
-                className="text-white leading-[1.1] mb-5"
-                style={{ fontSize: 'clamp(40px,5.5vw,64px)', fontWeight: 800, letterSpacing: '-0.02em' }}
-              >
-                Hello,{' '}
-                <span style={{ color: '#764DF0' }}>{firstName}</span>
-              </h1>
-              <p className="text-white/55 text-lg leading-relaxed mb-8" style={{ fontWeight: 400, maxWidth: '32rem' }}>
-                Your AI-powered job search is ready. Analyze CVs, generate cover letters, and track every application from one command center.
-              </p>
-              <div className="flex flex-wrap gap-4">
-                <Link href="/cv" className="btn-aivent fx-slide" data-hover="ANALYZE CV">
-                  <span>Analyze My CV</span>
-                </Link>
-                <Link href="/tracker" className="btn-aivent btn-line fx-slide" data-hover="OPEN TRACKER">
-                  <span>Job Tracker</span>
-                </Link>
-              </div>
-            </div>
-          </div>
+        <div className="relative mx-auto max-w-4xl px-6 pb-0 text-center" style={{ zIndex: 2 }}>
+          <span className="aivent-subtitle s2">Welcome back</span>
+          <h1
+            className="text-white leading-[1.1] mb-5"
+            style={{ fontSize: 'clamp(40px,5.5vw,64px)', fontWeight: 800, letterSpacing: '-0.02em' }}
+          >
+            Hello,{' '}
+            <span style={{ color: '#764DF0' }}>{firstName}</span>
+          </h1>
+          <p className="text-white/55 text-lg leading-relaxed mb-10 mx-auto" style={{ fontWeight: 400, maxWidth: '36rem' }}>
+            Your AI-powered command center. Analyze CVs, generate cover letters, and track every application from one place.
+          </p>
         </div>
 
-        {/* ── glassmorphism stats bar — identical to landing page ── */}
+        {/* ── glassmorphism stats bar ── */}
         <div className="relative px-6" style={{ zIndex: 3 }}>
           <div className="mx-auto max-w-5xl">
             <div
@@ -160,7 +132,7 @@ export default function DashboardPage() {
       </section>
 
       {/* ══════════════════════════════════════════════════════════
-          TOOLS — exact "Why Attend" / Features card pattern
+          TOOLS — feature card pattern
       ══════════════════════════════════════════════════════════ */}
       <section className="py-24 px-6" style={{ background: '#101435', position: 'relative', zIndex: 1 }}>
         <div className="mx-auto max-w-6xl">
@@ -333,38 +305,6 @@ export default function DashboardPage() {
                 })}
               </ul>
             )}
-          </div>
-        </div>
-      </section>
-
-      {/* ══════════════════════════════════════════════════════════
-          BOTTOM CTA — same as landing page CTA section
-      ══════════════════════════════════════════════════════════ */}
-      <section
-        className="relative text-center py-28 px-6"
-        style={{ background: '#101435', position: 'relative', zIndex: 1 }}
-      >
-        {/* top gradient fade from parallax section */}
-        <div className="absolute top-0 left-0 right-0 h-20" style={{ background: 'linear-gradient(180deg,#101435 0%,transparent 100%)' }} />
-
-        <div className="relative mx-auto max-w-3xl" style={{ zIndex: 2 }}>
-          <span className="aivent-subtitle">Ready to land your next role?</span>
-          <h2
-            className="text-white tracking-tight mb-5"
-            style={{ fontSize: 'clamp(28px,4vw,48px)', fontWeight: 800 }}
-          >
-            Your AI Advantage Starts Here
-          </h2>
-          <p className="text-white/50 text-base leading-relaxed mb-10 max-w-xl mx-auto" style={{ fontWeight: 400 }}>
-            Upload your CV, paste a job description, and let AI do the heavy lifting — ATS score, keyword gaps, and a tailored cover letter in seconds.
-          </p>
-          <div className="flex flex-wrap items-center justify-center gap-4">
-            <Link href="/cv" className="btn-aivent fx-slide" data-hover="ANALYZE NOW">
-              <span>Analyze My CV</span>
-            </Link>
-            <Link href="/cover-letter" className="btn-aivent btn-line fx-slide" data-hover="WRITE LETTER">
-              <span>Generate Cover Letter</span>
-            </Link>
           </div>
         </div>
       </section>

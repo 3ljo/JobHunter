@@ -1,14 +1,23 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useAuthStore } from '@/store/authStore';
-import { changePassword } from '@/lib/api';
+import { changePassword, getMyUsage } from '@/lib/api';
 import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
-import { Settings, Lock, LogOut, Mail, Shield } from 'lucide-react';
+import { Settings, Lock, LogOut, Mail, Shield, Eye, EyeOff, BarChart3, FileText, FileSignature, Zap } from 'lucide-react';
+
+interface UsageData {
+  cv_today: number;
+  cv_limit: number;
+  cl_today: number;
+  cl_limit: number;
+  month_total: number;
+  total_cvs: number;
+}
 
 export default function SettingsPage() {
   const { user, logout } = useAuthStore();
@@ -16,6 +25,15 @@ export default function SettingsPage() {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showNew, setShowNew] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [usage, setUsage] = useState<UsageData | null>(null);
+
+  useEffect(() => {
+    getMyUsage()
+      .then((res) => setUsage(res.data.usage))
+      .catch(() => {});
+  }, []);
 
   const handleChangePassword = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -59,6 +77,80 @@ export default function SettingsPage() {
         </div>
       </div>
 
+      {/* Usage Dashboard */}
+      {usage && (
+        <div className="relative overflow-hidden rounded-2xl border border-white/[0.07] bg-card p-6">
+          <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-violet-500/20 to-transparent" />
+          <h2 className="text-sm font-semibold text-foreground flex items-center gap-2 mb-4">
+            <BarChart3 className="h-4 w-4 text-muted-foreground" />
+            Your Usage
+          </h2>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {/* CV Today */}
+            <div className="rounded-xl p-3" style={{ background: 'rgba(118,77,240,0.06)', border: '1px solid rgba(118,77,240,0.12)' }}>
+              <div className="flex items-center gap-1.5 mb-2">
+                <FileText className="h-3.5 w-3.5 text-violet-400" />
+                <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">CVs Today</span>
+              </div>
+              <div className="flex items-baseline gap-1">
+                <span className="text-xl font-black text-foreground">{usage.cv_today}</span>
+                <span className="text-xs text-muted-foreground/60">/ {usage.cv_limit}</span>
+              </div>
+              <div className="mt-2 h-1.5 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.06)' }}>
+                <div
+                  className="h-full rounded-full transition-all duration-500"
+                  style={{
+                    width: `${Math.min((usage.cv_today / usage.cv_limit) * 100, 100)}%`,
+                    background: usage.cv_today >= usage.cv_limit ? '#ef4444' : '#764DF0',
+                  }}
+                />
+              </div>
+            </div>
+
+            {/* CL Today */}
+            <div className="rounded-xl p-3" style={{ background: 'rgba(118,77,240,0.06)', border: '1px solid rgba(118,77,240,0.12)' }}>
+              <div className="flex items-center gap-1.5 mb-2">
+                <FileSignature className="h-3.5 w-3.5 text-violet-400" />
+                <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Letters Today</span>
+              </div>
+              <div className="flex items-baseline gap-1">
+                <span className="text-xl font-black text-foreground">{usage.cl_today}</span>
+                <span className="text-xs text-muted-foreground/60">/ {usage.cl_limit}</span>
+              </div>
+              <div className="mt-2 h-1.5 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.06)' }}>
+                <div
+                  className="h-full rounded-full transition-all duration-500"
+                  style={{
+                    width: `${Math.min((usage.cl_today / usage.cl_limit) * 100, 100)}%`,
+                    background: usage.cl_today >= usage.cl_limit ? '#ef4444' : '#764DF0',
+                  }}
+                />
+              </div>
+            </div>
+
+            {/* Month Total */}
+            <div className="rounded-xl p-3" style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)' }}>
+              <div className="flex items-center gap-1.5 mb-2">
+                <Zap className="h-3.5 w-3.5 text-muted-foreground" />
+                <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">This Month</span>
+              </div>
+              <span className="text-xl font-black text-foreground">{usage.month_total}</span>
+              <p className="text-[10px] text-muted-foreground/50 mt-1">AI calls</p>
+            </div>
+
+            {/* Total CVs */}
+            <div className="rounded-xl p-3" style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)' }}>
+              <div className="flex items-center gap-1.5 mb-2">
+                <FileText className="h-3.5 w-3.5 text-muted-foreground" />
+                <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Total CVs</span>
+              </div>
+              <span className="text-xl font-black text-foreground">{usage.total_cvs}</span>
+              <p className="text-[10px] text-muted-foreground/50 mt-1">analyzed</p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Account Info */}
       <div className="relative overflow-hidden rounded-2xl border border-white/[0.07] bg-card p-6 space-y-4">
         <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-violet-500/20 to-transparent" />
@@ -87,13 +179,21 @@ export default function SettingsPage() {
             <div className="group relative">
               <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/60 transition-colors group-focus-within:text-violet-400" />
               <Input
-                type="password"
+                type={showNew ? 'text' : 'password'}
                 placeholder="At least 6 characters"
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
-                className="h-10 rounded-xl border-border bg-card/80 pl-10 text-sm text-foreground placeholder:text-muted-foreground/50 focus:border-violet-500/40 focus:ring-1 focus:ring-violet-500/20"
+                className="h-10 rounded-xl border-border bg-card/80 pl-10 pr-10 text-sm text-foreground placeholder:text-muted-foreground/50 focus:border-violet-500/40 focus:ring-1 focus:ring-violet-500/20"
                 required
               />
+              <button
+                type="button"
+                onClick={() => setShowNew(!showNew)}
+                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-muted-foreground/40 hover:text-muted-foreground/70 transition-colors"
+                tabIndex={-1}
+              >
+                {showNew ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
             </div>
           </div>
           <div className="space-y-1.5">
@@ -101,13 +201,21 @@ export default function SettingsPage() {
             <div className="group relative">
               <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/60 transition-colors group-focus-within:text-violet-400" />
               <Input
-                type="password"
+                type={showConfirm ? 'text' : 'password'}
                 placeholder="Confirm your new password"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
-                className="h-10 rounded-xl border-border bg-card/80 pl-10 text-sm text-foreground placeholder:text-muted-foreground/50 focus:border-violet-500/40 focus:ring-1 focus:ring-violet-500/20"
+                className="h-10 rounded-xl border-border bg-card/80 pl-10 pr-10 text-sm text-foreground placeholder:text-muted-foreground/50 focus:border-violet-500/40 focus:ring-1 focus:ring-violet-500/20"
                 required
               />
+              <button
+                type="button"
+                onClick={() => setShowConfirm(!showConfirm)}
+                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-muted-foreground/40 hover:text-muted-foreground/70 transition-colors"
+                tabIndex={-1}
+              >
+                {showConfirm ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
             </div>
           </div>
           <Button
@@ -117,7 +225,7 @@ export default function SettingsPage() {
           >
             {loading ? (
               <span className="flex items-center gap-2">
-                <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                <span className="lds-roller-sm" style={{ color: '#fff' }}><span /><span /><span /><span /><span /><span /><span /><span /></span>
                 Updating...
               </span>
             ) : (

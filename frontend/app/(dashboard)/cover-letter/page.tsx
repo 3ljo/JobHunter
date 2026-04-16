@@ -4,7 +4,7 @@ import { useState, useCallback } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { useCoverLetterStore } from '@/store/coverLetterStore';
 import toast from 'react-hot-toast';
-import { Copy, Check, RotateCcw, Upload, FileText, X, Send } from 'lucide-react';
+import { Copy, Check, RotateCcw, Upload, FileText, X, Send, Sparkles } from 'lucide-react';
 
 const tones = [
   { key: 'balanced', label: 'Balanced' },
@@ -67,38 +67,98 @@ export default function CoverLetterPage() {
     setRefineInput('');
   };
 
+  const isFormPhase = !result && !loading;
+  const isLoadingPhase = loading && !result;
+
   return (
     <div
       style={{
         width: '100vw',
         marginLeft: 'calc(-50vw + 50%)',
         marginTop: '-32px',
+        marginBottom: '-32px',
         background: '#0a0d28',
         position: 'relative',
         zIndex: 2,
+        minHeight: 'calc(100vh - 56px)',
       }}
     >
 
-      {/* ══ HERO — background/4.webp ═══════════════════════════════ */}
+      {/* ══ HERO SECTION ═══════════════════════════════ */}
       <section
         className="relative overflow-hidden"
         style={{
-          backgroundImage: 'url(/aivent/background/4.webp)',
+          backgroundImage: isLoadingPhase ? 'none' : 'url(/aivent/background/4.webp)',
           backgroundSize: 'cover',
-          backgroundPosition: 'center',
-          backgroundAttachment: 'fixed',
+          backgroundPosition: 'center top',
           paddingTop: '72px',
-          paddingBottom: result ? '48px' : '80px',
+          paddingBottom: '40px',
+          minHeight: 'calc(100vh - 56px)',
+          display: 'flex',
+          flexDirection: 'column' as const,
+          justifyContent: 'center',
         }}
       >
-        <div className="absolute inset-0" style={{ background: 'rgba(6,9,28,0.70)' }} />
+        {/* Video background — only during loading */}
+        {isLoadingPhase && (
+          <video
+            autoPlay
+            muted
+            loop
+            playsInline
+            className="absolute inset-0 w-full h-full object-cover"
+            style={{ zIndex: 0 }}
+          >
+            <source src="/aivent/video/1.mp4" type="video/mp4" />
+          </video>
+        )}
+        <div className="absolute inset-0" style={{ background: isLoadingPhase ? 'rgba(6,9,28,0.70)' : 'rgba(6,9,28,0.70)', zIndex: 1 }} />
         <div className="absolute bottom-0 left-0 right-0"
-          style={{ height: '45%', background: 'linear-gradient(0deg,#0a0d28 0%,transparent 100%)' }} />
+          style={{ height: '45%', background: 'linear-gradient(0deg,#0a0d28 0%,transparent 100%)', zIndex: 1 }} />
 
         <div className="relative mx-auto max-w-7xl px-6" style={{ zIndex: 2 }}>
 
-          {/* ── FORM PHASE ─────────────────────────────────────────── */}
-          {!result && (
+          {/* ── LOADING STATE: centered with video bg ── */}
+          {isLoadingPhase && (
+            <div className="flex flex-col items-center justify-center" style={{ minHeight: 'calc(100vh - 200px)' }}>
+              <span className="aivent-subtitle s2">AI-Generated</span>
+              <h1
+                className="text-white leading-[1.1] mb-4 text-center"
+                style={{ fontSize: 'clamp(32px,4.5vw,52px)', fontWeight: 800, letterSpacing: '-0.02em' }}
+              >
+                Generating...
+              </h1>
+              <p className="text-center mb-10" style={{ color: 'rgba(255,255,255,0.50)', fontSize: '16px', lineHeight: 1.7, maxWidth: '480px' }}>
+                Your cover letter is being crafted. Feel free to switch tabs.
+              </p>
+
+              <div className="rounded-2xl overflow-hidden w-full" style={{ ...glass, maxWidth: '400px' }}>
+                <div style={{ height: '2px', background: 'linear-gradient(90deg,transparent,rgba(118,77,240,0.9),transparent)' }} />
+                <div className="flex flex-col items-center gap-4 p-10">
+                  <div className="relative flex items-center justify-center h-14 w-14">
+                    <div className="absolute inset-0 rounded-full animate-ping" style={{ background: 'rgba(118,77,240,0.2)' }} />
+                    <div
+                      className="flex h-14 w-14 items-center justify-center rounded-full"
+                      style={{ background: 'rgba(118,77,240,0.15)', border: '2px solid rgba(118,77,240,0.4)' }}
+                    >
+                      <Sparkles className="h-6 w-6" style={{ color: '#a78bfa' }} />
+                    </div>
+                  </div>
+                  <p className="text-sm font-semibold" style={{ color: 'rgba(255,255,255,0.5)' }}>
+                    Writing your cover letter...
+                  </p>
+                  <div className="flex gap-1.5">
+                    <div className="h-1.5 w-1.5 rounded-full bg-violet-400 animate-bounce" style={{ animationDelay: '0ms' }} />
+                    <div className="h-1.5 w-1.5 rounded-full bg-violet-400 animate-bounce" style={{ animationDelay: '150ms' }} />
+                    <div className="h-1.5 w-1.5 rounded-full bg-violet-400 animate-bounce" style={{ animationDelay: '300ms' }} />
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ── FORM PHASE: left-aligned with image bg ── */}
+          {isFormPhase && (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
 
               {/* LEFT — form */}
@@ -108,148 +168,139 @@ export default function CoverLetterPage() {
                   className="text-white leading-[1.1] mb-3"
                   style={{ fontSize: 'clamp(32px,4.5vw,52px)', fontWeight: 800, letterSpacing: '-0.02em' }}
                 >
-                  {loading ? 'Generating…' : 'Cover Letter Generator'}
+                  Cover Letter Generator
                 </h1>
                 <p className="mb-8" style={{ color: 'rgba(255,255,255,0.45)', fontSize: '16px', lineHeight: 1.7 }}>
-                  {loading
-                    ? 'Your cover letter is being crafted. Feel free to switch tabs.'
-                    : 'Upload your CV, paste the job description, pick a tone — done in seconds.'}
+                  Upload your CV, paste the job description, pick a tone — done in seconds.
                 </p>
 
                 <div className="rounded-2xl overflow-hidden" style={glass}>
                   <div style={{ height: '2px', background: 'linear-gradient(90deg,transparent,rgba(118,77,240,0.9),transparent)' }} />
                   <div className="p-7 space-y-5">
 
-                    {loading ? (
-                      /* loading state */
-                      <div className="flex flex-col items-center gap-4 py-8">
-                        <span className="h-10 w-10 animate-spin rounded-full border-2 border-white/10 border-t-violet-500" />
-                        <p className="text-sm font-semibold" style={{ color: 'rgba(255,255,255,0.4)' }}>
-                          Writing your cover letter…
-                        </p>
-                      </div>
-                    ) : (
-                      <>
-                        {/* CV upload */}
-                        <div>
-                          <label className="block text-[11px] font-bold uppercase tracking-widest mb-2"
-                            style={{ color: 'rgba(255,255,255,0.3)' }}>
-                            Your CV
-                          </label>
-                          {!file ? (
+                    {/* CV upload */}
+                    <div>
+                      <label className="block text-[11px] font-bold uppercase tracking-widest mb-2"
+                        style={{ color: 'rgba(255,255,255,0.3)' }}>
+                        Your CV
+                      </label>
+                      {!file ? (
+                        <div
+                          {...getRootProps()}
+                          className="cursor-pointer rounded-xl p-8 text-center transition-all duration-200"
+                          style={{
+                            border: isDragActive ? '2px dashed rgba(118,77,240,0.8)' : '2px dashed rgba(255,255,255,0.1)',
+                            background: isDragActive ? 'rgba(118,77,240,0.08)' : 'rgba(255,255,255,0.02)',
+                            boxShadow: isDragActive ? '0 0 30px -8px rgba(118,77,240,0.3)' : 'none',
+                          }}
+                        >
+                          <input {...getInputProps()} />
+                          <div className="flex flex-col items-center gap-3">
                             <div
-                              {...getRootProps()}
-                              className="cursor-pointer rounded-xl p-8 text-center transition-all duration-200"
+                              className="flex h-12 w-12 items-center justify-center rounded-xl transition-all"
                               style={{
-                                border: isDragActive ? '2px dashed rgba(118,77,240,0.8)' : '2px dashed rgba(255,255,255,0.1)',
-                                background: isDragActive ? 'rgba(118,77,240,0.08)' : 'rgba(255,255,255,0.02)',
-                                boxShadow: isDragActive ? '0 0 30px -8px rgba(118,77,240,0.3)' : 'none',
+                                background: isDragActive ? 'rgba(118,77,240,0.2)' : 'rgba(255,255,255,0.05)',
+                                border: isDragActive ? '1px solid rgba(118,77,240,0.4)' : '1px solid rgba(255,255,255,0.08)',
+                                transform: isDragActive ? 'scale(1.1)' : 'scale(1)',
+                                color: isDragActive ? '#a78bfa' : 'rgba(255,255,255,0.35)',
                               }}
                             >
-                              <input {...getInputProps()} />
-                              <div className="flex flex-col items-center gap-3">
-                                <div
-                                  className="flex h-12 w-12 items-center justify-center rounded-xl transition-all"
-                                  style={{
-                                    background: isDragActive ? 'rgba(118,77,240,0.2)' : 'rgba(255,255,255,0.05)',
-                                    border: isDragActive ? '1px solid rgba(118,77,240,0.4)' : '1px solid rgba(255,255,255,0.08)',
-                                    transform: isDragActive ? 'scale(1.1)' : 'scale(1)',
-                                    color: isDragActive ? '#a78bfa' : 'rgba(255,255,255,0.35)',
-                                  }}
-                                >
-                                  <Upload className="h-5 w-5" />
-                                </div>
-                                <p className="text-sm font-semibold"
-                                  style={{ color: isDragActive ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.5)' }}>
-                                  {isDragActive ? 'Drop your CV here' : 'Drop CV here or click to browse'}
-                                </p>
-                                <p className="text-xs" style={{ color: 'rgba(255,255,255,0.2)' }}>PDF · max 5 MB</p>
-                              </div>
+                              <Upload className="h-5 w-5" />
                             </div>
-                          ) : (
-                            <div
-                              className="flex items-center gap-4 rounded-xl px-5 py-4"
-                              style={{ background: 'rgba(118,77,240,0.08)', border: '1px solid rgba(118,77,240,0.22)' }}
-                            >
-                              <div
-                                className="flex h-10 w-10 items-center justify-center rounded-xl shrink-0"
-                                style={{ background: 'rgba(118,77,240,0.18)', border: '1px solid rgba(118,77,240,0.3)' }}
-                              >
-                                <FileText className="h-5 w-5" style={{ color: '#a78bfa' }} />
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <p className="text-sm font-semibold truncate" style={{ color: 'rgba(255,255,255,0.85)' }}>{file.name}</p>
-                                <p className="text-xs mt-0.5" style={{ color: 'rgba(255,255,255,0.3)' }}>{(file.size / 1024).toFixed(0)} KB</p>
-                              </div>
-                              <button
-                                onClick={() => setFile(null)}
-                                className="flex h-8 w-8 items-center justify-center rounded-lg transition-colors"
-                                style={{ color: 'rgba(255,255,255,0.3)' }}
-                                onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = 'rgba(255,255,255,0.7)'; }}
-                                onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'rgba(255,255,255,0.3)'; }}
-                              >
-                                <X className="h-4 w-4" />
-                              </button>
-                            </div>
-                          )}
+                            <p className="text-sm font-semibold"
+                              style={{ color: isDragActive ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.5)' }}>
+                              {isDragActive ? 'Drop your CV here' : 'Drop CV here or click to browse'}
+                            </p>
+                            <p className="text-xs" style={{ color: 'rgba(255,255,255,0.2)' }}>PDF · max 5 MB</p>
+                          </div>
                         </div>
-
-                        {/* Job description */}
-                        <div>
-                          <label className="block text-[11px] font-bold uppercase tracking-widest mb-2"
-                            style={{ color: 'rgba(255,255,255,0.3)' }}>
-                            Job Description
-                          </label>
-                          <textarea
-                            placeholder="Paste the job description here…"
-                            value={jobDescription}
-                            onChange={(e) => setJobDescription(e.target.value)}
-                            rows={5}
-                            disabled={loading}
-                            className="w-full rounded-xl px-4 py-3 text-sm resize-none outline-none transition-all"
-                            style={{
-                              background: 'rgba(255,255,255,0.03)',
-                              border: '1px solid rgba(255,255,255,0.08)',
-                              color: 'rgba(255,255,255,0.8)',
-                              maxHeight: '180px',
-                              overflowY: 'auto',
-                            }}
-                            onFocus={e => { e.currentTarget.style.borderColor = 'rgba(118,77,240,0.45)'; }}
-                            onBlur={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)'; }}
-                          />
-                        </div>
-
-                        {/* Tone + Generate */}
-                        <div className="flex items-center gap-3 flex-wrap pt-1">
-                          <span className="text-[11px] font-bold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.25)' }}>
-                            Tone
-                          </span>
-                          {tones.map((t) => (
-                            <button
-                              key={t.key}
-                              onClick={() => setTone(t.key)}
-                              disabled={loading}
-                              className="rounded-lg px-3 py-1.5 text-xs font-semibold transition-all"
-                              style={tone === t.key
-                                ? { background: 'rgba(118,77,240,0.2)', color: '#c4b5fd', border: '1px solid rgba(118,77,240,0.4)' }
-                                : { background: 'rgba(255,255,255,0.04)', color: 'rgba(255,255,255,0.4)', border: '1px solid rgba(255,255,255,0.07)' }
-                              }
-                            >
-                              {t.label}
-                            </button>
-                          ))}
-                          <button
-                            onClick={handleGenerate}
-                            disabled={loading || !file || !jobDescription.trim()}
-                            className="btn-aivent fx-slide ml-auto disabled:opacity-40 disabled:cursor-not-allowed"
-                            data-hover="GENERATE"
-                            style={{ fontSize: '13px', padding: '9px 22px', height: 'auto' }}
+                      ) : (
+                        <div
+                          className="flex items-center gap-4 rounded-xl px-5 py-4"
+                          style={{ background: 'rgba(118,77,240,0.08)', border: '1px solid rgba(118,77,240,0.22)' }}
+                        >
+                          <div
+                            className="flex h-10 w-10 items-center justify-center rounded-xl shrink-0"
+                            style={{ background: 'rgba(118,77,240,0.18)', border: '1px solid rgba(118,77,240,0.3)' }}
                           >
-                            <span>Generate Letter</span>
+                            <FileText className="h-5 w-5" style={{ color: '#a78bfa' }} />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-semibold truncate" style={{ color: 'rgba(255,255,255,0.85)' }}>{file.name}</p>
+                            <p className="text-xs mt-0.5" style={{ color: 'rgba(255,255,255,0.3)' }}>{(file.size / 1024).toFixed(0)} KB</p>
+                          </div>
+                          <button
+                            onClick={() => setFile(null)}
+                            className="flex h-8 w-8 items-center justify-center rounded-lg transition-colors"
+                            style={{ color: 'rgba(255,255,255,0.3)' }}
+                            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = 'rgba(255,255,255,0.7)'; }}
+                            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'rgba(255,255,255,0.3)'; }}
+                          >
+                            <X className="h-4 w-4" />
                           </button>
                         </div>
-                      </>
-                    )}
+                      )}
+                    </div>
+
+                    {/* Job description */}
+                    <div>
+                      <label className="block text-[11px] font-bold uppercase tracking-widest mb-2"
+                        style={{ color: 'rgba(255,255,255,0.3)' }}>
+                        Job Description
+                      </label>
+                      <textarea
+                        placeholder="Paste the job description here..."
+                        value={jobDescription}
+                        onChange={(e) => setJobDescription(e.target.value)}
+                        rows={5}
+                        className="w-full rounded-xl px-4 py-3 text-sm resize-none outline-none transition-all"
+                        style={{
+                          background: 'rgba(255,255,255,0.03)',
+                          border: '1px solid rgba(255,255,255,0.08)',
+                          color: 'rgba(255,255,255,0.8)',
+                          maxHeight: '180px',
+                          overflowY: 'auto',
+                        }}
+                        onFocus={e => { e.currentTarget.style.borderColor = 'rgba(118,77,240,0.45)'; }}
+                        onBlur={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)'; }}
+                      />
+                    </div>
+
+                    {/* Tone + Generate */}
+                    <div className="flex items-center gap-3 flex-wrap pt-1">
+                      <span className="text-[11px] font-bold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.25)' }}>
+                        Tone
+                      </span>
+                      {tones.map((t) => (
+                        <button
+                          key={t.key}
+                          onClick={() => setTone(t.key)}
+                          className="rounded-lg px-3 py-1.5 text-xs font-semibold transition-all"
+                          style={tone === t.key
+                            ? { background: 'rgba(118,77,240,0.2)', color: '#c4b5fd', border: '1px solid rgba(118,77,240,0.4)' }
+                            : { background: 'rgba(255,255,255,0.04)', color: 'rgba(255,255,255,0.4)', border: '1px solid rgba(255,255,255,0.07)' }
+                          }
+                        >
+                          {t.label}
+                        </button>
+                      ))}
+                      <button
+                        onClick={handleGenerate}
+                        disabled={!file || !jobDescription.trim()}
+                        className="flex items-center gap-2 rounded-lg px-4 py-2 text-xs font-bold ml-auto transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed"
+                        style={{
+                          background: 'rgba(118,77,240,0.2)',
+                          border: '1px solid rgba(118,77,240,0.35)',
+                          color: '#c4b5fd',
+                        }}
+                        onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(118,77,240,0.3)'; }}
+                        onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(118,77,240,0.2)'; }}
+                      >
+                        <Sparkles className="h-3.5 w-3.5" />
+                        Generate
+                      </button>
+                    </div>
+
                   </div>
                 </div>
               </div>
@@ -269,7 +320,6 @@ export default function CoverLetterPage() {
                     style={{ background: 'linear-gradient(135deg,rgba(118,77,240,0.15) 0%,transparent 55%)' }} />
                   <div className="absolute bottom-0 left-0 right-0"
                     style={{ height: '40%', background: 'linear-gradient(0deg,rgba(6,9,28,0.75) 0%,transparent 100%)' }} />
-                  {/* floating label */}
                   <div
                     className="absolute bottom-6 left-6 right-6 rounded-xl px-5 py-4"
                     style={{
@@ -347,7 +397,7 @@ export default function CoverLetterPage() {
                     value={refineInput}
                     onChange={(e) => setRefineInput(e.target.value)}
                     onKeyDown={(e) => { if (e.key === 'Enter' && !refining) handleRefine(); }}
-                    placeholder="e.g. Make it shorter, more confident, emphasize leadership…"
+                    placeholder="e.g. Make it shorter, more confident, emphasize leadership..."
                     disabled={refining}
                     className="flex-1 h-10 rounded-xl px-4 text-sm outline-none transition-all"
                     style={{
@@ -367,7 +417,7 @@ export default function CoverLetterPage() {
                     onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(118,77,240,0.25)'; }}
                   >
                     {refining
-                      ? <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/20 border-t-white/70" />
+                      ? <span className="lds-roller-sm" style={{ color: '#c4b5fd' }}><span /><span /><span /><span /><span /><span /><span /><span /></span>
                       : <Send className="h-3.5 w-3.5" />
                     }
                   </button>
@@ -378,9 +428,6 @@ export default function CoverLetterPage() {
 
         </div>
       </section>
-
-      {/* bottom spacer fade */}
-      <div style={{ height: '60px', background: 'linear-gradient(180deg,#0a0d28 0%,#0a0d28 100%)' }} />
 
     </div>
   );

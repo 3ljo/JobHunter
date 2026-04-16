@@ -12,6 +12,7 @@ const onboardingRoutes = require('./routes/onboarding');
 const cvRoutes = require('./routes/cv');
 const jobTrackerRoutes = require('./routes/jobTracker');
 const coverLetterRoutes = require('./routes/coverLetter');
+const adminRoutes = require('./routes/admin');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -37,6 +38,7 @@ app.use('/api/onboarding', onboardingRoutes);
 app.use('/api/cv', cvRoutes);
 app.use('/api/tracker', jobTrackerRoutes);
 app.use('/api/cover-letter', coverLetterRoutes);
+app.use('/api/admin', adminRoutes);
 
 // Global error handler
 app.use((err, req, res, next) => {

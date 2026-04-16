@@ -94,100 +94,127 @@ export default function CVPage() {
           width: '100vw',
           marginLeft: 'calc(-50vw + 50%)',
           marginTop: '-32px',
+          marginBottom: '-32px',
           background: '#0d1130',
           position: 'relative',
           zIndex: 2,
+          minHeight: 'calc(100vh - 56px)',
         }}
       >
-        {/* ── MAIN TWO-COLUMN SECTION — background/6.webp hero ──────── */}
+        {/* ── HERO SECTION ──────── */}
         <section
           className="relative overflow-hidden"
           style={{
-            backgroundImage: 'url(/aivent/background/6.webp)',
+            backgroundImage: analysisLoading ? 'none' : 'url(/aivent/background/6.webp)',
             backgroundSize: 'cover',
-            backgroundPosition: 'center',
-            backgroundAttachment: 'fixed',
+            backgroundPosition: 'center top',
             paddingTop: '72px',
-            paddingBottom: '80px',
+            paddingBottom: '40px',
+            minHeight: 'calc(100vh - 56px)',
+            display: 'flex',
+            flexDirection: 'column' as const,
+            justifyContent: 'center',
           }}
         >
-          {/* dark tint — light enough to see the image */}
-          <div className="absolute inset-0" style={{ background: 'rgba(8,11,32,0.65)' }} />
-          {/* bottom fade into page bg */}
+          {/* Video background — only during analysis */}
+          {analysisLoading && (
+            <video
+              autoPlay
+              muted
+              loop
+              playsInline
+              className="absolute inset-0 w-full h-full object-cover"
+              style={{ zIndex: 0 }}
+            >
+              <source src="/aivent/video/1.mp4" type="video/mp4" />
+            </video>
+          )}
+          {/* dark overlay */}
+          <div className="absolute inset-0" style={{ background: analysisLoading ? 'rgba(8,11,32,0.70)' : 'rgba(8,11,32,0.65)', zIndex: 1 }} />
+          {/* bottom fade */}
           <div className="absolute bottom-0 left-0 right-0"
-            style={{ height: '40%', background: 'linear-gradient(0deg,#0d1130 0%,transparent 100%)' }} />
+            style={{ height: '40%', background: 'linear-gradient(0deg,#0d1130 0%,transparent 100%)', zIndex: 1 }} />
 
           <div className="relative mx-auto max-w-7xl px-6" style={{ zIndex: 2 }}>
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
 
-              {/* ── LEFT: title + form ───────────────────────────── */}
-              <div>
-                <span className="aivent-subtitle">AI-Powered</span>
+            {/* ── LOADING STATE: centered with video bg ── */}
+            {analysisLoading ? (
+              <div className="flex flex-col items-center justify-center" style={{ minHeight: 'calc(100vh - 200px)' }}>
+                <span className="aivent-subtitle s2">AI-Powered</span>
                 <h1
-                  className="text-white leading-[1.1] mb-3"
+                  className="text-white leading-[1.1] mb-4 text-center"
                   style={{ fontSize: 'clamp(32px,4.5vw,52px)', fontWeight: 800, letterSpacing: '-0.02em' }}
                 >
-                  {analysisLoading ? 'Analyzing Your CV…' : 'ATS CV Analyzer'}
+                  Analyzing Your CV...
                 </h1>
-                <p className="mb-8" style={{ color: 'rgba(255,255,255,0.45)', fontSize: '16px', lineHeight: 1.7 }}>
-                  {analysisLoading
-                    ? "Your analysis is running. You can switch tabs — it won't be interrupted."
-                    : 'Upload your CV + paste a job description. Get ATS score, keyword gaps, and a fully rewritten CV in seconds.'}
+                <p className="text-center mb-10" style={{ color: 'rgba(255,255,255,0.50)', fontSize: '16px', lineHeight: 1.7, maxWidth: '480px' }}>
+                  Your analysis is running. You can switch tabs — it won't be interrupted.
                 </p>
 
-                {/* form card */}
-                <div className="rounded-2xl overflow-hidden" style={glass}>
+                <div className="rounded-2xl overflow-hidden w-full" style={{ ...glass, maxWidth: '480px' }}>
                   <div style={{ height: '2px', background: 'linear-gradient(90deg,transparent,rgba(118,77,240,0.9),transparent)' }} />
-                  <div className="p-7">
-                    {analysisLoading ? (
-                      <div className="space-y-4">
-                        <p className="text-xs font-bold uppercase tracking-widest mb-6" style={{ color: 'rgba(255,255,255,0.3)' }}>
-                          Analysis Progress
-                        </p>
-                        {analysisSteps.map((s, i) => (
-                          <div
-                            key={s}
-                            className="flex items-center gap-3 text-sm transition-all duration-300"
-                            style={{ color: i <= analysisStep ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.2)' }}
-                          >
-                            <div
-                              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full"
-                              style={{
-                                background: i < analysisStep ? 'rgba(118,77,240,0.25)'
-                                  : i === analysisStep ? 'rgba(118,77,240,0.15)'
-                                  : 'rgba(255,255,255,0.04)',
-                                border: i === analysisStep ? '2px solid rgba(118,77,240,0.5)' : '1px solid transparent',
-                                color: i <= analysisStep ? '#a78bfa' : 'rgba(255,255,255,0.2)',
-                              }}
-                            >
-                              {i < analysisStep ? <Check className="h-3.5 w-3.5" />
-                                : i === analysisStep ? <div className="h-2 w-2 rounded-full bg-violet-400 animate-pulse" />
-                                : <div className="h-1.5 w-1.5 rounded-full" style={{ background: 'rgba(255,255,255,0.15)' }} />
-                              }
-                            </div>
-                            <span className="font-semibold">{s}</span>
-                          </div>
-                        ))}
+                  <div className="p-7 space-y-4">
+                    <p className="text-xs font-bold uppercase tracking-widest mb-6" style={{ color: 'rgba(255,255,255,0.3)' }}>
+                      Analysis Progress
+                    </p>
+                    {analysisSteps.map((s, i) => (
+                      <div
+                        key={s}
+                        className="flex items-center gap-3 text-sm transition-all duration-300"
+                        style={{ color: i <= analysisStep ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.2)' }}
+                      >
+                        <div
+                          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full"
+                          style={{
+                            background: i < analysisStep ? 'rgba(118,77,240,0.25)'
+                              : i === analysisStep ? 'rgba(118,77,240,0.15)'
+                              : 'rgba(255,255,255,0.04)',
+                            border: i === analysisStep ? '2px solid rgba(118,77,240,0.5)' : '1px solid transparent',
+                            color: i <= analysisStep ? '#a78bfa' : 'rgba(255,255,255,0.2)',
+                          }}
+                        >
+                          {i < analysisStep ? <Check className="h-3.5 w-3.5" />
+                            : i === analysisStep ? <div className="h-2 w-2 rounded-full bg-violet-400 animate-pulse" />
+                            : <div className="h-1.5 w-1.5 rounded-full" style={{ background: 'rgba(255,255,255,0.15)' }} />
+                          }
+                        </div>
+                        <span className="font-semibold">{s}</span>
                       </div>
-                    ) : (
-                      <CVUpload />
-                    )}
+                    ))}
                   </div>
                 </div>
+              </div>
+            ) : (
+              /* ── UPLOAD STATE: left-aligned with image bg ── */
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+                <div>
+                  <span className="aivent-subtitle">AI-Powered</span>
+                  <h1
+                    className="text-white leading-[1.1] mb-3"
+                    style={{ fontSize: 'clamp(32px,4.5vw,52px)', fontWeight: 800, letterSpacing: '-0.02em' }}
+                  >
+                    ATS CV Analyzer
+                  </h1>
+                  <p className="mb-8" style={{ color: 'rgba(255,255,255,0.45)', fontSize: '16px', lineHeight: 1.7 }}>
+                    Upload your CV + paste a job description. Get ATS score, keyword gaps, and a fully rewritten CV in seconds.
+                  </p>
 
-                {/* checklist below form */}
-                {!analysisLoading && (
+                  <div className="rounded-2xl overflow-hidden" style={glass}>
+                    <div style={{ height: '2px', background: 'linear-gradient(90deg,transparent,rgba(118,77,240,0.9),transparent)' }} />
+                    <div className="p-7">
+                      <CVUpload />
+                    </div>
+                  </div>
+
                   <ul className="ul-check mt-6 space-y-2">
                     <li style={{ color: 'rgba(255,255,255,0.5)', fontSize: '14px' }}>ATS keyword gap analysis</li>
                     <li style={{ color: 'rgba(255,255,255,0.5)', fontSize: '14px' }}>AI-rewritten CV optimized for the role</li>
                     <li style={{ color: 'rgba(255,255,255,0.5)', fontSize: '14px' }}>Cover letter generated from the same analysis</li>
                   </ul>
-                )}
+                </div>
               </div>
+            )}
 
-           
-
-            </div>
           </div>
         </section>
 
@@ -242,17 +269,44 @@ export default function CVPage() {
             <div className="flex flex-col sm:flex-row items-center justify-between gap-6 px-8 py-6">
 
               {/* scores */}
-              <div className="flex items-center gap-8">
-                <ScoreRing score={result.scores.current_ats} label="Current" size={100} />
-                <div className="flex flex-col items-center gap-1">
-                  <ArrowRight className="h-5 w-5" style={{ color: 'rgba(255,255,255,0.2)' }} />
-                  {scoreDelta > 0 && (
-                    <span className="flex items-center gap-0.5 text-xs font-bold" style={{ color: '#34d399' }}>
-                      <TrendingUp className="h-3 w-3" />+{scoreDelta}
-                    </span>
-                  )}
+              <div className="flex items-center gap-6">
+                <div className="text-center">
+                  <span
+                    className="font-black tabular-nums block"
+                    style={{
+                      fontSize: '42px',
+                      lineHeight: 1,
+                      background: 'linear-gradient(135deg, #a78bfa, #7c3aed)',
+                      WebkitBackgroundClip: 'text',
+                      WebkitTextFillColor: 'transparent',
+                    }}
+                  >
+                    {result.scores.current_ats}%
+                  </span>
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-white/40 mt-1 block">Current</span>
                 </div>
-                <ScoreRing score={result.scores.projected_ats} label="Projected" size={100} />
+
+                {scoreDelta > 0 && (
+                  <span className="flex items-center gap-1 text-sm font-black" style={{ color: '#34d399' }}>
+                    <TrendingUp className="h-4 w-4" />+{scoreDelta}
+                  </span>
+                )}
+
+                <div className="text-center">
+                  <span
+                    className="font-black tabular-nums block"
+                    style={{
+                      fontSize: '42px',
+                      lineHeight: 1,
+                      background: 'linear-gradient(135deg, #764DF0, #5b21b6)',
+                      WebkitBackgroundClip: 'text',
+                      WebkitTextFillColor: 'transparent',
+                    }}
+                  >
+                    {result.scores.projected_ats}%
+                  </span>
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-white/40 mt-1 block">Projected</span>
+                </div>
               </div>
 
               {/* actions */}
@@ -340,13 +394,18 @@ export default function CVPage() {
                   <button
                     onClick={handleGenerateCL}
                     disabled={clLoading}
-                    className="btn-aivent fx-slide ml-auto"
-                    data-hover="GENERATE"
-                    style={{ fontSize: '13px', padding: '8px 20px', height: 'auto' }}
+                    className="flex items-center gap-2 rounded-lg px-4 py-2 text-xs font-bold ml-auto transition-all duration-200"
+                    style={{
+                      background: clLoading ? 'rgba(118,77,240,0.12)' : 'rgba(118,77,240,0.2)',
+                      border: '1px solid rgba(118,77,240,0.35)',
+                      color: '#c4b5fd',
+                    }}
+                    onMouseEnter={e => { if (!clLoading) (e.currentTarget as HTMLElement).style.background = 'rgba(118,77,240,0.3)'; }}
+                    onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(118,77,240,0.2)'; }}
                   >
                     {clLoading
-                      ? <span className="flex items-center gap-2"><span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/30 border-t-white" />Generating…</span>
-                      : <span className="flex items-center gap-2"><Sparkles className="h-3.5 w-3.5" /><span>Generate</span></span>
+                      ? <><span className="lds-roller-sm" style={{ color: '#c4b5fd' }}><span /><span /><span /><span /><span /><span /><span /><span /></span>Generating...</>
+                      : <><Sparkles className="h-3.5 w-3.5" />Generate</>
                     }
                   </button>
                 </div>
@@ -391,7 +450,7 @@ export default function CVPage() {
                       style={{ background: 'rgba(118,77,240,0.25)', border: '1px solid rgba(118,77,240,0.4)', color: '#c4b5fd' }}
                     >
                       {clRefining
-                        ? <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                        ? <span className="lds-roller-sm" style={{ color: '#c4b5fd' }}><span /><span /><span /><span /><span /><span /><span /><span /></span>
                         : <Send className="h-3.5 w-3.5" />
                       }
                     </button>
