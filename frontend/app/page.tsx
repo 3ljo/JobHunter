@@ -245,15 +245,36 @@ export default function Home() {
             ))}
           </nav>
 
-          {/* Mobile hamburger */}
-          <button
-            className="lg:hidden flex items-center justify-center w-10 h-10 rounded-lg text-white/70 hover:text-white transition-colors"
-            style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }}
-            onClick={() => setMobileOpen(!mobileOpen)}
-            aria-label="Toggle menu"
-          >
-            {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-          </button>
+          {/* Right side */}
+          <div className="flex items-center gap-3">
+            {isLoggedIn ? (
+              <Link
+                href="/cv"
+                className="hidden lg:inline-flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-bold text-white transition-all duration-200"
+                style={{ background: 'oklch(0.59 0.245 291)', boxShadow: '0 2px 12px rgba(118,77,240,0.3)' }}
+              >
+                Dashboard
+              </Link>
+            ) : (
+              <Link
+                href="/login"
+                className="hidden lg:inline-flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-bold text-white transition-all duration-200"
+                style={{ background: 'oklch(0.59 0.245 291)', boxShadow: '0 2px 12px rgba(118,77,240,0.3)' }}
+              >
+                Sign In
+              </Link>
+            )}
+
+            {/* Mobile hamburger */}
+            <button
+              className="lg:hidden flex items-center justify-center w-10 h-10 rounded-lg text-white/70 hover:text-white transition-colors"
+              style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }}
+              onClick={() => setMobileOpen(!mobileOpen)}
+              aria-label="Toggle menu"
+            >
+              {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+            </button>
+          </div>
         </div>
 
         {/* Mobile dropdown */}
@@ -276,6 +297,27 @@ export default function Home() {
                 {link.label}
               </a>
             ))}
+            <div className="pt-4 mt-1">
+              {isLoggedIn ? (
+                <Link
+                  href="/cv"
+                  onClick={() => setMobileOpen(false)}
+                  className="block w-full text-center py-3 rounded-lg text-sm font-bold text-white transition-all"
+                  style={{ background: 'oklch(0.59 0.245 291)' }}
+                >
+                  Dashboard
+                </Link>
+              ) : (
+                <Link
+                  href="/login"
+                  onClick={() => setMobileOpen(false)}
+                  className="block w-full text-center py-3 rounded-lg text-sm font-bold text-white transition-all"
+                  style={{ background: 'oklch(0.59 0.245 291)' }}
+                >
+                  Sign In
+                </Link>
+              )}
+            </div>
           </div>
         )}
       </header>
@@ -309,7 +351,7 @@ export default function Home() {
               </p>
               <div className="flex flex-wrap items-center gap-4 wow fadeInUp" data-wow-delay=".6s">
                 {isLoggedIn
-                  ? <Link href="/cv" className="btn-aivent btn-lg fx-slide" data-hover="OPEN DASHBOARD"><span>Open Dashboard</span></Link>
+                  ? <Link href="/cv" className="btn-aivent btn-lg fx-slide" data-hover="GO TO DASHBOARD"><span>Go to Dashboard</span></Link>
                   : <>
                       <Link href="/register" className="btn-aivent btn-lg fx-slide" data-hover="START FREE"><span>Get Started Free</span></Link>
                       <Link href="/login" className="btn-aivent btn-line btn-lg fx-slide" data-hover="SIGN IN"><span>Sign In</span></Link>
@@ -540,7 +582,7 @@ export default function Home() {
               </ul>
               <div className="wow fadeInUp" data-wow-delay="1.1s">
                 {isLoggedIn
-                  ? <Link href="/cv" className="btn-aivent fx-slide" data-hover="OPEN DASHBOARD"><span>Open Dashboard</span></Link>
+                  ? <Link href="/cv" className="btn-aivent fx-slide" data-hover="GO TO DASHBOARD"><span>Go to Dashboard</span></Link>
                   : <Link href="/register" className="btn-aivent fx-slide" data-hover="GET STARTED"><span>Get Started Free</span></Link>
                 }
               </div>
@@ -660,7 +702,7 @@ export default function Home() {
           </p>
           <div className="wow fadeInUp" data-wow-delay=".6s">
             {isLoggedIn
-              ? <Link href="/cv" className="btn-aivent fx-slide" data-hover="OPEN DASHBOARD"><span>Open Dashboard</span></Link>
+              ? <Link href="/cv" className="btn-aivent fx-slide" data-hover="GO TO DASHBOARD"><span>Go to Dashboard</span></Link>
               : <Link href="/register" className="btn-aivent fx-slide" data-hover="CREATE ACCOUNT"><span>Get Started Free</span></Link>
             }
           </div>
