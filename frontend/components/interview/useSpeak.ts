@@ -7,22 +7,32 @@ export interface UseSpeakResult {
   supported: boolean;
   speaking: boolean;
   loading: boolean;
-  error: string | null;
-  /** Fetches MP3 from backend TTS and plays it via <audio>.
-   *  Falls back to browser speechSynthesis if the backend endpoint is
-   *  unavailable (e.g. 404/503 during deploy or missing OPENAI_API_KEY). */
-  play: (interviewId: string, questionId: string, text: string) => void;
+  /** Toggle playback — MUST be called directly from onClick/onTouch. */
+  toggle: (interviewId: string, questionId: string, text: string) => void;
+  /** Hard-stop anything that's playing (can be called from anywhere). */
   cancel: () => void;
 }
 
+/**
+ * Simple, reliable speech for the interview page.
+ *
+ * Strategy:
+ * 1. If NOT currently speaking, fire browser speechSynthesis SYNCHRONOUSLY
+ *    (works on desktop + iOS as long as called from onClick).
+ * 2. In parallel, try to fetch a higher-quality MP3 from the backend
+ *    (OpenAI TTS). If that succeeds before speechSynthesis finishes we
+ *    silently swap in the MP3. If it fails (404/503/etc.) we just keep
+ *    the speechSynthesis audio — user never sees an error.
+ * 3. If already speaking, a tap stops playback. Next tap plays again.
+ */
 export function useSpeak(): UseSpeakResult {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const cacheRef = useRef<Map<string, string>>(new Map());
-  const backendFailedRef = useRef(false); // once we know backend TTS is down, skip it
+  const backendUpRef = useRef<boolean | null>(null); // null=unknown, true/false=known
+  const synthFiredRef = useRef(false);
 
   const [speaking, setSpeaking] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   const supported = typeof window !== 'undefined';
 
@@ -30,10 +40,7 @@ export function useSpeak(): UseSpeakResult {
     return () => {
       cacheRef.current.forEach((url) => URL.revokeObjectURL(url));
       cacheRef.current.clear();
-      if (audioRef.current) {
-        audioRef.current.pause();
-        audioRef.current = null;
-      }
+      if (audioRef.current) { audioRef.current.pause(); audioRef.current = null; }
       try { window.speechSynthesis?.cancel(); } catch { /* noop */ }
     };
   }, []);
@@ -44,34 +51,22 @@ export function useSpeak(): UseSpeakResult {
       audioRef.current.onplay = () => setSpeaking(true);
       audioRef.current.onpause = () => setSpeaking(false);
       audioRef.current.onended = () => setSpeaking(false);
-      audioRef.current.onerror = () => {
-        setSpeaking(false);
-        setError('Audio playback failed');
-      };
     }
     return audioRef.current;
   };
 
-  const playUrl = (url: string) => {
-    const el = ensureAudio();
-    el.src = url;
-    const p = el.play();
-    if (p && typeof p.catch === 'function') {
-      p.catch(() => {
-        setSpeaking(false);
-        setError('Tap the button again to play');
-      });
+  const stopAll = () => {
+    try { window.speechSynthesis?.cancel(); } catch { /* noop */ }
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
     }
+    setSpeaking(false);
+    synthFiredRef.current = false;
   };
 
-  // Fallback: browser speechSynthesis. Works on desktop Chrome reliably and
-  // on iOS when called from a real tap handler.
-  const speakViaBrowser = (text: string) => {
-    if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
-      setError('Voice is not available in this browser');
-      return;
-    }
-    try { window.speechSynthesis.cancel(); } catch { /* noop */ }
+  const fireBrowserSpeech = (text: string) => {
+    if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
     try {
       const u = new SpeechSynthesisUtterance(text);
       u.rate = 1.0;
@@ -79,69 +74,60 @@ export function useSpeak(): UseSpeakResult {
       u.volume = 1.0;
       u.onstart = () => setSpeaking(true);
       u.onend = () => setSpeaking(false);
-      u.onerror = (ev) => {
-        const reason = (ev as SpeechSynthesisErrorEvent).error;
-        if (reason !== 'interrupted' && reason !== 'canceled') setError(reason);
-        setSpeaking(false);
-      };
+      u.onerror = () => setSpeaking(false); // interrupted/cancelled is fine
       window.speechSynthesis.speak(u);
-    } catch (err: unknown) {
-      const e = err as { message?: string };
-      setError(e.message || 'Voice playback failed');
+      synthFiredRef.current = true;
+    } catch { /* noop */ }
+  };
+
+  const playMp3 = (url: string) => {
+    // Swap from any in-progress browser TTS to the higher-quality MP3.
+    try { window.speechSynthesis?.cancel(); } catch { /* noop */ }
+    synthFiredRef.current = false;
+    const el = ensureAudio();
+    el.src = url;
+    const p = el.play();
+    if (p && typeof p.catch === 'function') {
+      p.catch(() => { /* if audio can't play, browser speech is already going */ });
     }
   };
 
-  const play = useCallback((interviewId: string, questionId: string, text: string) => {
+  const toggle = useCallback((interviewId: string, questionId: string, text: string) => {
     if (!supported) return;
-    setError(null);
 
-    // Cached URL? Play immediately.
+    // Already speaking → stop.
+    if (speaking) { stopAll(); return; }
+
+    // Cached MP3 → play directly.
     const cached = cacheRef.current.get(questionId);
-    if (cached) {
-      playUrl(cached);
-      return;
-    }
+    if (cached) { playMp3(cached); return; }
 
-    // If we already learned backend TTS is unavailable, skip straight to the
-    // browser fallback so the user gets SOMETHING.
-    if (backendFailedRef.current) {
-      speakViaBrowser(text);
-      return;
-    }
+    // Start browser speech immediately so the user hears SOMETHING right now.
+    fireBrowserSpeech(text);
 
-    // Pre-create the audio element synchronously inside the gesture so iOS
-    // keeps the gesture binding across the upcoming fetch.
+    // If we've previously learned the backend TTS endpoint is missing, stop here.
+    if (backendUpRef.current === false) return;
+
+    // Try backend for better voice. If it loads fast, we swap in the MP3.
     ensureAudio();
-
     setLoading(true);
     fetchQuestionSpeech(interviewId, questionId)
       .then((blob) => {
+        backendUpRef.current = true;
         const objectUrl = URL.createObjectURL(blob);
         cacheRef.current.set(questionId, objectUrl);
-        playUrl(objectUrl);
+        // Only swap if the user hasn't already stopped in the meantime.
+        if (synthFiredRef.current || speaking) playMp3(objectUrl);
       })
-      .catch((err: unknown) => {
-        const e = err as { response?: { status?: number; data?: { error?: string } }; message?: string };
-        const status = e.response?.status;
-        // 404 (route missing / deploy in flight) or 503 (no API key) → fallback.
-        if (status === 404 || status === 503) {
-          backendFailedRef.current = true;
-          speakViaBrowser(text);
-          return;
-        }
-        setError(e.response?.data?.error || e.message || 'Failed to load voice');
+      .catch(() => {
+        // Backend unreachable (404 before deploy, 503 no key, network) —
+        // silently rely on browser TTS we already started. Remember.
+        backendUpRef.current = false;
       })
       .finally(() => setLoading(false));
-  }, [supported]);
+  }, [supported, speaking]);
 
-  const cancel = useCallback(() => {
-    if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current.currentTime = 0;
-    }
-    try { window.speechSynthesis?.cancel(); } catch { /* noop */ }
-    setSpeaking(false);
-  }, []);
+  const cancel = useCallback(() => { stopAll(); }, []);
 
-  return { supported, speaking, loading, error, play, cancel };
+  return { supported, speaking, loading, toggle, cancel };
 }

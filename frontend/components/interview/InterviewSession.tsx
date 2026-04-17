@@ -80,13 +80,12 @@ export default function InterviewSession() {
     next();
   };
 
-  // Invoked directly from onClick/onTouch. Fetches real MP3 from the backend
-  // and plays via <audio>. Falls back to browser speechSynthesis automatically
-  // if the backend endpoint isn't reachable.
+  // Tap the robot to toggle playback. Browser speechSynthesis fires
+  // synchronously in the same click so iOS + Chrome both work; MP3 from
+  // the backend TTS loads in parallel and silently swaps in if available.
   const playQuestion = () => {
     if (!currentQ || !sessionId) return;
-    if (speak.speaking) speak.cancel();
-    else speak.play(sessionId, currentQ.id, currentQ.text);
+    speak.toggle(sessionId, currentQ.id, currentQ.text);
   };
 
   if (!currentQ) return null;
@@ -213,66 +212,32 @@ export default function InterviewSession() {
 
       {/* Question card */}
       <div className="rounded-2xl p-5 sm:p-6" style={glass}>
-        <div className="flex items-start gap-3 sm:gap-4">
-          {/* Animated robot interviewer — tap the head to play / stop */}
-          {speak.supported && (
-            <div className="shrink-0">
-              <RobotAvatar
-                speaking={speak.speaking}
-                loading={speak.loading}
-                size={84}
-                onClick={playQuestion}
-                title={speak.speaking ? 'Stop' : 'Tap me to hear the question'}
-              />
-            </div>
-          )}
-
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 flex-wrap mb-2">
-              <span
-                className="text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider"
-                style={{ background: kindBadge.bg, color: kindBadge.color, border: `1px solid ${kindBadge.color}33` }}
-              >
-                {kindBadge.label}
-              </span>
-              <span className="text-[10px] font-bold uppercase tracking-widest text-white/35">
-                Question {currentIndex + 1}
-              </span>
-            </div>
-
-            <p className="text-base sm:text-lg md:text-xl font-semibold text-white leading-snug">{currentQ.text}</p>
-
-            {/* Big, obvious Play/Stop button. Fetches real MP3 from backend
-                TTS so no browser speechSynthesis UI interferes. */}
-            {speak.supported && (
-              <button
-                type="button"
-                onClick={playQuestion}
-                disabled={speak.loading}
-                className="mt-4 inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold transition-all disabled:opacity-70"
-                style={{
-                  background: speak.speaking
-                    ? 'linear-gradient(135deg,#ef4444,#dc2626)'
-                    : 'linear-gradient(135deg,#764DF0,#5b21b6)',
-                  color: 'white',
-                  boxShadow: speak.speaking
-                    ? '0 6px 18px rgba(239,68,68,0.35)'
-                    : '0 6px 18px rgba(118,77,240,0.35)',
-                }}
-              >
-                {speak.loading
-                  ? <><span className="lds-roller-sm"><span /><span /><span /><span /><span /><span /><span /><span /></span> Loading voice…</>
-                  : speak.speaking
-                    ? <><VolumeX className="h-4 w-4" /> Stop</>
-                    : <><Volume2 className="h-4 w-4" /> Hear the question</>}
-              </button>
-            )}
-
-            {speak.error && (
-              <p className="text-[11px] mt-2" style={{ color: '#fca5a5' }}>{speak.error}</p>
-            )}
+        {/* Robot + speech bubble — the ONLY control for voice. Tap anywhere
+            on the robot or the bubble to play / stop. */}
+        {speak.supported && (
+          <div className="flex justify-start mb-4">
+            <RobotAvatar
+              speaking={speak.speaking}
+              loading={speak.loading}
+              size={130}
+              onClick={playQuestion}
+            />
           </div>
+        )}
+
+        <div className="flex items-center gap-2 flex-wrap mb-2">
+          <span
+            className="text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider"
+            style={{ background: kindBadge.bg, color: kindBadge.color, border: `1px solid ${kindBadge.color}33` }}
+          >
+            {kindBadge.label}
+          </span>
+          <span className="text-[10px] font-bold uppercase tracking-widest text-white/35">
+            Question {currentIndex + 1}
+          </span>
         </div>
+
+        <p className="text-base sm:text-lg md:text-xl font-semibold text-white leading-snug">{currentQ.text}</p>
       </div>
 
       {/* Mic / typing input */}

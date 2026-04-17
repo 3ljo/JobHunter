@@ -5,275 +5,257 @@ import { useEffect, useState } from 'react';
 interface RobotAvatarProps {
   speaking: boolean;
   loading?: boolean;
-  size?: number;
+  size?: number;             // rendered pixel height
   onClick?: () => void;
-  title?: string;
+  bubbleText?: string;       // caption displayed next to the robot
 }
 
 /**
- * Cartoon interviewer bot.
+ * Full-body cartoon interviewer robot.
+ * Light-blue body, orange eyes + feet, antenna, friendly teeth grid mouth,
+ * little waving arms. Comes with a speech bubble caption on the right.
  *
- * - Chibi proportions: big rounded head, small body hint below.
- * - Expressive eyes with sparkle highlights; random blinks when idle.
- * - Soft cheek blush dots.
- * - Headphones on the sides (interviewer vibe).
- * - Antenna with pulsing tip.
- * - Mouth smiles when idle, opens/closes when speaking.
- * - Subtle float animation so it feels alive.
- * - Whole avatar is one big tap target — tap = play/stop audio.
+ * Tap anywhere on the robot (or the bubble) to play/stop voice.
  */
-export default function RobotAvatar({ speaking, loading, size = 96, onClick, title }: RobotAvatarProps) {
+export default function RobotAvatar({ speaking, loading, size = 150, onClick, bubbleText }: RobotAvatarProps) {
   const [blink, setBlink] = useState(false);
 
   useEffect(() => {
-    let timer: ReturnType<typeof setTimeout>;
-    const schedule = () => {
-      const delay = 2800 + Math.random() * 3500;
-      timer = setTimeout(() => {
+    let t: ReturnType<typeof setTimeout>;
+    const tick = () => {
+      const delay = 3000 + Math.random() * 3500;
+      t = setTimeout(() => {
         setBlink(true);
         setTimeout(() => setBlink(false), 130);
-        schedule();
+        tick();
       }, delay);
     };
-    schedule();
-    return () => clearTimeout(timer);
+    tick();
+    return () => clearTimeout(t);
   }, []);
 
-  const eyeColor = speaking ? '#c4b5fd' : '#a78bfa';
-  const ringColor = speaking ? 'rgba(167,139,250,0.55)' : 'rgba(167,139,250,0.22)';
-  const glow = speaking
-    ? '0 0 0 8px rgba(167,139,250,0.12), 0 12px 28px rgba(118,77,240,0.4)'
-    : '0 6px 20px rgba(118,77,240,0.28)';
+  const width = size * (160 / 200); // keep aspect ratio 160x200
+  const bubble =
+    bubbleText ??
+    (loading ? 'Loading my voice…' : speaking ? 'Tap me to mute' : 'Tap me to talk');
 
-  const avatar = (
+  return (
     <div
-      className={speaking ? 'robot-wrap robot-breathe-fast' : 'robot-wrap robot-breathe'}
+      onClick={onClick}
+      role={onClick ? 'button' : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      onKeyDown={(e) => {
+        if (!onClick) return;
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick(); }
+      }}
+      aria-label={onClick ? bubble : undefined}
       style={{
-        width: size,
-        height: size,
-        borderRadius: '28%',
-        background: 'radial-gradient(circle at 30% 25%, #3b3f7a 0%, #1d2150 65%, #12163a 100%)',
-        border: `1.5px solid ${ringColor}`,
-        boxShadow: glow,
         display: 'flex',
         alignItems: 'center',
-        justifyContent: 'center',
-        position: 'relative',
-        transition: 'box-shadow 220ms, border-color 220ms',
-        overflow: 'visible',
+        gap: 14,
+        cursor: onClick ? 'pointer' : 'default',
+        userSelect: 'none',
+        WebkitTapHighlightColor: 'transparent',
       }}
     >
-      <svg
-        viewBox="0 0 120 120"
-        width={size * 0.98}
-        height={size * 0.98}
-        style={{ display: 'block', overflow: 'visible' }}
-        aria-hidden
+      <div
+        className={speaking ? 'robot-breathe-fast' : 'robot-breathe'}
+        style={{
+          width, height: size, flexShrink: 0,
+          filter: 'drop-shadow(0 8px 22px rgba(118,77,240,0.28))',
+        }}
       >
-        {/* Antenna */}
-        <line x1="60" y1="12" x2="60" y2="22" stroke={eyeColor} strokeWidth="3" strokeLinecap="round" />
-        <circle
-          cx="60"
-          cy="9"
-          r="4.5"
-          fill={eyeColor}
-          className={speaking ? 'robot-antenna-pulse' : ''}
-        />
-
-        {/* Head — rounded square with soft gradient */}
-        <defs>
-          <radialGradient id="robot-head-grad" cx="35%" cy="25%" r="80%">
-            <stop offset="0%"  stopColor="#4c5396" />
-            <stop offset="55%" stopColor="#2a2f5a" />
-            <stop offset="100%" stopColor="#1a1f4a" />
-          </radialGradient>
-          <linearGradient id="robot-face-grad" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%"  stopColor="#0c0f28" />
-            <stop offset="100%" stopColor="#070a1f" />
-          </linearGradient>
-        </defs>
-
-        <rect
-          x="22"
-          y="26"
-          width="76"
-          height="68"
-          rx="22"
-          fill="url(#robot-head-grad)"
-          stroke={eyeColor}
-          strokeWidth="1.5"
-          opacity="0.95"
-        />
-
-        {/* Face screen */}
-        <rect
-          x="30"
-          y="36"
-          width="60"
-          height="42"
-          rx="14"
-          fill="url(#robot-face-grad)"
-        />
-        {/* Face shine */}
-        <rect x="33" y="39" width="54" height="10" rx="5" fill="#ffffff" opacity="0.04" />
-
-        {/* Eyes */}
-        {blink ? (
-          <>
-            <rect x="38"  y="54.5" width="14" height="2.2" rx="1.1" fill={eyeColor} />
-            <rect x="68" y="54.5" width="14" height="2.2" rx="1.1" fill={eyeColor} />
-          </>
-        ) : (
-          <>
-            {/* Big expressive eyes */}
-            <circle cx="45" cy="55" r="7" fill={eyeColor} />
-            <circle cx="75" cy="55" r="7" fill={eyeColor} />
-            {/* Pupils */}
-            <circle cx="45.5" cy="55.5" r="3" fill="#0a0d24" />
-            <circle cx="75.5" cy="55.5" r="3" fill="#0a0d24" />
-            {/* Sparkle highlights */}
-            <circle cx="47" cy="52.5" r="1.8" fill="#ffffff" opacity="0.95" />
-            <circle cx="77" cy="52.5" r="1.8" fill="#ffffff" opacity="0.95" />
-            <circle cx="43.3" cy="57.3" r="0.9" fill="#ffffff" opacity="0.7" />
-            <circle cx="73.3" cy="57.3" r="0.9" fill="#ffffff" opacity="0.7" />
-          </>
-        )}
-
-        {/* Cheek blush */}
-        <circle cx="36" cy="65" r="3.5" fill="#f472b6" opacity="0.28" />
-        <circle cx="84" cy="65" r="3.5" fill="#f472b6" opacity="0.28" />
-
-        {/* Mouth — smile when idle, open rectangle when speaking */}
-        {speaking ? (
-          <g className="robot-mouth-group speaking">
-            <rect x="52" y="70" width="16" height="5" rx="2.5" fill={eyeColor} />
-            <rect className="robot-tongue" x="55" y="71.5" width="10" height="1.8" rx="0.9" fill="#050720" />
-          </g>
-        ) : (
-          <path
-            d="M 50 70 Q 60 76 70 70"
-            stroke={eyeColor}
-            strokeWidth="2.2"
-            fill="none"
-            strokeLinecap="round"
-          />
-        )}
-
-        {/* Chin bolt */}
-        <circle cx="60" cy="86" r="1.8" fill={eyeColor} opacity="0.6" />
-
-        {/* Headphones / ears */}
-        <rect x="14" y="48" width="10" height="26" rx="5" fill="#1a1f4a" stroke={eyeColor} strokeWidth="1.2" />
-        <rect x="96" y="48" width="10" height="26" rx="5" fill="#1a1f4a" stroke={eyeColor} strokeWidth="1.2" />
-        {/* Headphone bridge hint */}
-        <path d="M 22 48 Q 60 18 98 48" stroke={eyeColor} strokeWidth="1" fill="none" opacity="0.35" />
-
-        {/* Loading dots overlay when fetching audio */}
-        {loading && (
-          <g className="robot-loading">
-            <circle cx="60" cy="70" r="2" fill={eyeColor}>
-              <animate attributeName="opacity" values="0.2;1;0.2" dur="1s" repeatCount="indefinite" begin="0s" />
-            </circle>
-            <circle cx="54" cy="70" r="2" fill={eyeColor}>
-              <animate attributeName="opacity" values="0.2;1;0.2" dur="1s" repeatCount="indefinite" begin="0.2s" />
-            </circle>
-            <circle cx="66" cy="70" r="2" fill={eyeColor}>
-              <animate attributeName="opacity" values="0.2;1;0.2" dur="1s" repeatCount="indefinite" begin="0.4s" />
-            </circle>
-          </g>
-        )}
-      </svg>
-
-      {/* Tap hint ring — pulses gently when idle to signal interactivity */}
-      {!speaking && !loading && onClick && (
-        <span
+        <svg
+          viewBox="0 0 160 200"
+          width={width}
+          height={size}
+          style={{ display: 'block' }}
           aria-hidden
+        >
+          <defs>
+            <linearGradient id="robot-body" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%"  stopColor="#b6dff0" />
+              <stop offset="100%" stopColor="#7bb8d1" />
+            </linearGradient>
+            <linearGradient id="robot-panel" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%"  stopColor="#2a3540" />
+              <stop offset="100%" stopColor="#1b242e" />
+            </linearGradient>
+          </defs>
+
+          {/* Antenna stem + tip */}
+          <line x1="80" y1="6" x2="80" y2="22" stroke="#1f2a36" strokeWidth="2.5" strokeLinecap="round" />
+          <circle
+            cx="80" cy="5" r="5"
+            fill="#f97316"
+            className={speaking ? 'robot-antenna-pulse' : ''}
+          />
+          {/* "Brain" dome patch */}
+          <ellipse cx="80" cy="25" rx="18" ry="6" fill="#f59e0b" stroke="#1f2a36" strokeWidth="1.8" />
+          <circle cx="74" cy="24" r="1.3" fill="#fbbf24" />
+          <circle cx="83" cy="22" r="1.3" fill="#fbbf24" />
+          <circle cx="88" cy="25" r="1.3" fill="#fbbf24" />
+
+          {/* Ears / side pieces */}
+          <rect x="26" y="55" width="12" height="18" rx="4"
+            fill="url(#robot-body)" stroke="#1f2a36" strokeWidth="1.8" />
+          <rect x="122" y="55" width="12" height="18" rx="4"
+            fill="url(#robot-body)" stroke="#1f2a36" strokeWidth="1.8" />
+
+          {/* Head */}
+          <rect x="38" y="30" width="84" height="62" rx="10"
+            fill="url(#robot-body)" stroke="#1f2a36" strokeWidth="2" />
+
+          {/* Face screen */}
+          <rect x="48" y="42" width="64" height="38" rx="6"
+            fill="#9fd0e2" stroke="#1f2a36" strokeWidth="1.5" />
+
+          {/* Eyes */}
+          {blink ? (
+            <>
+              <rect x="56"  y="57" width="14" height="2.4" rx="1.2" fill="#1f2a36" />
+              <rect x="90" y="57" width="14" height="2.4" rx="1.2" fill="#1f2a36" />
+            </>
+          ) : (
+            <>
+              <circle cx="63" cy="58" r="8" fill="white" stroke="#1f2a36" strokeWidth="1.8" />
+              <circle cx="97" cy="58" r="8" fill="white" stroke="#1f2a36" strokeWidth="1.8" />
+              <circle cx="63" cy="58" r="4.5" fill="#f97316" />
+              <circle cx="97" cy="58" r="4.5" fill="#f97316" />
+              <circle cx="61.5" cy="56" r="1.4" fill="white" />
+              <circle cx="95.5" cy="56" r="1.4" fill="white" />
+            </>
+          )}
+
+          {/* Mouth — teeth-grid smile when idle, open oval when speaking */}
+          {speaking ? (
+            <g>
+              <rect className="robot-mouth-open" x="68" y="70" width="24" height="6" rx="3" fill="#1f2a36">
+                <animate attributeName="height" values="6;12;4;10;6" dur="420ms" repeatCount="indefinite" />
+                <animate attributeName="y"      values="70;67;71;68;70" dur="420ms" repeatCount="indefinite" />
+              </rect>
+            </g>
+          ) : (
+            <g>
+              <rect x="68" y="70" width="24" height="6" fill="white" stroke="#1f2a36" strokeWidth="1.5" />
+              <line x1="74" y1="70" x2="74" y2="76" stroke="#1f2a36" strokeWidth="1" />
+              <line x1="80" y1="70" x2="80" y2="76" stroke="#1f2a36" strokeWidth="1" />
+              <line x1="86" y1="70" x2="86" y2="76" stroke="#1f2a36" strokeWidth="1" />
+            </g>
+          )}
+
+          {/* Neck */}
+          <rect x="72" y="92" width="16" height="8" fill="url(#robot-body)" stroke="#1f2a36" strokeWidth="1.5" />
+
+          {/* Body */}
+          <rect x="34" y="100" width="92" height="64" rx="8"
+            fill="url(#robot-body)" stroke="#1f2a36" strokeWidth="2" />
+
+          {/* Body panel */}
+          <rect x="50" y="110" width="60" height="42" rx="4"
+            fill="url(#robot-panel)" stroke="#1f2a36" strokeWidth="1.5" />
+          {/* "Hi!" text */}
+          <text x="80" y="138" fontFamily="'Manrope', sans-serif" fontSize="18"
+                fontWeight="800" fill="white" textAnchor="middle" letterSpacing="0.5">
+            Hi!
+          </text>
+
+          {/* Arms (left waving when speaking) */}
+          <g className={speaking ? 'robot-arm-left-wave' : ''} style={{ transformOrigin: '26px 108px' }}>
+            <rect x="20" y="106" width="10" height="34" rx="3"
+              fill="url(#robot-body)" stroke="#1f2a36" strokeWidth="1.6" />
+            <rect x="16" y="138" width="18" height="12" rx="3"
+              fill="url(#robot-body)" stroke="#1f2a36" strokeWidth="1.6" />
+            <path d="M 18 150 L 16 155 M 25 150 L 25 156 M 32 150 L 34 155"
+              stroke="#1f2a36" strokeWidth="2" strokeLinecap="round" fill="none" />
+          </g>
+          <g>
+            <rect x="130" y="106" width="10" height="34" rx="3"
+              fill="url(#robot-body)" stroke="#1f2a36" strokeWidth="1.6" />
+            <rect x="126" y="138" width="18" height="12" rx="3"
+              fill="url(#robot-body)" stroke="#1f2a36" strokeWidth="1.6" />
+            <path d="M 128 150 L 126 155 M 135 150 L 135 156 M 142 150 L 144 155"
+              stroke="#1f2a36" strokeWidth="2" strokeLinecap="round" fill="none" />
+          </g>
+
+          {/* Legs */}
+          <rect x="58" y="164" width="16" height="22" rx="3"
+            fill="url(#robot-body)" stroke="#1f2a36" strokeWidth="1.6" />
+          <rect x="86" y="164" width="16" height="22" rx="3"
+            fill="url(#robot-body)" stroke="#1f2a36" strokeWidth="1.6" />
+
+          {/* Feet (orange) */}
+          <rect x="50" y="186" width="28" height="10" rx="3"
+            fill="#f97316" stroke="#1f2a36" strokeWidth="1.6" />
+          <rect x="82" y="186" width="28" height="10" rx="3"
+            fill="#f97316" stroke="#1f2a36" strokeWidth="1.6" />
+        </svg>
+
+        <style jsx>{`
+          :global(.robot-breathe) { animation: rb-float 4200ms ease-in-out infinite; will-change: transform; }
+          :global(.robot-breathe-fast) { animation: rb-float 2200ms ease-in-out infinite; will-change: transform; }
+          @keyframes rb-float {
+            0%, 100% { transform: translateY(0); }
+            50%      { transform: translateY(-3px); }
+          }
+          :global(.robot-antenna-pulse) {
+            animation: rb-antenna 900ms ease-in-out infinite;
+            transform-box: fill-box; transform-origin: center;
+          }
+          @keyframes rb-antenna {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50%      { transform: scale(1.5); opacity: 0.45; }
+          }
+          :global(.robot-arm-left-wave) {
+            animation: rb-wave 1200ms ease-in-out infinite;
+            transform-box: fill-box;
+          }
+          @keyframes rb-wave {
+            0%, 100% { transform: rotate(0deg);  }
+            25%      { transform: rotate(-12deg); }
+            75%      { transform: rotate(8deg);   }
+          }
+        `}</style>
+      </div>
+
+      {/* Speech bubble */}
+      <div
+        style={{
+          position: 'relative',
+          padding: '10px 14px',
+          borderRadius: 16,
+          background: speaking
+            ? 'linear-gradient(135deg,#ef4444,#b91c1c)'
+            : loading
+              ? 'linear-gradient(135deg,#a78bfa,#6d28d9)'
+              : 'linear-gradient(135deg,#764DF0,#5b21b6)',
+          color: 'white',
+          fontWeight: 700,
+          fontSize: 13,
+          letterSpacing: '0.01em',
+          whiteSpace: 'nowrap',
+          boxShadow: '0 6px 18px rgba(118,77,240,0.35)',
+          maxWidth: 200,
+        }}
+      >
+        {bubble}
+        {/* Tail pointing left to the robot */}
+        <span
           style={{
             position: 'absolute',
-            inset: -3,
-            borderRadius: 'inherit',
-            border: '2px solid rgba(167,139,250,0.35)',
-            pointerEvents: 'none',
-            animation: 'robot-ring 2600ms ease-out infinite',
+            left: -6,
+            top: '50%',
+            transform: 'translateY(-50%)',
+            width: 0,
+            height: 0,
+            borderTop: '7px solid transparent',
+            borderBottom: '7px solid transparent',
+            borderRight: `8px solid ${
+              speaking ? '#ef4444' : loading ? '#a78bfa' : '#764DF0'
+            }`,
           }}
         />
-      )}
-
-      <style jsx>{`
-        :global(.robot-wrap) {
-          will-change: transform;
-        }
-        :global(.robot-breathe) {
-          animation: robot-breathe 4200ms ease-in-out infinite;
-        }
-        :global(.robot-breathe-fast) {
-          animation: robot-breathe 2200ms ease-in-out infinite;
-        }
-        @keyframes robot-breathe {
-          0%, 100% { transform: translateY(0);    }
-          50%      { transform: translateY(-3px); }
-        }
-
-        :global(.robot-mouth-group) {
-          transform-box: fill-box;
-          transform-origin: center center;
-        }
-        :global(.robot-mouth-group.speaking) {
-          animation: robot-talk 340ms ease-in-out infinite;
-        }
-        :global(.robot-tongue) {
-          opacity: 0;
-        }
-        :global(.robot-mouth-group.speaking .robot-tongue) {
-          animation: robot-tongue 340ms ease-in-out infinite;
-        }
-        @keyframes robot-talk {
-          0%   { transform: scaleY(1);   }
-          25%  { transform: scaleY(2.2); }
-          50%  { transform: scaleY(1.1); }
-          75%  { transform: scaleY(2.6); }
-          100% { transform: scaleY(1);   }
-        }
-        @keyframes robot-tongue {
-          0%, 100% { opacity: 0;   }
-          25%, 75% { opacity: 0.9; }
-        }
-
-        :global(.robot-antenna-pulse) {
-          animation: robot-antenna 900ms ease-in-out infinite;
-          transform-box: fill-box;
-          transform-origin: center center;
-        }
-        @keyframes robot-antenna {
-          0%, 100% { transform: scale(1);   opacity: 1;   }
-          50%      { transform: scale(1.5); opacity: 0.4; }
-        }
-
-        @keyframes robot-ring {
-          0%   { transform: scale(1);    opacity: 0.8; }
-          70%  { transform: scale(1.18); opacity: 0;   }
-          100% { transform: scale(1.18); opacity: 0;   }
-        }
-      `}</style>
+      </div>
     </div>
-  );
-
-  if (!onClick) return avatar;
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-label={title || (speaking ? 'Stop speaking' : 'Play question')}
-      title={title}
-      style={{
-        background: 'none',
-        border: 'none',
-        padding: 0,
-        cursor: loading ? 'wait' : 'pointer',
-        display: 'inline-block',
-      }}
-    >
-      {avatar}
-    </button>
   );
 }
