@@ -26,7 +26,7 @@ CREATE TABLE IF NOT EXISTS api_usage (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
   user_email TEXT,
-  feature TEXT NOT NULL CHECK (feature IN ('cv_analysis', 'cover_letter', 'cv_refine', 'cl_refine')),
+  feature TEXT NOT NULL CHECK (feature IN ('cv_analysis', 'cover_letter', 'cv_refine', 'cl_refine', 'mock_interview')),
   provider TEXT NOT NULL CHECK (provider IN ('anthropic', 'openai', 'gemini')),
   model TEXT NOT NULL,
   stage TEXT,
