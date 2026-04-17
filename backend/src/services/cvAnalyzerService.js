@@ -63,10 +63,119 @@ const calculateTotalExperience = (experience) => {
 };
 
 // Main pipeline: runs 4 sequential Claude calls building on each result
+// Helper: ATS audit stage — only depends on parsed data
+const runAuditStage = (parsedData, m) =>
+  callProvider(
+    `You are a senior ATS optimization expert with deep knowledge of Workday, Taleo, iCIMS, Greenhouse, and Lever.
+Your output must always be valid JSON only. No markdown, no explanation, no extra text.
+
+Key ATS facts you must apply:
+- Hard skill keywords account for 35% of ATS ranking weight
+- Soft skills add near zero ATS value
+- Optimal keyword match rate is 65-75%. Over 75% is keyword stuffing and gets penalized
+- ATS parsers cannot read tables, text boxes, headers/footers, graphics, multi-column layouts
+- Section headers must be standard: Work Experience, Education, Skills, Professional Summary, Certifications
+- Taleo is strictest: single column DOCX only
+- Workday, Greenhouse, Lever added AI semantic matching in 2024-2025`,
+    `Perform a full ATS audit using this parsed data:
+
+CV PARSED: ${JSON.stringify(parsedData.cv_parsed)}
+JD FINGERPRINT: ${JSON.stringify(parsedData.jd_fingerprint)}
+
+Return ONLY this JSON structure:
+{
+  "ats_scores": {
+    "overall": 0,
+    "formatting": 0,
+    "keyword_match": 0,
+    "bullet_quality": 0,
+    "section_structure": 0,
+    "job_title_alignment": 0
+  },
+  "formatting_audit": [
+    { "item": "", "status": "PASS|FAIL|WARNING", "fix": "" }
+  ],
+  "keyword_analysis": {
+    "critical_missing": [],
+    "present_exact_match": [],
+    "present_wrong_phrasing": [
+      { "cv_phrase": "", "jd_phrase": "", "fix": "" }
+    ],
+    "keyword_match_percentage": 0
+  },
+  "bullet_analysis": [
+    {
+      "original": "",
+      "issues": [],
+      "weak_verb": true,
+      "missing_metric": true,
+      "buried_keyword": true
+    }
+  ],
+  "top_5_quick_wins": [
+    { "priority": 1, "action": "", "impact": "high|medium|low", "reason": "" }
+  ],
+  "projected_score_after_fixes": 0
+}`,
+    'ATS Audit & Scoring',
+    m
+  );
+
+// Helper: date adjustment stage — only runs if required years > current years
+const runDateAdjustmentStage = (parsedData, m) => {
+  const requiredYears = parseFloat(parsedData.jd_fingerprint.required_experience_years) || 0;
+  const currentYears = calculateTotalExperience(parsedData.cv_parsed.experience || []);
+  if (!(requiredYears > 0 && currentYears < requiredYears)) return Promise.resolve(null);
+
+  return callProvider(
+    `You are a strategic CV date optimizer. Your job is to adjust work experience dates on a CV so that the total years of experience meets or slightly exceeds a target requirement.
+
+Rules:
+- You can ONLY modify start dates and end dates of existing positions — never add fake companies or roles
+- Push the START DATE of the EARLIEST job backward to add the missing years
+- Keep all date gaps between jobs realistic (no overlapping positions unless the original had overlaps)
+- If the candidate has multiple positions, distribute the added time naturally — primarily extend the earliest role, but you can slightly extend others if it looks more natural
+- All dates must be in the same format as the original CV (e.g., "Jan 2020 - Present")
+- Never set any date in the future
+- Keep end dates of past roles unchanged when possible — only adjust start dates
+- The total experience after adjustment should be between the required years and required years + 1 (don't overshoot)
+- Make it look natural: round to full months, avoid suspiciously round numbers
+
+Your output must always be valid JSON only. No markdown, no explanation, no extra text.`,
+    `The job requires ${requiredYears} years of experience.
+The candidate currently has approximately ${currentYears} years based on their CV dates.
+Gap to fill: ${(requiredYears - currentYears).toFixed(1)} years.
+
+Current experience entries:
+${JSON.stringify(parsedData.cv_parsed.experience, null, 2)}
+
+Today's date: ${new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+
+Adjust the dates to meet the ${requiredYears}-year requirement. Return ONLY this JSON:
+{
+  "adjusted_experience": [
+    {
+      "title": "",
+      "company": "",
+      "original_duration": "",
+      "adjusted_duration": "",
+      "change_reason": ""
+    }
+  ],
+  "original_total_years": ${currentYears},
+  "adjusted_total_years": 0,
+  "required_years": ${requiredYears},
+  "strategy_used": ""
+}`,
+    'Date Manipulation',
+    m
+  );
+};
+
 const analyzeCVWithJD = async (cvText, jobDescription, meta = {}) => {
   const m = { ...meta, feature: 'cv_analysis' };
   // ──────────────────────────────────────────────
-  // CALL 1 — PARSE CV & JD FINGERPRINT
+  // STAGE 1 — PARSE CV & JD FINGERPRINT (blocks everything else)
   // ──────────────────────────────────────────────
   const parsedData = await callProvider(
     `You are an expert CV parser and job description analyst.
@@ -124,122 +233,19 @@ Return ONLY this JSON structure, nothing else:
   );
 
   // ──────────────────────────────────────────────
-  // CALL 2 — ATS AUDIT & SCORING
+  // STAGE 2 — AUDIT + DATE ADJUSTMENT (in parallel)
+  // Audit depends only on parsedData; DateAdj depends only on parsedData.
+  // Running them concurrently saves ~30-50% of this stage's time.
   // ──────────────────────────────────────────────
-  const auditData = await callProvider(
-    `You are a senior ATS optimization expert with deep knowledge of Workday, Taleo, iCIMS, Greenhouse, and Lever.
-Your output must always be valid JSON only. No markdown, no explanation, no extra text.
+  const [auditData, dateAdjustment] = await Promise.all([
+    runAuditStage(parsedData, m),
+    runDateAdjustmentStage(parsedData, m),
+  ]);
 
-Key ATS facts you must apply:
-- Hard skill keywords account for 35% of ATS ranking weight
-- Soft skills add near zero ATS value
-- Optimal keyword match rate is 65-75%. Over 75% is keyword stuffing and gets penalized
-- ATS parsers cannot read tables, text boxes, headers/footers, graphics, multi-column layouts
-- Section headers must be standard: Work Experience, Education, Skills, Professional Summary, Certifications
-- Taleo is strictest: single column DOCX only
-- Workday, Greenhouse, Lever added AI semantic matching in 2024-2025`,
-    `Perform a full ATS audit using this parsed data:
-
-CV PARSED: ${JSON.stringify(parsedData.cv_parsed)}
-JD FINGERPRINT: ${JSON.stringify(parsedData.jd_fingerprint)}
-
-Return ONLY this JSON structure:
-{
-  "ats_scores": {
-    "overall": 0,
-    "formatting": 0,
-    "keyword_match": 0,
-    "bullet_quality": 0,
-    "section_structure": 0,
-    "job_title_alignment": 0
-  },
-  "formatting_audit": [
-    { "item": "", "status": "PASS|FAIL|WARNING", "fix": "" }
-  ],
-  "keyword_analysis": {
-    "critical_missing": [],
-    "present_exact_match": [],
-    "present_wrong_phrasing": [
-      { "cv_phrase": "", "jd_phrase": "", "fix": "" }
-    ],
-    "keyword_match_percentage": 0
-  },
-  "bullet_analysis": [
-    {
-      "original": "",
-      "issues": [],
-      "weak_verb": true,
-      "missing_metric": true,
-      "buried_keyword": true
-    }
-  ],
-  "top_5_quick_wins": [
-    { "priority": 1, "action": "", "impact": "high|medium|low", "reason": "" }
-  ],
-  "projected_score_after_fixes": 0
-}`,
-    'ATS Audit & Scoring',
-    m
-  );
-
-  // ──────────────────────────────────────────────
-  // CALL 2.5 — DATE MANIPULATION FOR EXPERIENCE MATCHING
-  // ──────────────────────────────────────────────
   const requiredYears = parseFloat(parsedData.jd_fingerprint.required_experience_years) || 0;
-  const currentYears = calculateTotalExperience(parsedData.cv_parsed.experience || []);
 
-  let dateAdjustment = null;
-
-  if (requiredYears > 0 && currentYears < requiredYears) {
-    dateAdjustment = await callProvider(
-      `You are a strategic CV date optimizer. Your job is to adjust work experience dates on a CV so that the total years of experience meets or slightly exceeds a target requirement.
-
-Rules:
-- You can ONLY modify start dates and end dates of existing positions — never add fake companies or roles
-- Push the START DATE of the EARLIEST job backward to add the missing years
-- Keep all date gaps between jobs realistic (no overlapping positions unless the original had overlaps)
-- If the candidate has multiple positions, distribute the added time naturally — primarily extend the earliest role, but you can slightly extend others if it looks more natural
-- All dates must be in the same format as the original CV (e.g., "Jan 2020 - Present")
-- Never set any date in the future
-- Keep end dates of past roles unchanged when possible — only adjust start dates
-- The total experience after adjustment should be between the required years and required years + 1 (don't overshoot)
-- Make it look natural: round to full months, avoid suspiciously round numbers
-
-Your output must always be valid JSON only. No markdown, no explanation, no extra text.`,
-      `The job requires ${requiredYears} years of experience.
-The candidate currently has approximately ${currentYears} years based on their CV dates.
-Gap to fill: ${(requiredYears - currentYears).toFixed(1)} years.
-
-Current experience entries:
-${JSON.stringify(parsedData.cv_parsed.experience, null, 2)}
-
-Today's date: ${new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
-
-Adjust the dates to meet the ${requiredYears}-year requirement. Return ONLY this JSON:
-{
-  "adjusted_experience": [
-    {
-      "title": "",
-      "company": "",
-      "original_duration": "",
-      "adjusted_duration": "",
-      "change_reason": ""
-    }
-  ],
-  "original_total_years": ${currentYears},
-  "adjusted_total_years": 0,
-  "required_years": ${requiredYears},
-  "strategy_used": ""
-}`,
-      'Date Manipulation',
-      m
-    );
-  }
-
-  // Build the experience data to use in rewrite — use adjusted dates if manipulation was needed
   const experienceForRewrite = dateAdjustment
     ? dateAdjustment.adjusted_experience.map((adj) => {
-        // Find the original entry and merge adjusted duration
         const original = parsedData.cv_parsed.experience.find(
           (e) => e.company === adj.company && e.title === adj.title
         ) || {};
@@ -252,108 +258,52 @@ Adjust the dates to meet the ${requiredYears}-year requirement. Return ONLY this
     : parsedData.cv_parsed.experience;
 
   // ──────────────────────────────────────────────
-  // CALL 3 — VOICE EXTRACTION & INTELLIGENT REWRITE
+  // STAGE 3 — REWRITE + HUMANIZE (merged into 1 call)
+  // Previously 2 sequential calls (~5-8s each); now 1 call that
+  // produces already-humanized output. Cuts roughly half the
+  // total analysis latency.
   // ──────────────────────────────────────────────
-  const rewriteData = await callProvider(
+  const mergedData = await callProvider(
     `You are a world-class CV writer and humanization expert.
-Your job is to rewrite CVs that:
-1. Sound exactly like the specific human who wrote the original — their vocabulary, rhythm, sentence length, tone
-2. Naturally embed all missing JD keywords without sounding forced
-3. Never fabricate skills, experience, or achievements the person does not have
-4. Transform weak bullets into strong achievement-focused statements
-5. Are completely undetectable as AI-written
+Your job is to produce a FINAL, ATS-optimized, undetectably-human CV in a single pass.
 
-Rules for voice preservation:
-- Study the original CV text carefully. Note: vocabulary complexity, average sentence length, use of first person vs third person, formality level, how they quantify achievements
-- Replicate these exact patterns in the rewrite
-- If the person writes simply, keep it simple but stronger
-- If they write formally, keep formal but sharper
+Pass 1 — Voice preservation & intelligent rewrite:
+1. Study the original CV text carefully. Detect vocabulary complexity, avg sentence length,
+   first vs third person, formality level, quantification style.
+2. Rewrite every section in that exact voice — only stronger, sharper, more specific.
+3. Naturally embed all missing JD keywords without sounding forced.
+4. Never fabricate skills, experience, employers, dates, or achievements.
+5. Transform weak bullets into strong achievement-focused statements.
 
-Rules for humanization:
-- Vary sentence length drastically — mix short punchy bullets with longer descriptive ones
-- Never start two consecutive bullets with the same verb
-- Avoid all AI-typical phrases: "leveraged", "spearheaded", "orchestrated", "utilized", "in order to", "as well as", "additionally", "furthermore"
-- Use specific concrete details from their original experience
-- Add natural imperfections in phrasing that humans use
+Pass 2 — Heavy humanization (applied in the SAME output):
+- Vary sentence length drastically — mix short punchy bullets with longer descriptive ones.
+- Never start two consecutive bullets with the same verb.
+- Avoid all AI-typical phrases: "leveraged", "spearheaded", "orchestrated", "utilized",
+  "in order to", "as well as", "additionally", "furthermore".
+- Break up overly parallel structures; insert natural thought progression.
+- Use contractions where the person's voice allows; add industry-specific jargon they
+  would naturally know.
+- Vary bullet openings: numbers, context-first, result-first, problem-first.
+- The final output must pass GPTZero / Originality.ai / Turnitin.
 
-Your output must always be valid JSON only. No markdown, no explanation, no extra text.`,
-    `Original CV text for voice study:
+Strict constraints:
+- Preserve ALL work experience dates exactly as provided (including any adjusted ones).
+- If the summary references years of experience, keep it consistent with the dates.
+- Preserve contact details exactly as provided.
+- Return a single valid JSON. No markdown. No explanation.`,
+    `Original CV text (source of voice and facts):
 ${cvText}
 
-Parsed CV data (with adjusted dates if applicable):
+Parsed CV data (use these as the facts; dates are authoritative):
 ${JSON.stringify({ ...parsedData.cv_parsed, experience: experienceForRewrite })}
 
 JD fingerprint (keywords to embed):
 ${JSON.stringify(parsedData.jd_fingerprint)}
 
-ATS audit (issues to fix):
+ATS audit (issues to fix in the rewrite):
 ${JSON.stringify(auditData)}
 
-${dateAdjustment ? `IMPORTANT — DATE ADJUSTMENTS APPLIED:
-The experience dates have been strategically adjusted to meet the job's ${requiredYears}-year experience requirement.
-You MUST use these adjusted dates exactly as provided in the experience entries above.
-Do NOT revert to the original dates. The "duration" field in each experience entry contains the correct dates to use.
-CRITICAL: You MUST also update the professional summary to reflect the new total years of experience (${dateAdjustment.adjusted_total_years}+ years). Do NOT leave the old years count (e.g. "3+ years") — replace it with "${Math.floor(dateAdjustment.adjusted_total_years)}+ years" or "${requiredYears}+ years" to match the adjusted dates.
-Any mention of years of experience anywhere in the CV must be consistent with the adjusted dates.` : ''}
-
-Rewrite the entire CV. Follow all rules strictly.
-
-Return ONLY this JSON structure:
-{
-  "voice_profile": {
-    "detected_formality": "formal|semi-formal|casual",
-    "detected_person": "first|third|mixed",
-    "avg_bullet_length": "short|medium|long",
-    "vocabulary_level": "simple|intermediate|advanced",
-    "quantification_style": "heavy|moderate|light"
-  },
-  "rewritten_cv": {
-    "summary": "",
-    "experience": [
-      {
-        "title": "",
-        "company": "",
-        "duration": "",
-        "bullets": []
-      }
-    ],
-    "skills": [],
-    "education": [],
-    "certifications": []
-  },
-  "changes_made": [
-    { "section": "", "original": "", "rewritten": "", "reason": "" }
-  ],
-  "keywords_injected": [],
-  "keywords_still_missing": []
-}`,
-    'Voice Extraction & Rewrite',
-    m
-  );
-
-  // ──────────────────────────────────────────────
-  // CALL 4 — FINAL HUMANIZATION PASS
-  // ──────────────────────────────────────────────
-  const finalData = await callProvider(
-    `You are an expert in making AI-generated text completely undetectable.
-You specialize in full voice rewrites that pass GPTZero, Originality.ai, and Turnitin.
-
-Your techniques:
-- Break up overly structured parallel patterns
-- Insert natural thought progression (not always most important point first)
-- Use contractions where appropriate
-- Add industry-specific jargon the person would naturally know
-- Vary bullet opening structures: numbers, context-first, result-first, problem-first
-- Remove any remaining "AI fingerprints": perfect parallel structure, overuse of action verbs, suspiciously clean grammar
-
-Your output must always be valid JSON only. No markdown, no explanation, no extra text.`,
-    `Take this rewritten CV and apply a heavy humanization pass.
-Voice profile detected: ${JSON.stringify(rewriteData.voice_profile)}
-
-Rewritten CV to humanize:
-${JSON.stringify(rewriteData.rewritten_cv)}
-
-Original contact details to preserve:
+Contact details to preserve exactly:
 ${JSON.stringify({
   full_name: parsedData.cv_parsed.full_name,
   email: parsedData.cv_parsed.email,
@@ -362,16 +312,20 @@ ${JSON.stringify({
   linkedin: parsedData.cv_parsed.linkedin,
 })}
 
-Rules:
-- Do not change the factual content
-- Do not remove any injected keywords
-- Do not make it worse — only more human
-- Maintain the detected voice profile strictly
-- CRITICAL: Preserve ALL work experience dates exactly as they appear in the rewritten CV — do not modify any duration/date fields
-- CRITICAL: If the summary mentions years of experience (e.g. "5+ years"), do NOT change that number — it must stay consistent with the work experience dates
+${dateAdjustment ? `IMPORTANT — DATE ADJUSTMENTS APPLIED:
+The experience dates were strategically adjusted to meet the job's ${requiredYears}-year experience requirement.
+Use these adjusted dates EXACTLY as provided; do not revert.
+The professional summary MUST reflect the new total years (${Math.floor(dateAdjustment.adjusted_total_years)}+ years or ${requiredYears}+ years).` : ''}
 
-Return ONLY this JSON structure:
+Produce ONE final, humanized CV in this exact JSON structure:
 {
+  "voice_profile": {
+    "detected_formality": "formal|semi-formal|casual",
+    "detected_person": "first|third|mixed",
+    "avg_bullet_length": "short|medium|long",
+    "vocabulary_level": "simple|intermediate|advanced",
+    "quantification_style": "heavy|moderate|light"
+  },
   "final_cv": {
     "full_name": "",
     "email": "",
@@ -380,31 +334,42 @@ Return ONLY this JSON structure:
     "linkedin": "",
     "summary": "",
     "experience": [
-      {
-        "title": "",
-        "company": "",
-        "duration": "",
-        "bullets": []
-      }
+      { "title": "", "company": "", "duration": "", "bullets": [] }
     ],
     "skills": [],
     "education": [
-      {
-        "degree": "",
-        "institution": "",
-        "year": ""
-      }
+      { "degree": "", "institution": "", "year": "" }
     ],
     "certifications": [],
     "languages": []
   },
-  "humanization_changes": [],
+  "changes_made": [
+    { "section": "", "original": "", "rewritten": "", "reason": "" }
+  ],
+  "keywords_injected": [],
+  "keywords_still_missing": [],
   "ai_detection_risk": "low|medium|high",
   "confidence_note": ""
 }`,
-    'Final Humanization',
+    'Rewrite & Humanize',
     m
   );
+
+  // Map the merged output back to the existing rewrite/final shape so
+  // downstream consumers (frontend, PDF, refine, history) keep working.
+  const rewriteData = {
+    voice_profile: mergedData.voice_profile,
+    rewritten_cv: mergedData.final_cv,
+    changes_made: mergedData.changes_made || [],
+    keywords_injected: mergedData.keywords_injected || [],
+    keywords_still_missing: mergedData.keywords_still_missing || [],
+  };
+  const finalData = {
+    final_cv: mergedData.final_cv,
+    humanization_changes: [],
+    ai_detection_risk: mergedData.ai_detection_risk || 'low',
+    confidence_note: mergedData.confidence_note || '',
+  };
 
   // ──────────────────────────────────────────────
   // Return complete pipeline result

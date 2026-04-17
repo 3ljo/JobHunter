@@ -4,7 +4,7 @@ import { analyzeCV } from '@/lib/api';
 import toast from 'react-hot-toast';
 import { DEFAULT_TEMPLATE, type TemplateId } from '@/components/cv/templates';
 
-const STEPS = ['Parsing CV...', 'Auditing ATS...', 'Rewriting...', 'Humanizing...', 'Done'];
+const STEPS = ['Parsing CV...', 'Auditing ATS...', 'Rewriting & humanizing...', 'Done'];
 const TEMPLATE_KEY = 'cv_template_id';
 const PHOTO_KEY = 'cv_photo_data';
 
