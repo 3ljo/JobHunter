@@ -37,12 +37,13 @@ export default function InterviewPage() {
       <section
         className="relative overflow-hidden pt-10 sm:pt-16 pb-10 sm:pb-14"
         style={{
-          backgroundImage: 'url(/aivent/background/6.webp)',
+          backgroundImage: 'url(/aivent/background/5.webp)',
           backgroundSize: 'cover',
-          backgroundPosition: 'center top',
+          backgroundPosition: 'center',
+          backgroundAttachment: 'fixed',
         }}
       >
-        <div className="absolute inset-0" style={{ background: 'rgba(8,11,35,0.78)' }} />
+        <div className="absolute inset-0" style={{ background: 'rgba(8,11,35,0.82)' }} />
         <div className="absolute bottom-0 left-0 right-0"
           style={{ height: '50%', background: 'linear-gradient(0deg,#0d1130 0%,transparent 100%)' }} />
 
