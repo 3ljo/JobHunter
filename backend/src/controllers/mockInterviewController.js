@@ -73,10 +73,16 @@ const startInterview = async (req, res) => {
     const diff = DIFFICULTY_VALUES.includes(difficulty) ? difficulty : 'standard';
     const cvText = await fetchCvText(cv_id, req.user.id);
 
-    const questions = await generateQuestions(
-      { cvText, jobDescription: job_description, difficulty: diff, jobTitle: job_title || '' },
-      { userId: req.user.id, userEmail: req.user.email }
-    );
+    let questions;
+    try {
+      questions = await generateQuestions(
+        { cvText, jobDescription: job_description, difficulty: diff, jobTitle: job_title || '' },
+        { userId: req.user.id, userEmail: req.user.email }
+      );
+    } catch (aiErr) {
+      console.error('AI question generation failed:', aiErr.message);
+      return res.status(502).json({ error: `AI did not return valid questions: ${aiErr.message}` });
+    }
 
     const { data, error } = await supabase
       .from('mock_interviews')
@@ -94,13 +100,20 @@ const startInterview = async (req, res) => {
       .single();
 
     if (error) {
-      console.error('Failed to create interview row:', error.message);
-      return res.status(500).json({ error: 'Failed to start interview' });
+      console.error('Failed to create interview row:', error);
+      const msg = error.message || '';
+      // Friendly hint when the table is missing from the DB.
+      if (/relation.*does not exist|mock_interviews/i.test(msg)) {
+        return res.status(500).json({
+          error: 'mock_interviews table is missing in Supabase. Run backend/src/database/mock-interview-schema.sql in the Supabase SQL editor, then try again.',
+        });
+      }
+      return res.status(500).json({ error: `Database insert failed: ${msg}` });
     }
 
     return res.status(200).json({ id: data.id, questions });
   } catch (err) {
-    console.error('Start interview error:', err.message);
+    console.error('Start interview error:', err);
     return res.status(500).json({ error: err.message || 'Failed to start interview' });
   }
 };
