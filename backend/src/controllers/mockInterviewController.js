@@ -2,7 +2,6 @@
 // Voice-based AI interview sessions — Pro+ gated.
 
 const supabase = require('../services/supabaseClient');
-const OpenAI = require('openai');
 const {
   generateQuestions,
   scoreAnswer,
@@ -10,15 +9,6 @@ const {
 } = require('../services/mockInterviewService');
 
 const DIFFICULTY_VALUES = ['standard', 'challenging', 'stress'];
-
-// Lazy OpenAI client for TTS.
-let _ttsClient = null;
-const getTtsClient = () => {
-  if (!_ttsClient && process.env.OPENAI_API_KEY) {
-    _ttsClient = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-  }
-  return _ttsClient;
-};
 
 // Helper: fetch a session + verify ownership.
 const fetchOwnedSession = async (cv_id, userId) => {
@@ -263,47 +253,4 @@ const getHistory = async (req, res) => {
   }
 };
 
-// POST /api/interview/:id/tts — generate MP3 for one question in this session.
-// Bypasses the browser speechSynthesis API (which Chrome/iOS both treat
-// unreliably) by returning a plain audio/mpeg buffer the frontend plays via
-// a normal <audio> element.
-const ttsQuestion = async (req, res) => {
-  try {
-    const client = getTtsClient();
-    if (!client) {
-      return res.status(503).json({ error: 'Voice service not configured (OPENAI_API_KEY missing)' });
-    }
-
-    const { id } = req.params;
-    const { question_id } = req.body || {};
-    if (!question_id) return res.status(400).json({ error: 'question_id is required' });
-
-    const { data: session, error } = await fetchOwnedSession(id, req.user.id);
-    if (error) return res.status(404).json({ error });
-
-    const question = (session.questions || []).find((q) => q.id === question_id);
-    if (!question) return res.status(400).json({ error: 'Unknown question_id' });
-
-    const speech = await client.audio.speech.create({
-      model: 'tts-1',
-      voice: 'nova',          // warm, neutral interviewer voice
-      input: question.text,
-      response_format: 'mp3',
-    });
-
-    const arrayBuffer = await speech.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
-
-    res.set({
-      'Content-Type': 'audio/mpeg',
-      'Content-Length': buffer.length,
-      'Cache-Control': 'private, max-age=3600',
-    });
-    return res.send(buffer);
-  } catch (err) {
-    console.error('Interview TTS error:', err.message);
-    return res.status(500).json({ error: err.message || 'Failed to generate voice' });
-  }
-};
-
-module.exports = { startInterview, submitAnswer, finishInterview, getInterview, getHistory, ttsQuestion };
+module.exports = { startInterview, submitAnswer, finishInterview, getInterview, getHistory };
