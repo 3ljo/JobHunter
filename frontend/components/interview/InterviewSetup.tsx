@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { FileText, Briefcase, Sparkles } from 'lucide-react';
 import { getCVHistory } from '@/lib/api';
 import { useInterviewStore } from '@/store/interviewStore';
+import { useSpeak } from './useSpeak';
 import type { CVRecord } from '@/types';
 
 const DIFFICULTIES = [
@@ -16,6 +17,7 @@ type DiffId = typeof DIFFICULTIES[number]['id'];
 
 export default function InterviewSetup() {
   const { start, starting } = useInterviewStore();
+  const speak = useSpeak();
 
   const [cvs, setCvs] = useState<CVRecord[]>([]);
   const [cvId, setCvId] = useState<string>('');
@@ -37,6 +39,9 @@ export default function InterviewSetup() {
 
   const handleStart = () => {
     if (!canStart) return;
+    // Prime speech inside the user gesture so iOS Safari unlocks audio
+    // for the rest of the session.
+    speak.prime();
     start({
       cv_id: cvId || null,
       job_title: jobTitle.trim() || undefined,

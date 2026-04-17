@@ -24,7 +24,7 @@ export default function InterviewSession() {
 
   const [typingMode, setTypingMode] = useState(false);
   const [typed, setTyped] = useState('');
-  const [mutedNarration, setMutedNarration] = useState(false);
+  const [voiceOn, setVoiceOn] = useState(true);
   const [narrated, setNarrated] = useState<Record<string, boolean>>({});
 
   const currentQ = questions[currentIndex];
@@ -32,7 +32,9 @@ export default function InterviewSession() {
   const isLastQuestion = currentIndex === questions.length - 1;
   const allAnswered = questions.length > 0 && questions.every((q) => answers[q.id]);
 
-  // When question changes: reset voice state, reset typed box, play narration once
+  // When question changes: reset voice state, reset typed box, play narration once.
+  // Auto-speak only if voice is on, engine is primed (user gesture happened),
+  // and this question hasn't already been narrated.
   const lastQuestionIdRef = useRef<string | null>(null);
   useEffect(() => {
     if (!currentQ) return;
@@ -43,7 +45,7 @@ export default function InterviewSession() {
     voice.reset();
     setTyped('');
 
-    if (!mutedNarration && speak.supported && !narrated[currentQ.id]) {
+    if (voiceOn && speak.supported && speak.primed && !narrated[currentQ.id]) {
       speak.speak(currentQ.text).finally(() => {
         setNarrated((prev) => ({ ...prev, [currentQ.id]: true }));
       });
@@ -85,7 +87,10 @@ export default function InterviewSession() {
   };
 
   const replayQuestion = () => {
-    if (!currentQ || mutedNarration || !speak.supported) return;
+    if (!currentQ || !speak.supported) return;
+    // Tapping the robot or Play button is a user gesture, so we can prime
+    // and speak right here — this always works on iOS.
+    speak.prime();
     speak.speak(currentQ.text);
   };
 
@@ -214,7 +219,7 @@ export default function InterviewSession() {
       {/* Question card */}
       <div className="rounded-2xl p-5 sm:p-6" style={glass}>
         <div className="flex items-start gap-3 sm:gap-4">
-          {/* Animated robot interviewer — tap to replay / stop */}
+          {/* Animated robot interviewer — tap to play / stop */}
           {speak.supported && (
             <div className="shrink-0">
               <RobotAvatar
@@ -222,9 +227,9 @@ export default function InterviewSession() {
                 size={56}
                 onClick={() => {
                   if (speak.speaking) speak.cancel();
-                  else if (!mutedNarration) replayQuestion();
+                  else replayQuestion();
                 }}
-                title={speak.speaking ? 'Stop' : mutedNarration ? 'Narration is muted' : 'Replay question'}
+                title={speak.speaking ? 'Stop' : 'Play question'}
               />
             </div>
           )}
@@ -241,32 +246,53 @@ export default function InterviewSession() {
                 Question {currentIndex + 1}
               </span>
 
-              {/* Single clean mute toggle */}
+              {/* Auto-play voice toggle. Actually controls whether the next
+                  question reads itself automatically. */}
               {speak.supported && (
                 <button
                   type="button"
                   onClick={() => {
-                    setMutedNarration((v) => {
+                    setVoiceOn((v) => {
                       const next = !v;
-                      if (next) speak.cancel();
+                      if (!next) speak.cancel();
                       return next;
                     });
                   }}
-                  aria-label={mutedNarration ? 'Unmute narration' : 'Mute narration'}
+                  aria-label={voiceOn ? 'Turn auto-play voice off' : 'Turn auto-play voice on'}
                   className="ml-auto flex h-8 items-center gap-1 px-2.5 rounded-lg text-[11px] font-bold"
                   style={{
-                    background: mutedNarration ? 'rgba(239,68,68,0.1)' : 'rgba(118,77,240,0.12)',
-                    border: `1px solid ${mutedNarration ? 'rgba(239,68,68,0.25)' : 'rgba(118,77,240,0.3)'}`,
-                    color: mutedNarration ? '#fca5a5' : '#c4b5fd',
+                    background: voiceOn ? 'rgba(118,77,240,0.15)' : 'rgba(255,255,255,0.04)',
+                    border: `1px solid ${voiceOn ? 'rgba(118,77,240,0.35)' : 'rgba(255,255,255,0.08)'}`,
+                    color: voiceOn ? '#c4b5fd' : 'rgba(255,255,255,0.55)',
                   }}
+                  title="Auto-play each new question"
                 >
-                  {mutedNarration ? <VolumeX className="h-3.5 w-3.5" /> : <Volume2 className="h-3.5 w-3.5" />}
-                  <span>{mutedNarration ? 'Muted' : 'Voice on'}</span>
+                  {voiceOn ? <Volume2 className="h-3.5 w-3.5" /> : <VolumeX className="h-3.5 w-3.5" />}
+                  <span>{voiceOn ? 'Auto-play on' : 'Auto-play off'}</span>
                 </button>
               )}
             </div>
 
             <p className="text-base sm:text-lg md:text-xl font-semibold text-white leading-snug">{currentQ.text}</p>
+
+            {/* Explicit Play / Stop button — always works because click = user gesture */}
+            {speak.supported && (
+              <button
+                type="button"
+                onClick={() => {
+                  if (speak.speaking) speak.cancel();
+                  else replayQuestion();
+                }}
+                className="mt-3 inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[11px] font-bold"
+                style={{
+                  background: speak.speaking ? 'rgba(239,68,68,0.12)' : 'rgba(118,77,240,0.12)',
+                  border: `1px solid ${speak.speaking ? 'rgba(239,68,68,0.3)' : 'rgba(118,77,240,0.3)'}`,
+                  color: speak.speaking ? '#fca5a5' : '#c4b5fd',
+                }}
+              >
+                {speak.speaking ? <><VolumeX className="h-3.5 w-3.5" /> Stop</> : <><Volume2 className="h-3.5 w-3.5" /> Hear question</>}
+              </button>
+            )}
           </div>
         </div>
       </div>
