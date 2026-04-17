@@ -62,65 +62,6 @@ const calculateTotalExperience = (experience) => {
   return Math.round((totalMonths / 12) * 10) / 10; // round to 1 decimal
 };
 
-// Main pipeline: runs 4 sequential Claude calls building on each result
-// Helper: ATS audit stage — only depends on parsed data
-const runAuditStage = (parsedData, m) =>
-  callProvider(
-    `You are a senior ATS optimization expert with deep knowledge of Workday, Taleo, iCIMS, Greenhouse, and Lever.
-Your output must always be valid JSON only. No markdown, no explanation, no extra text.
-
-Key ATS facts you must apply:
-- Hard skill keywords account for 35% of ATS ranking weight
-- Soft skills add near zero ATS value
-- Optimal keyword match rate is 65-75%. Over 75% is keyword stuffing and gets penalized
-- ATS parsers cannot read tables, text boxes, headers/footers, graphics, multi-column layouts
-- Section headers must be standard: Work Experience, Education, Skills, Professional Summary, Certifications
-- Taleo is strictest: single column DOCX only
-- Workday, Greenhouse, Lever added AI semantic matching in 2024-2025`,
-    `Perform a full ATS audit using this parsed data:
-
-CV PARSED: ${JSON.stringify(parsedData.cv_parsed)}
-JD FINGERPRINT: ${JSON.stringify(parsedData.jd_fingerprint)}
-
-Return ONLY this JSON structure:
-{
-  "ats_scores": {
-    "overall": 0,
-    "formatting": 0,
-    "keyword_match": 0,
-    "bullet_quality": 0,
-    "section_structure": 0,
-    "job_title_alignment": 0
-  },
-  "formatting_audit": [
-    { "item": "", "status": "PASS|FAIL|WARNING", "fix": "" }
-  ],
-  "keyword_analysis": {
-    "critical_missing": [],
-    "present_exact_match": [],
-    "present_wrong_phrasing": [
-      { "cv_phrase": "", "jd_phrase": "", "fix": "" }
-    ],
-    "keyword_match_percentage": 0
-  },
-  "bullet_analysis": [
-    {
-      "original": "",
-      "issues": [],
-      "weak_verb": true,
-      "missing_metric": true,
-      "buried_keyword": true
-    }
-  ],
-  "top_5_quick_wins": [
-    { "priority": 1, "action": "", "impact": "high|medium|low", "reason": "" }
-  ],
-  "projected_score_after_fixes": 0
-}`,
-    'ATS Audit & Scoring',
-    m
-  );
-
 // Helper: date adjustment stage — only runs if required years > current years
 const runDateAdjustmentStage = (parsedData, m) => {
   const requiredYears = parseFloat(parsedData.jd_fingerprint.required_experience_years) || 0;
@@ -175,12 +116,23 @@ Adjust the dates to meet the ${requiredYears}-year requirement. Return ONLY this
 const analyzeCVWithJD = async (cvText, jobDescription, meta = {}) => {
   const m = { ...meta, feature: 'cv_analysis' };
   // ──────────────────────────────────────────────
-  // STAGE 1 — PARSE CV & JD FINGERPRINT (blocks everything else)
+  // STAGE 1 — PARSE + AUDIT (merged into one call)
+  // Was 2 sequential calls; merging saves one full LLM round-trip.
   // ──────────────────────────────────────────────
-  const parsedData = await callProvider(
-    `You are an expert CV parser and job description analyst.
-Your output must always be valid JSON only. No markdown, no explanation, no extra text.`,
-    `Parse this CV and job description into structured data.
+  const stage1 = await callProvider(
+    `You are a combined expert CV parser, JD analyst, and senior ATS optimization expert.
+You know Workday, Taleo, iCIMS, Greenhouse, and Lever deeply.
+Your output must always be valid JSON only. No markdown, no explanation, no extra text.
+
+Key ATS facts you must apply in the audit:
+- Hard skill keywords account for 35% of ATS ranking weight
+- Soft skills add near zero ATS value
+- Optimal keyword match rate is 65-75%. Over 75% is keyword stuffing and gets penalized
+- ATS parsers cannot read tables, text boxes, headers/footers, graphics, multi-column layouts
+- Section headers must be standard: Work Experience, Education, Skills, Professional Summary, Certifications
+- Taleo is strictest: single column DOCX only
+- Workday, Greenhouse, Lever added AI semantic matching in 2024-2025`,
+    `Parse the CV and the job description, then audit the CV against the JD.
 
 CV TEXT:
 ${cvText}
@@ -188,7 +140,9 @@ ${cvText}
 JOB DESCRIPTION:
 ${jobDescription}
 
-Return ONLY this JSON structure, nothing else:
+Return ONLY this JSON structure, nothing else. Preserve ALL certifications and education
+entries from the CV — never drop a factual credential.
+
 {
   "cv_parsed": {
     "full_name": "",
@@ -198,19 +152,10 @@ Return ONLY this JSON structure, nothing else:
     "linkedin": "",
     "summary": "",
     "experience": [
-      {
-        "title": "",
-        "company": "",
-        "duration": "",
-        "bullets": []
-      }
+      { "title": "", "company": "", "duration": "", "bullets": [] }
     ],
     "education": [
-      {
-        "degree": "",
-        "institution": "",
-        "year": ""
-      }
+      { "degree": "", "institution": "", "year": "" }
     ],
     "skills": [],
     "certifications": [],
@@ -226,21 +171,47 @@ Return ONLY this JSON structure, nothing else:
     "required_certifications": [],
     "company_culture_signals": [],
     "keyword_frequency": {}
+  },
+  "audit": {
+    "ats_scores": {
+      "overall": 0,
+      "formatting": 0,
+      "keyword_match": 0,
+      "bullet_quality": 0,
+      "section_structure": 0,
+      "job_title_alignment": 0
+    },
+    "formatting_audit": [
+      { "item": "", "status": "PASS|FAIL|WARNING", "fix": "" }
+    ],
+    "keyword_analysis": {
+      "critical_missing": [],
+      "present_exact_match": [],
+      "present_wrong_phrasing": [
+        { "cv_phrase": "", "jd_phrase": "", "fix": "" }
+      ],
+      "keyword_match_percentage": 0
+    },
+    "bullet_analysis": [
+      { "original": "", "issues": [], "weak_verb": true, "missing_metric": true, "buried_keyword": true }
+    ],
+    "top_5_quick_wins": [
+      { "priority": 1, "action": "", "impact": "high|medium|low", "reason": "" }
+    ],
+    "projected_score_after_fixes": 0
   }
 }`,
-    'Parse & JD Fingerprint',
+    'Parse + Audit',
     m
   );
 
+  const parsedData = { cv_parsed: stage1.cv_parsed, jd_fingerprint: stage1.jd_fingerprint };
+  const auditData  = stage1.audit;
+
   // ──────────────────────────────────────────────
-  // STAGE 2 — AUDIT + DATE ADJUSTMENT (in parallel)
-  // Audit depends only on parsedData; DateAdj depends only on parsedData.
-  // Running them concurrently saves ~30-50% of this stage's time.
+  // STAGE 2 — DATE ADJUSTMENT (conditional)
   // ──────────────────────────────────────────────
-  const [auditData, dateAdjustment] = await Promise.all([
-    runAuditStage(parsedData, m),
-    runDateAdjustmentStage(parsedData, m),
-  ]);
+  const dateAdjustment = await runDateAdjustmentStage(parsedData, m);
 
   const requiredYears = parseFloat(parsedData.jd_fingerprint.required_experience_years) || 0;
 
@@ -274,6 +245,10 @@ Pass 1 — Voice preservation & intelligent rewrite:
 3. Naturally embed all missing JD keywords without sounding forced.
 4. Never fabricate skills, experience, employers, dates, or achievements.
 5. Transform weak bullets into strong achievement-focused statements.
+6. PRESERVE every certification, license, degree, and education entry from the parsed CV.
+   NEVER drop or empty them. If the parsed CV lists certifications, the final_cv.certifications
+   array MUST contain them (rewritten/normalized in wording is fine, but the items themselves
+   must survive). Same for education entries. Dropping factual credentials is a critical failure.
 
 Pass 2 — Heavy humanization (applied in the SAME output):
 - Vary sentence length drastically — mix short punchy bullets with longer descriptive ones.

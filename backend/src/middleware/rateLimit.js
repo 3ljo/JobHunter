@@ -1,24 +1,15 @@
 // Rate limiting middleware
-// Checks api_usage table to enforce daily limits based on user's subscription plan
+// Checks api_usage table to enforce daily limits based on user's subscription plan.
+// Admin users are NOT bypassed — limits apply to everyone based on their plan.
 
 const supabase = require('../services/supabaseClient');
 const { getPlanLimits } = require('../services/stripeService');
-
-// Admins bypass all per-day rate limits so they can QA the product.
-// Keep this list in sync with middleware/requireAdmin.js.
-const ADMIN_EMAILS = ['shurdhieljo@outlook.com'];
 
 const createRateLimiter = (feature, limitKey) => {
   return async (req, res, next) => {
     try {
       const userId = req.user?.id;
       if (!userId) return next();
-
-      // Admins bypass rate limits entirely
-      if (req.user?.email && ADMIN_EMAILS.includes(req.user.email)) {
-        req.rateLimitInfo = { used: 0, limit: Infinity, remaining: Infinity, plan: 'admin' };
-        return next();
-      }
 
       // Look up user's subscription plan
       let plan = 'free';

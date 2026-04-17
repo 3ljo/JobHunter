@@ -77,3 +77,37 @@ export const TEMPLATES: Record<TemplateId, TemplateMeta> = {
 };
 
 export const DEFAULT_TEMPLATE: TemplateId = 'harvard';
+
+/* ─── Helpers used by every template to hide truly-empty sections ─── */
+
+export function certText(cert: string | { name?: string } | undefined | null): string {
+  if (!cert) return '';
+  if (typeof cert === 'string') return cert.trim();
+  return (cert.name || '').trim();
+}
+
+export function cleanCerts(list: Array<string | { name?: string }> | undefined | null): Array<string | { name?: string }> {
+  if (!Array.isArray(list)) return [];
+  return list.filter((c) => certText(c).length > 0);
+}
+
+export function hasNonEmpty(list: unknown[] | undefined | null): boolean {
+  if (!Array.isArray(list)) return false;
+  return list.some((v) => {
+    if (v == null) return false;
+    if (typeof v === 'string') return v.trim().length > 0;
+    return true;
+  });
+}
+
+export function eduText(e: { degree?: string; institution?: string; year?: string } | undefined | null): string {
+  if (!e) return '';
+  return [e.degree, e.institution, e.year].filter(Boolean).map((s) => String(s).trim()).join(' ');
+}
+
+export function cleanEducation<T extends { degree?: string; institution?: string; year?: string }>(
+  list: T[] | undefined | null
+): T[] {
+  if (!Array.isArray(list)) return [];
+  return list.filter((e) => eduText(e).length > 0);
+}

@@ -77,21 +77,25 @@ function renderExperience(cv, heading = 'WORK EXPERIENCE') {
 }
 
 function renderSkills(cv, separator = ', ', heading = 'SKILLS') {
-  if (!cv.skills || cv.skills.length === 0) return '';
+  const skills = (cv.skills || []).filter((s) => s && String(s).trim());
+  if (skills.length === 0) return '';
   return `
     <div class="section">
       <h2>${heading}</h2>
-      <p>${escapeHtml(cv.skills.join(separator))}</p>
+      <p>${escapeHtml(skills.join(separator))}</p>
     </div>
   `;
 }
 
 function renderEducation(cv) {
-  if (!cv.education || cv.education.length === 0) return '';
+  const entries = (cv.education || []).filter((edu) =>
+    [edu && edu.degree, edu && edu.institution, edu && edu.year].filter(Boolean).join(' ').trim().length > 0
+  );
+  if (entries.length === 0) return '';
   return `
     <div class="section">
       <h2>EDUCATION</h2>
-      ${cv.education.map((edu) => {
+      ${entries.map((edu) => {
         const parts = [edu.degree, edu.institution, edu.year].filter(Boolean);
         return `<p>${escapeHtml(parts.join(' — '))}</p>`;
       }).join('')}
@@ -99,15 +103,19 @@ function renderEducation(cv) {
   `;
 }
 
+function certText(cert) {
+  if (!cert) return '';
+  if (typeof cert === 'string') return cert.trim();
+  return String(cert.name || '').trim();
+}
+
 function renderCertifications(cv) {
-  if (!cv.certifications || cv.certifications.length === 0) return '';
+  const entries = (cv.certifications || []).filter((c) => certText(c).length > 0);
+  if (entries.length === 0) return '';
   return `
     <div class="section">
       <h2>CERTIFICATIONS</h2>
-      ${cv.certifications.map((cert) => {
-        const text = typeof cert === 'string' ? cert : cert.name || '';
-        return `<p>${escapeHtml(text)}</p>`;
-      }).join('')}
+      ${entries.map((cert) => `<p>${escapeHtml(certText(cert))}</p>`).join('')}
     </div>
   `;
 }

@@ -541,7 +541,47 @@ export default function CVPage() {
               <div className="-mx-4 sm:-mx-5 mb-4" style={{ height: '1px', background: 'linear-gradient(90deg,transparent,rgba(118,77,240,0.5),transparent)' }} />
               <AnalysisSidebar audit={result.audit} rewrite={result.rewrite} />
             </div>
-            <QuickEditBox cvRecordId={result.cv_record_id} onRefine={handleRefine} />
+            {isPro ? (
+              <QuickEditBox cvRecordId={result.cv_record_id} onRefine={handleRefine} />
+            ) : (
+              <div
+                className="rounded-2xl p-4 sm:p-5 overflow-hidden"
+                style={{
+                  background: 'linear-gradient(180deg,rgba(118,77,240,0.10),rgba(118,77,240,0.03))',
+                  border: '1px solid rgba(118,77,240,0.28)',
+                }}
+              >
+                <div className="flex items-center gap-2 mb-1.5">
+                  <Sparkles className="h-4 w-4" style={{ color: '#c4b5fd' }} />
+                  <p className="text-[11px] font-black uppercase tracking-widest text-white/55">
+                    Quick Edit
+                  </p>
+                  <span
+                    className="text-[9px] font-black px-1.5 py-0.5 rounded"
+                    style={{ background: 'rgba(192,132,252,0.18)', color: '#e9d5ff', border: '1px solid rgba(192,132,252,0.35)' }}
+                  >
+                    PRO
+                  </span>
+                </div>
+                <p className="text-[13px] text-white/70 leading-relaxed mb-3">
+                  Tell the AI to tweak your CV in natural language — add certifications, adjust
+                  dates, rewrite a bullet, change tone.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => router.push('/pricing')}
+                  className="inline-flex items-center gap-1.5 rounded-xl px-4 py-2 text-xs font-bold"
+                  style={{
+                    background: 'linear-gradient(135deg,#764DF0,#5b21b6)',
+                    color: 'white',
+                    boxShadow: '0 6px 18px rgba(118,77,240,0.35)',
+                  }}
+                >
+                  <Sparkles className="h-3.5 w-3.5" />
+                  Upgrade to Pro to unlock
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </div>

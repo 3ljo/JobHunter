@@ -1,10 +1,14 @@
 'use client';
 
 import type { TemplateProps } from './types';
+import { certText, cleanCerts, cleanEducation } from './types';
 
 export default function HarvardClassic({ cv }: TemplateProps) {
   if (!cv) return null;
   const contactParts = [cv.email, cv.phone, cv.location, cv.linkedin].filter(Boolean);
+  const certs = cleanCerts(cv.certifications);
+  const edu = cleanEducation(cv.education);
+  const skills = (cv.skills || []).filter((s) => s && String(s).trim());
 
   return (
     <div
@@ -58,28 +62,26 @@ export default function HarvardClassic({ cv }: TemplateProps) {
         </Section>
       )}
 
-      {cv.skills && cv.skills.length > 0 && (
+      {skills.length > 0 && (
         <Section title="Skills">
-          <p className="text-[13px] sm:text-sm text-gray-800">{cv.skills.join(', ')}</p>
+          <p className="text-[13px] sm:text-sm text-gray-800">{skills.join(', ')}</p>
         </Section>
       )}
 
-      {cv.education && cv.education.length > 0 && (
+      {edu.length > 0 && (
         <Section title="Education">
-          {cv.education.map((edu, i) => (
+          {edu.map((e, i) => (
             <p key={i} className="text-[13px] sm:text-sm text-gray-800">
-              {[edu.degree, edu.institution, edu.year].filter(Boolean).join(' — ')}
+              {[e.degree, e.institution, e.year].filter(Boolean).join(' — ')}
             </p>
           ))}
         </Section>
       )}
 
-      {cv.certifications && cv.certifications.length > 0 && (
+      {certs.length > 0 && (
         <Section title="Certifications" last>
-          {cv.certifications.map((cert, i) => (
-            <p key={i} className="text-[13px] sm:text-sm text-gray-800">
-              {typeof cert === 'string' ? cert : cert.name || ''}
-            </p>
+          {certs.map((cert, i) => (
+            <p key={i} className="text-[13px] sm:text-sm text-gray-800">{certText(cert)}</p>
           ))}
         </Section>
       )}
