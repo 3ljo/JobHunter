@@ -17,7 +17,8 @@ interface RobotAvatarProps {
 }
 
 const DEFAULT_VIDEO_SRC = '/interview/robot-talking.mp4';
-const DEFAULT_POSTER_SRC = '/aivent/misc/c2.webp';
+const DEFAULT_POSTER_SRC = '/interview/robot-idle.png';
+const POSTER_FALLBACK_SRC = '/aivent/misc/c2.webp';
 
 export default function RobotAvatar({
   speaking,
@@ -29,8 +30,10 @@ export default function RobotAvatar({
   posterSrc = DEFAULT_POSTER_SRC,
 }: RobotAvatarProps) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
-  const [videoReady, setVideoReady] = useState(false);
+  const [, setVideoReady] = useState(false);
   const [videoFailed, setVideoFailed] = useState(false);
+  const [posterFailed, setPosterFailed] = useState(false);
+  const activePoster = posterFailed ? POSTER_FALLBACK_SRC : posterSrc;
 
   // Play / pause based on speaking state. Video is always muted (audio
   // comes from the separate TTS/speechSynthesis system).
@@ -83,7 +86,7 @@ export default function RobotAvatar({
           <video
             ref={videoRef}
             src={videoSrc}
-            poster={posterSrc}
+            poster={activePoster}
             muted
             playsInline
             loop
@@ -101,12 +104,14 @@ export default function RobotAvatar({
           />
         )}
 
-        {/* Fallback: static image shown only if the video failed to load */}
+        {/* Fallback: static image shown only if the video failed to load.
+            If the primary poster also 404s we flip to the hero fallback. */}
         {videoFailed && (
           <img
-            src={posterSrc}
+            src={activePoster}
             alt="Robot interviewer"
             className={speaking ? 'robot-img-talking' : 'robot-img-idle'}
+            onError={() => { if (!posterFailed) setPosterFailed(true); }}
             style={{
               width: '100%',
               height: '100%',
