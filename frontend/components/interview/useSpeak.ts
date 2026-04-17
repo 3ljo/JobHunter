@@ -8,55 +8,37 @@ export interface UseSpeakResult {
   speaking: boolean;
   loading: boolean;
   error: string | null;
-  /** Plays a question's audio (fetches MP3 from backend TTS, then plays via <audio>). */
-  play: (interviewId: string, questionId: string) => void;
+  /** Fetches MP3 from backend TTS and plays it via <audio>.
+   *  Falls back to browser speechSynthesis if the backend endpoint is
+   *  unavailable (e.g. 404/503 during deploy or missing OPENAI_API_KEY). */
+  play: (interviewId: string, questionId: string, text: string) => void;
   cancel: () => void;
 }
 
-/**
- * Remote-audio speech. Replaces the unreliable browser SpeechSynthesis
- * API with a backend TTS call that returns MP3, which we play via a
- * hidden <audio> element. Works identically on Chrome desktop, Chrome
- * Android, and iOS Safari.
- *
- * Important: `play()` MUST be called synchronously inside an onClick
- * handler. We create the Audio element + call .play() inside the same
- * call stack so iOS can attach the gesture to the playback.
- */
 export function useSpeak(): UseSpeakResult {
   const audioRef = useRef<HTMLAudioElement | null>(null);
-  const currentUrlRef = useRef<string | null>(null);
-  const cacheRef = useRef<Map<string, string>>(new Map()); // questionId -> objectURL
+  const cacheRef = useRef<Map<string, string>>(new Map());
+  const backendFailedRef = useRef(false); // once we know backend TTS is down, skip it
 
   const [speaking, setSpeaking] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Always "supported" — browsers all have <audio>. No SpeechSynthesis needed.
-  const supported = typeof window !== 'undefined' && typeof Audio !== 'undefined';
+  const supported = typeof window !== 'undefined';
 
   useEffect(() => {
     return () => {
-      // Clean up object URLs on unmount
       cacheRef.current.forEach((url) => URL.revokeObjectURL(url));
       cacheRef.current.clear();
       if (audioRef.current) {
         audioRef.current.pause();
         audioRef.current = null;
       }
+      try { window.speechSynthesis?.cancel(); } catch { /* noop */ }
     };
   }, []);
 
-  const revokeAndClear = (questionId: string) => {
-    const url = cacheRef.current.get(questionId);
-    if (url) {
-      URL.revokeObjectURL(url);
-      cacheRef.current.delete(questionId);
-    }
-  };
-
-  const playUrl = useCallback((url: string) => {
-    // Re-use the same Audio element so iOS recognizes the gesture binding.
+  const ensureAudio = () => {
     if (!audioRef.current) {
       audioRef.current = new Audio();
       audioRef.current.onplay = () => setSpeaking(true);
@@ -67,81 +49,99 @@ export function useSpeak(): UseSpeakResult {
         setError('Audio playback failed');
       };
     }
-    audioRef.current.src = url;
-    currentUrlRef.current = url;
-    const promise = audioRef.current.play();
-    if (promise && typeof promise.catch === 'function') {
-      promise.catch((err) => {
-        // eslint-disable-next-line no-console
-        console.warn('audio.play() rejected:', err);
+    return audioRef.current;
+  };
+
+  const playUrl = (url: string) => {
+    const el = ensureAudio();
+    el.src = url;
+    const p = el.play();
+    if (p && typeof p.catch === 'function') {
+      p.catch(() => {
         setSpeaking(false);
-        setError('Tap the button again to start playback');
+        setError('Tap the button again to play');
       });
     }
-  }, []);
+  };
 
-  const play = useCallback(
-    (interviewId: string, questionId: string) => {
-      if (!supported) return;
-      setError(null);
-
-      // If already speaking and same question, toggle off.
-      if (speaking && currentUrlRef.current && cacheRef.current.get(questionId) === currentUrlRef.current) {
-        audioRef.current?.pause();
+  // Fallback: browser speechSynthesis. Works on desktop Chrome reliably and
+  // on iOS when called from a real tap handler.
+  const speakViaBrowser = (text: string) => {
+    if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
+      setError('Voice is not available in this browser');
+      return;
+    }
+    try { window.speechSynthesis.cancel(); } catch { /* noop */ }
+    try {
+      const u = new SpeechSynthesisUtterance(text);
+      u.rate = 1.0;
+      u.pitch = 1.0;
+      u.volume = 1.0;
+      u.onstart = () => setSpeaking(true);
+      u.onend = () => setSpeaking(false);
+      u.onerror = (ev) => {
+        const reason = (ev as SpeechSynthesisErrorEvent).error;
+        if (reason !== 'interrupted' && reason !== 'canceled') setError(reason);
         setSpeaking(false);
-        return;
-      }
+      };
+      window.speechSynthesis.speak(u);
+    } catch (err: unknown) {
+      const e = err as { message?: string };
+      setError(e.message || 'Voice playback failed');
+    }
+  };
 
-      // Pre-cached? Play immediately (still inside user gesture).
-      const cached = cacheRef.current.get(questionId);
-      if (cached) {
-        playUrl(cached);
-        return;
-      }
+  const play = useCallback((interviewId: string, questionId: string, text: string) => {
+    if (!supported) return;
+    setError(null);
 
-      // Not cached: we must fetch. The gesture-chain breaks across the await,
-      // but modern browsers (including iOS 14.5+) allow HTMLAudioElement.play()
-      // after a fetch IF the Audio element was created during the original
-      // gesture. We pre-create the Audio element now to preserve that binding.
-      if (!audioRef.current) {
-        audioRef.current = new Audio();
-        audioRef.current.onplay = () => setSpeaking(true);
-        audioRef.current.onpause = () => setSpeaking(false);
-        audioRef.current.onended = () => setSpeaking(false);
-        audioRef.current.onerror = () => {
-          setSpeaking(false);
-          setError('Audio playback failed');
-        };
-      }
+    // Cached URL? Play immediately.
+    const cached = cacheRef.current.get(questionId);
+    if (cached) {
+      playUrl(cached);
+      return;
+    }
 
-      setLoading(true);
-      fetchQuestionSpeech(interviewId, questionId)
-        .then((blob) => {
-          const objectUrl = URL.createObjectURL(blob);
-          cacheRef.current.set(questionId, objectUrl);
-          playUrl(objectUrl);
-        })
-        .catch((err: unknown) => {
-          const e = err as { response?: { data?: { error?: string } }; message?: string };
-          const msg = e.response?.data?.error || e.message || 'Failed to load voice';
-          setError(msg);
-        })
-        .finally(() => setLoading(false));
-    },
-    [supported, speaking, playUrl]
-  );
+    // If we already learned backend TTS is unavailable, skip straight to the
+    // browser fallback so the user gets SOMETHING.
+    if (backendFailedRef.current) {
+      speakViaBrowser(text);
+      return;
+    }
+
+    // Pre-create the audio element synchronously inside the gesture so iOS
+    // keeps the gesture binding across the upcoming fetch.
+    ensureAudio();
+
+    setLoading(true);
+    fetchQuestionSpeech(interviewId, questionId)
+      .then((blob) => {
+        const objectUrl = URL.createObjectURL(blob);
+        cacheRef.current.set(questionId, objectUrl);
+        playUrl(objectUrl);
+      })
+      .catch((err: unknown) => {
+        const e = err as { response?: { status?: number; data?: { error?: string } }; message?: string };
+        const status = e.response?.status;
+        // 404 (route missing / deploy in flight) or 503 (no API key) → fallback.
+        if (status === 404 || status === 503) {
+          backendFailedRef.current = true;
+          speakViaBrowser(text);
+          return;
+        }
+        setError(e.response?.data?.error || e.message || 'Failed to load voice');
+      })
+      .finally(() => setLoading(false));
+  }, [supported]);
 
   const cancel = useCallback(() => {
     if (audioRef.current) {
       audioRef.current.pause();
       audioRef.current.currentTime = 0;
     }
+    try { window.speechSynthesis?.cancel(); } catch { /* noop */ }
     setSpeaking(false);
   }, []);
-
-  // Expose a helper no longer strictly needed but kept for API parity if
-  // someone else grabs this hook in the future.
-  void revokeAndClear;
 
   return { supported, speaking, loading, error, play, cancel };
 }

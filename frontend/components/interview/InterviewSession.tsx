@@ -81,12 +81,12 @@ export default function InterviewSession() {
   };
 
   // Invoked directly from onClick/onTouch. Fetches real MP3 from the backend
-  // and plays via <audio>, so Chrome's built-in TTS UI and iOS quirks don't
-  // get a chance to interfere.
+  // and plays via <audio>. Falls back to browser speechSynthesis automatically
+  // if the backend endpoint isn't reachable.
   const playQuestion = () => {
     if (!currentQ || !sessionId) return;
     if (speak.speaking) speak.cancel();
-    else speak.play(sessionId, currentQ.id);
+    else speak.play(sessionId, currentQ.id, currentQ.text);
   };
 
   if (!currentQ) return null;
@@ -214,17 +214,17 @@ export default function InterviewSession() {
       {/* Question card */}
       <div className="rounded-2xl p-5 sm:p-6" style={glass}>
         <div className="flex items-start gap-3 sm:gap-4">
-          {/* Animated robot interviewer — tap to play / stop */}
+          {/* Animated robot interviewer — tap the head to play / stop */}
           {speak.supported && (
-            <button
-              type="button"
-              onClick={playQuestion}
-              aria-label={speak.speaking ? 'Stop' : 'Hear question'}
-              className="shrink-0"
-              style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
-            >
-              <RobotAvatar speaking={speak.speaking} size={56} />
-            </button>
+            <div className="shrink-0">
+              <RobotAvatar
+                speaking={speak.speaking}
+                loading={speak.loading}
+                size={84}
+                onClick={playQuestion}
+                title={speak.speaking ? 'Stop' : 'Tap me to hear the question'}
+              />
+            </div>
           )}
 
           <div className="flex-1 min-w-0">
