@@ -31,8 +31,8 @@ const PLANS = {
     name: 'Pro+',
     cv_limit: 999999, // unlimited
     cl_limit: 999999, // unlimited
-    mi_limit: 3, // Pro+ only: 3 voice mock interviews/day
-    features: ['Unlimited CV analyses', 'Unlimited cover letters', 'Full ATS audit & optimization', 'AI quick edits', 'Job application tracker', 'Voice Mock Interview (3/day)', 'Priority AI processing', 'Full CV history & analytics'],
+    mi_limit: 5, // Pro+ only: 5 voice mock interviews/day
+    features: ['Unlimited CV analyses', 'Unlimited cover letters', 'Full ATS audit & optimization', 'AI quick edits', 'Job application tracker', 'Voice Mock Interview (5/day)', 'Priority AI processing', 'Full CV history & analytics'],
     prices: {
       month: process.env.STRIPE_PRICE_PRO_PLUS_MONTHLY,
       year: process.env.STRIPE_PRICE_PRO_PLUS_YEARLY,
