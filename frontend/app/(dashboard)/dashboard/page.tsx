@@ -6,6 +6,7 @@ import { useAuthStore } from '@/store/authStore';
 import { getTrackerStats, getAllTrackerJobs, getCVHistory } from '@/lib/api';
 import { TrackerStats, TrackerJob } from '@/types';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
+import UsageSummaryCard from '@/components/usage/UsageSummaryCard';
 import { ArrowRight } from 'lucide-react';
 
 /* ─── config ──────────────────────────────────────────────────────── */
@@ -130,6 +131,15 @@ export default function DashboardPage() {
               ))}
             </div>
           </div>
+        </div>
+      </section>
+
+      {/* ══════════════════════════════════════════════════════════
+          TODAY'S USAGE — per-plan daily quota across AI features
+      ══════════════════════════════════════════════════════════ */}
+      <section className="pt-10 sm:pt-14 px-4 sm:px-6" style={{ background: '#101435', position: 'relative', zIndex: 1 }}>
+        <div className="mx-auto max-w-5xl">
+          <UsageSummaryCard />
         </div>
       </section>
 

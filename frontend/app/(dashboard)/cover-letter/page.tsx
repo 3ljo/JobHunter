@@ -1,8 +1,11 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { useCoverLetterStore } from '@/store/coverLetterStore';
+import { useSubscriptionStore } from '@/store/subscriptionStore';
+import UsageMeter from '@/components/usage/UsageMeter';
+import LimitReachedCard from '@/components/usage/LimitReachedCard';
 import toast from 'react-hot-toast';
 import { Copy, Check, RotateCcw, Upload, FileText, X, Send, Sparkles } from 'lucide-react';
 
@@ -32,6 +35,12 @@ export default function CoverLetterPage() {
     refinePage,
     setPageResult: setResult,
   } = useCoverLetterStore();
+
+  const { subscription, usage, fetchSubscription } = useSubscriptionStore();
+  useEffect(() => { if (!subscription) fetchSubscription(); }, [subscription, fetchSubscription]);
+  const clUsed  = usage?.cover_letter.used  ?? 0;
+  const clLimit = usage?.cover_letter.limit ?? 5;
+  const clOverLimit = clLimit < 999999 && clUsed >= clLimit;
 
   const [file,         setFile]         = useState<File | null>(null);
   const [copied,       setCopied]       = useState(false);
@@ -174,6 +183,9 @@ export default function CoverLetterPage() {
                   Upload your CV, paste the job description, pick a tone — done in seconds.
                 </p>
 
+                {clOverLimit ? <LimitReachedCard feature="cover_letter" /> : (
+                <>
+                <UsageMeter feature="cover_letter" />
                 <div className="rounded-2xl overflow-hidden" style={glass}>
                   <div style={{ height: '2px', background: 'linear-gradient(90deg,transparent,rgba(118,77,240,0.9),transparent)' }} />
                   <div className="p-4 sm:p-7 space-y-5">
@@ -303,6 +315,8 @@ export default function CoverLetterPage() {
 
                   </div>
                 </div>
+                </>
+                )}
               </div>
 
               {/* RIGHT — news/s6.webp */}

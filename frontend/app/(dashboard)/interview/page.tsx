@@ -10,9 +10,11 @@ import { useInterviewStore } from '@/store/interviewStore';
 import InterviewSetup from '@/components/interview/InterviewSetup';
 import InterviewSession from '@/components/interview/InterviewSession';
 import InterviewReport from '@/components/interview/InterviewReport';
+import UsageMeter from '@/components/usage/UsageMeter';
+import LimitReachedCard from '@/components/usage/LimitReachedCard';
 
 export default function InterviewPage() {
-  const { subscription, fetchSubscription } = useSubscriptionStore();
+  const { subscription, usage, fetchSubscription } = useSubscriptionStore();
   const { phase } = useInterviewStore();
 
   useEffect(() => {
@@ -20,6 +22,9 @@ export default function InterviewPage() {
   }, [subscription, fetchSubscription]);
 
   const isProPlus = subscription?.plan === 'pro_plus';
+  const miUsed  = usage?.mock_interview.used  ?? 0;
+  const miLimit = usage?.mock_interview.limit ?? 5;
+  const miOverLimit = isProPlus && miLimit < 999999 && miUsed >= miLimit;
 
   return (
     <div
@@ -70,7 +75,14 @@ export default function InterviewPage() {
           <div className="relative mx-auto max-w-4xl px-0 sm:px-0">
             {!isProPlus ? <ProPlusGate /> : (
               <>
-                {phase === 'setup'   && <InterviewSetup />}
+                {phase === 'setup' && (miOverLimit ? (
+                  <LimitReachedCard feature="mock_interview" />
+                ) : (
+                  <>
+                    <UsageMeter feature="mock_interview" />
+                    <InterviewSetup />
+                  </>
+                ))}
                 {phase === 'session' && <InterviewSession />}
                 {phase === 'report'  && <InterviewReport />}
               </>

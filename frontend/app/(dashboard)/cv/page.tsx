@@ -10,6 +10,8 @@ import AnalysisSidebar from '@/components/cv/AnalysisSidebar';
 import TemplatePicker from '@/components/cv/TemplatePicker';
 import PhotoUpload from '@/components/cv/PhotoUpload';
 import { TEMPLATES } from '@/components/cv/templates';
+import UsageMeter from '@/components/usage/UsageMeter';
+import LimitReachedCard from '@/components/usage/LimitReachedCard';
 import { downloadCVPdf } from '@/lib/api';
 import { useCVAnalysisStore } from '@/store/cvAnalysisStore';
 import { useCoverLetterStore } from '@/store/coverLetterStore';
@@ -17,7 +19,7 @@ import { useSubscriptionStore } from '@/store/subscriptionStore';
 import toast from 'react-hot-toast';
 import {
   Download, RotateCcw, ArrowRight, TrendingUp, FileSignature,
-  Sparkles, Copy, Check, X, Send, Palette, Lock,
+  Sparkles, Copy, Check, X, Send, Palette,
 } from 'lucide-react';
 
 const tones = [
@@ -43,15 +45,8 @@ export default function CVPage() {
 
   const { subscription, usage, fetchSubscription } = useSubscriptionStore();
   const isPro = subscription?.plan === 'pro' || subscription?.plan === 'pro_plus';
-  const planLabel = subscription?.plan === 'pro_plus' ? 'Pro+' : subscription?.plan === 'pro' ? 'Pro' : 'Free';
-  const cvUsed  = usage?.cv.used  ?? 0;
   const cvLimit = usage?.cv.limit ?? (subscription?.plan === 'pro' ? 25 : subscription?.plan === 'pro_plus' ? 999999 : 3);
-  const cvOverLimit = cvUsed >= cvLimit;
-  const resetsHours = (() => {
-    if (!usage?.resetsAt) return 24;
-    const ms = new Date(usage.resetsAt).getTime() - Date.now();
-    return Math.max(1, Math.ceil(ms / (60 * 60 * 1000)));
-  })();
+  const cvOverLimit = cvLimit < 999999 && (usage?.cv.used ?? 0) >= cvLimit;
 
   // Fetch usage on mount if not already loaded
   useEffect(() => { if (!subscription) fetchSubscription(); }, [subscription, fetchSubscription]);
@@ -231,94 +226,10 @@ export default function CVPage() {
                   </p>
 
                   {cvOverLimit ? (
-                    <div
-                      className="rounded-2xl overflow-hidden p-6 sm:p-8"
-                      style={{
-                        background: 'linear-gradient(180deg,rgba(239,68,68,0.08),rgba(118,77,240,0.04))',
-                        border: '1px solid rgba(239,68,68,0.28)',
-                        boxShadow: '0 20px 50px rgba(239,68,68,0.12)',
-                      }}
-                    >
-                      <div
-                        className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl mb-4"
-                        style={{
-                          background: 'linear-gradient(135deg,rgba(239,68,68,0.25),rgba(239,68,68,0.1))',
-                          border: '1px solid rgba(239,68,68,0.45)',
-                        }}
-                      >
-                        <Lock className="h-6 w-6" style={{ color: '#fca5a5' }} />
-                      </div>
-                      <h3 className="text-xl sm:text-2xl font-black text-white text-center mb-2">
-                        Daily limit reached
-                      </h3>
-                      <p className="text-center text-sm text-white/60 mb-4">
-                        You&apos;ve used <span className="font-bold text-white">{cvUsed}/{cvLimit}</span> CV
-                        analyses today on the <span className="font-bold" style={{ color: subscription?.plan === 'pro_plus' ? '#c084fc' : subscription?.plan === 'pro' ? '#a78bfa' : 'rgba(255,255,255,0.8)' }}>{planLabel}</span> plan.
-                        Resets in {resetsHours} {resetsHours === 1 ? 'hour' : 'hours'}.
-                      </p>
-
-                      {/* Usage bar */}
-                      <div className="h-2 rounded-full overflow-hidden mb-5" style={{ background: 'rgba(255,255,255,0.08)' }}>
-                        <div
-                          className="h-full"
-                          style={{
-                            width: '100%',
-                            background: 'linear-gradient(90deg,#ef4444,#b91c1c)',
-                          }}
-                        />
-                      </div>
-
-                      {subscription?.plan === 'pro_plus' ? (
-                        <p className="text-center text-[12px] text-white/45">
-                          You&apos;re on our highest plan. Come back tomorrow for more analyses.
-                        </p>
-                      ) : (
-                        <>
-                          <button
-                            type="button"
-                            onClick={() => router.push('/pricing')}
-                            className="w-full flex items-center justify-center gap-2 rounded-xl py-3 text-sm font-black transition-all"
-                            style={{
-                              background: 'linear-gradient(135deg,#764DF0,#5b21b6)',
-                              color: 'white',
-                              boxShadow: '0 10px 30px rgba(118,77,240,0.4)',
-                              letterSpacing: '0.02em',
-                            }}
-                          >
-                            <Sparkles className="h-4 w-4" />
-                            Upgrade to {subscription?.plan === 'pro' ? 'Pro+' : 'Pro'} for
-                            <span className="font-bold">
-                              {subscription?.plan === 'pro' ? ' unlimited' : ' 25/day'}
-                            </span>
-                          </button>
-                          <p className="text-center text-[11px] text-white/35 mt-3">
-                            Upgrades take effect immediately
-                          </p>
-                        </>
-                      )}
-                    </div>
+                    <LimitReachedCard feature="cv" />
                   ) : (
                     <>
-                      {/* Usage meter above the upload */}
-                      {usage && (
-                        <div className="mb-3 flex items-center gap-2 text-[11px] font-bold" style={{ color: 'rgba(255,255,255,0.55)' }}>
-                          <span className="uppercase tracking-widest text-white/35">Today</span>
-                          <span className="tabular-nums">
-                            {cvUsed}/{cvLimit === 999999 ? '∞' : cvLimit}
-                          </span>
-                          <div className="flex-1 h-1 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.06)' }}>
-                            <div
-                              className="h-full transition-all duration-500"
-                              style={{
-                                width: `${Math.min(100, (cvUsed / Math.max(1, cvLimit)) * 100)}%`,
-                                background: cvUsed / cvLimit > 0.8 ? '#fbbf24' : '#764DF0',
-                              }}
-                            />
-                          </div>
-                          <span className="uppercase tracking-widest text-white/35">{planLabel}</span>
-                        </div>
-                      )}
-
+                      <UsageMeter feature="cv" />
                       <div className="rounded-2xl overflow-hidden" style={glass}>
                         <div style={{ height: '2px', background: 'linear-gradient(90deg,transparent,rgba(118,77,240,0.9),transparent)' }} />
                         <div className="p-4 sm:p-7">

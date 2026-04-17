@@ -1,9 +1,15 @@
 'use client';
 
+import { useEffect } from 'react';
 import CVHistory from '@/components/cv/CVHistory';
+import UsageMeter from '@/components/usage/UsageMeter';
+import { useSubscriptionStore } from '@/store/subscriptionStore';
 import { History, Clock } from 'lucide-react';
 
 export default function CVHistoryPage() {
+  const { subscription, fetchSubscription } = useSubscriptionStore();
+  useEffect(() => { if (!subscription) fetchSubscription(); }, [subscription, fetchSubscription]);
+
   return (
     <div className="space-y-6">
       <div>
@@ -17,6 +23,7 @@ export default function CVHistoryPage() {
           </div>
         </div>
       </div>
+      <UsageMeter feature="cv" />
       <CVHistory />
     </div>
   );
