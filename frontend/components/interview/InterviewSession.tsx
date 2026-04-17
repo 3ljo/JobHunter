@@ -15,7 +15,7 @@ const glass = {
 } as const;
 
 export default function InterviewSession() {
-  const { questions, currentIndex, answers, scoring, finalizing, submitAnswer, next, finish, goToIndex, reset } =
+  const { sessionId, questions, currentIndex, answers, scoring, finalizing, submitAnswer, next, finish, goToIndex, reset } =
     useInterviewStore();
   const [exitConfirmOpen, setExitConfirmOpen] = useState(false);
 
@@ -80,12 +80,13 @@ export default function InterviewSession() {
     next();
   };
 
-  // MUST be invoked directly from an onClick/onTouch — DO NOT wrap in
-  // setTimeout, Promise, or async chain, or iOS Safari will drop the audio.
+  // Invoked directly from onClick/onTouch. Fetches real MP3 from the backend
+  // and plays via <audio>, so Chrome's built-in TTS UI and iOS quirks don't
+  // get a chance to interfere.
   const playQuestion = () => {
-    if (!currentQ || !speak.supported) return;
+    if (!currentQ || !sessionId) return;
     if (speak.speaking) speak.cancel();
-    else speak.speak(currentQ.text);
+    else speak.play(sessionId, currentQ.id);
   };
 
   if (!currentQ) return null;
@@ -241,13 +242,14 @@ export default function InterviewSession() {
 
             <p className="text-base sm:text-lg md:text-xl font-semibold text-white leading-snug">{currentQ.text}</p>
 
-            {/* Big, obvious Play/Stop button. Direct onClick → speak() so iOS
-                Safari keeps the user-gesture chain intact. */}
+            {/* Big, obvious Play/Stop button. Fetches real MP3 from backend
+                TTS so no browser speechSynthesis UI interferes. */}
             {speak.supported && (
               <button
                 type="button"
                 onClick={playQuestion}
-                className="mt-4 inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold transition-all"
+                disabled={speak.loading}
+                className="mt-4 inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold transition-all disabled:opacity-70"
                 style={{
                   background: speak.speaking
                     ? 'linear-gradient(135deg,#ef4444,#dc2626)'
@@ -258,10 +260,16 @@ export default function InterviewSession() {
                     : '0 6px 18px rgba(118,77,240,0.35)',
                 }}
               >
-                {speak.speaking
-                  ? <><VolumeX className="h-4 w-4" /> Stop</>
-                  : <><Volume2 className="h-4 w-4" /> Hear the question</>}
+                {speak.loading
+                  ? <><span className="lds-roller-sm"><span /><span /><span /><span /><span /><span /><span /><span /></span> Loading voice…</>
+                  : speak.speaking
+                    ? <><VolumeX className="h-4 w-4" /> Stop</>
+                    : <><Volume2 className="h-4 w-4" /> Hear the question</>}
               </button>
+            )}
+
+            {speak.error && (
+              <p className="text-[11px] mt-2" style={{ color: '#fca5a5' }}>{speak.error}</p>
             )}
           </div>
         </div>

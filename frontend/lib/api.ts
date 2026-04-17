@@ -284,4 +284,16 @@ export const getInterview = (interviewId: string) =>
 export const getInterviewHistory = () =>
   api.get<{ interviews: InterviewHistoryItem[] }>('/api/interview/history');
 
+// Fetches an MP3 blob for the given question. We deliberately use a real
+// <audio> element on the frontend so we can bypass the browser's
+// SpeechSynthesis API (Chrome/iOS inject their own UI / throttle it).
+export const fetchQuestionSpeech = async (interviewId: string, questionId: string): Promise<Blob> => {
+  const res = await api.post(
+    `/api/interview/${interviewId}/tts`,
+    { question_id: questionId },
+    { responseType: 'blob', timeout: 30000 }
+  );
+  return new Blob([res.data], { type: 'audio/mpeg' });
+};
+
 export default api;
