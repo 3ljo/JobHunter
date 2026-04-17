@@ -12,6 +12,10 @@ const manrope = Manrope({
 export const metadata: Metadata = {
   title: "JobHunter — AI-Powered Job Search",
   description: "Land your dream job with AI-powered CV analysis, cover letter generation, and smart job tracking.",
+  icons: {
+    icon: '/icon.png',
+    apple: '/apple-icon.png',
+  },
 };
 
 export const viewport: Viewport = {
