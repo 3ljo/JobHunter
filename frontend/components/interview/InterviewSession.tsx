@@ -24,17 +24,16 @@ export default function InterviewSession() {
 
   const [typingMode, setTypingMode] = useState(false);
   const [typed, setTyped] = useState('');
-  const [voiceOn, setVoiceOn] = useState(true);
-  const [narrated, setNarrated] = useState<Record<string, boolean>>({});
 
   const currentQ = questions[currentIndex];
   const currentAnswer = currentQ ? answers[currentQ.id] : undefined;
   const isLastQuestion = currentIndex === questions.length - 1;
   const allAnswered = questions.length > 0 && questions.every((q) => answers[q.id]);
 
-  // When question changes: reset voice state, reset typed box, play narration once.
-  // Auto-speak only if voice is on, engine is primed (user gesture happened),
-  // and this question hasn't already been narrated.
+  // On question change: stop any playback/recognition and reset typed box.
+  // We do NOT auto-speak — iOS Safari silently blocks any .speak() call that
+  // isn't inside a user-gesture handler, and the resulting silence is worse
+  // than explicit "tap to hear" UX.
   const lastQuestionIdRef = useRef<string | null>(null);
   useEffect(() => {
     if (!currentQ) return;
@@ -43,13 +42,8 @@ export default function InterviewSession() {
 
     voice.stop();
     voice.reset();
+    speak.cancel();
     setTyped('');
-
-    if (voiceOn && speak.supported && speak.primed && !narrated[currentQ.id]) {
-      speak.speak(currentQ.text).finally(() => {
-        setNarrated((prev) => ({ ...prev, [currentQ.id]: true }));
-      });
-    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentQ?.id]);
 
@@ -86,12 +80,12 @@ export default function InterviewSession() {
     next();
   };
 
-  const replayQuestion = () => {
+  // MUST be invoked directly from an onClick/onTouch — DO NOT wrap in
+  // setTimeout, Promise, or async chain, or iOS Safari will drop the audio.
+  const playQuestion = () => {
     if (!currentQ || !speak.supported) return;
-    // Tapping the robot or Play button is a user gesture, so we can prime
-    // and speak right here — this always works on iOS.
-    speak.prime();
-    speak.speak(currentQ.text);
+    if (speak.speaking) speak.cancel();
+    else speak.speak(currentQ.text);
   };
 
   if (!currentQ) return null;
@@ -221,17 +215,15 @@ export default function InterviewSession() {
         <div className="flex items-start gap-3 sm:gap-4">
           {/* Animated robot interviewer — tap to play / stop */}
           {speak.supported && (
-            <div className="shrink-0">
-              <RobotAvatar
-                speaking={speak.speaking}
-                size={56}
-                onClick={() => {
-                  if (speak.speaking) speak.cancel();
-                  else replayQuestion();
-                }}
-                title={speak.speaking ? 'Stop' : 'Play question'}
-              />
-            </div>
+            <button
+              type="button"
+              onClick={playQuestion}
+              aria-label={speak.speaking ? 'Stop' : 'Hear question'}
+              className="shrink-0"
+              style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
+            >
+              <RobotAvatar speaking={speak.speaking} size={56} />
+            </button>
           )}
 
           <div className="flex-1 min-w-0">
@@ -245,52 +237,30 @@ export default function InterviewSession() {
               <span className="text-[10px] font-bold uppercase tracking-widest text-white/35">
                 Question {currentIndex + 1}
               </span>
-
-              {/* Auto-play voice toggle. Actually controls whether the next
-                  question reads itself automatically. */}
-              {speak.supported && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setVoiceOn((v) => {
-                      const next = !v;
-                      if (!next) speak.cancel();
-                      return next;
-                    });
-                  }}
-                  aria-label={voiceOn ? 'Turn auto-play voice off' : 'Turn auto-play voice on'}
-                  className="ml-auto flex h-8 items-center gap-1 px-2.5 rounded-lg text-[11px] font-bold"
-                  style={{
-                    background: voiceOn ? 'rgba(118,77,240,0.15)' : 'rgba(255,255,255,0.04)',
-                    border: `1px solid ${voiceOn ? 'rgba(118,77,240,0.35)' : 'rgba(255,255,255,0.08)'}`,
-                    color: voiceOn ? '#c4b5fd' : 'rgba(255,255,255,0.55)',
-                  }}
-                  title="Auto-play each new question"
-                >
-                  {voiceOn ? <Volume2 className="h-3.5 w-3.5" /> : <VolumeX className="h-3.5 w-3.5" />}
-                  <span>{voiceOn ? 'Auto-play on' : 'Auto-play off'}</span>
-                </button>
-              )}
             </div>
 
             <p className="text-base sm:text-lg md:text-xl font-semibold text-white leading-snug">{currentQ.text}</p>
 
-            {/* Explicit Play / Stop button — always works because click = user gesture */}
+            {/* Big, obvious Play/Stop button. Direct onClick → speak() so iOS
+                Safari keeps the user-gesture chain intact. */}
             {speak.supported && (
               <button
                 type="button"
-                onClick={() => {
-                  if (speak.speaking) speak.cancel();
-                  else replayQuestion();
-                }}
-                className="mt-3 inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[11px] font-bold"
+                onClick={playQuestion}
+                className="mt-4 inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold transition-all"
                 style={{
-                  background: speak.speaking ? 'rgba(239,68,68,0.12)' : 'rgba(118,77,240,0.12)',
-                  border: `1px solid ${speak.speaking ? 'rgba(239,68,68,0.3)' : 'rgba(118,77,240,0.3)'}`,
-                  color: speak.speaking ? '#fca5a5' : '#c4b5fd',
+                  background: speak.speaking
+                    ? 'linear-gradient(135deg,#ef4444,#dc2626)'
+                    : 'linear-gradient(135deg,#764DF0,#5b21b6)',
+                  color: 'white',
+                  boxShadow: speak.speaking
+                    ? '0 6px 18px rgba(239,68,68,0.35)'
+                    : '0 6px 18px rgba(118,77,240,0.35)',
                 }}
               >
-                {speak.speaking ? <><VolumeX className="h-3.5 w-3.5" /> Stop</> : <><Volume2 className="h-3.5 w-3.5" /> Hear question</>}
+                {speak.speaking
+                  ? <><VolumeX className="h-4 w-4" /> Stop</>
+                  : <><Volume2 className="h-4 w-4" /> Hear the question</>}
               </button>
             )}
           </div>
