@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Mic, MicOff, ChevronRight, Volume2, VolumeX, Check, Keyboard, Sparkles, AlertTriangle } from 'lucide-react';
+import { Mic, MicOff, ChevronRight, ChevronLeft, Volume2, VolumeX, Check, Keyboard, Sparkles, AlertTriangle, X } from 'lucide-react';
 import { useInterviewStore } from '@/store/interviewStore';
 import { useVoiceRecognition } from './useVoiceRecognition';
 import { useSpeak } from './useSpeak';
@@ -15,8 +15,9 @@ const glass = {
 } as const;
 
 export default function InterviewSession() {
-  const { questions, currentIndex, answers, scoring, finalizing, submitAnswer, next, finish, goToIndex } =
+  const { questions, currentIndex, answers, scoring, finalizing, submitAnswer, next, finish, goToIndex, reset } =
     useInterviewStore();
+  const [exitConfirmOpen, setExitConfirmOpen] = useState(false);
 
   const voice = useVoiceRecognition();
   const speak = useSpeak();
@@ -96,23 +97,119 @@ export default function InterviewSession() {
     situational: { label: 'Situational', bg: 'rgba(251,191,36,0.15)',  color: '#fbbf24' },
   }[currentQ.kind];
 
+  const handlePrev = () => {
+    if (currentIndex === 0) return;
+    speak.cancel();
+    voice.stop();
+    goToIndex(currentIndex - 1);
+  };
+
+  const handleExit = () => {
+    speak.cancel();
+    voice.stop();
+    reset();
+  };
+
   return (
     <div className="mx-auto max-w-3xl">
-      {/* Progress */}
+      {/* Top bar: Previous · progress · Exit */}
       <div className="flex items-center gap-2 mb-4">
-        <div className="flex-1 h-1.5 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.06)' }}>
-          <div
-            className="h-full rounded-full transition-all duration-500"
-            style={{
-              width: `${((currentIndex + 1) / questions.length) * 100}%`,
-              background: 'linear-gradient(90deg,#764DF0,#a78bfa)',
-            }}
-          />
+        <button
+          type="button"
+          onClick={handlePrev}
+          disabled={currentIndex === 0}
+          aria-label="Previous question"
+          className="flex h-9 items-center gap-1 rounded-lg px-2.5 text-[11px] font-bold disabled:opacity-30"
+          style={{
+            background: 'rgba(255,255,255,0.04)',
+            border: '1px solid rgba(255,255,255,0.08)',
+            color: 'rgba(255,255,255,0.7)',
+          }}
+        >
+          <ChevronLeft className="h-4 w-4" />
+          <span className="hidden sm:inline">Previous</span>
+        </button>
+
+        <div className="flex-1 min-w-0 flex items-center gap-2">
+          <div className="flex-1 h-1.5 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.06)' }}>
+            <div
+              className="h-full rounded-full transition-all duration-500"
+              style={{
+                width: `${((currentIndex + 1) / questions.length) * 100}%`,
+                background: 'linear-gradient(90deg,#764DF0,#a78bfa)',
+              }}
+            />
+          </div>
+          <span className="text-[11px] font-bold text-white/50 shrink-0">
+            {currentIndex + 1} / {questions.length}
+          </span>
         </div>
-        <span className="text-[11px] font-bold text-white/50 shrink-0">
-          {currentIndex + 1} / {questions.length}
-        </span>
+
+        <button
+          type="button"
+          onClick={() => setExitConfirmOpen(true)}
+          aria-label="Exit interview"
+          className="flex h-9 items-center gap-1 rounded-lg px-2.5 text-[11px] font-bold"
+          style={{
+            background: 'rgba(239,68,68,0.08)',
+            border: '1px solid rgba(239,68,68,0.22)',
+            color: '#fca5a5',
+          }}
+        >
+          <X className="h-4 w-4" />
+          <span className="hidden sm:inline">Exit</span>
+        </button>
       </div>
+
+      {/* Exit confirmation */}
+      {exitConfirmOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={{ background: 'rgba(8,11,35,0.75)', backdropFilter: 'blur(8px)' }}
+          onClick={() => setExitConfirmOpen(false)}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-sm rounded-2xl p-5 sm:p-6"
+            style={{
+              background: '#12163a',
+              border: '1px solid rgba(255,255,255,0.08)',
+              boxShadow: '0 20px 60px rgba(0,0,0,0.6)',
+            }}
+          >
+            <h3 className="text-lg font-bold text-white mb-1">Exit this interview?</h3>
+            <p className="text-sm text-white/55 mb-5">
+              Your answers on this session will be discarded. This doesn&apos;t refund the interview against
+              your daily Pro+ allowance.
+            </p>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setExitConfirmOpen(false)}
+                className="flex-1 rounded-xl py-2.5 text-sm font-bold"
+                style={{
+                  background: 'rgba(255,255,255,0.06)',
+                  border: '1px solid rgba(255,255,255,0.08)',
+                  color: 'rgba(255,255,255,0.8)',
+                }}
+              >
+                Keep going
+              </button>
+              <button
+                type="button"
+                onClick={() => { setExitConfirmOpen(false); handleExit(); }}
+                className="flex-1 rounded-xl py-2.5 text-sm font-bold"
+                style={{
+                  background: 'linear-gradient(135deg,#ef4444,#dc2626)',
+                  color: 'white',
+                }}
+              >
+                Exit
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Question card */}
       <div className="rounded-2xl p-5 sm:p-6" style={glass}>
@@ -336,10 +433,9 @@ export default function InterviewSession() {
         </div>
       )}
 
-      {/* Question nav */}
-      <div className="flex items-center gap-2 mt-5">
-        {/* Dots */}
-        <div className="flex items-center gap-1.5 flex-wrap">
+      {/* Question nav — numbered chips (much easier to tap than tiny dots) */}
+      <div className="flex items-center flex-wrap gap-2 mt-5">
+        <div className="flex items-center flex-wrap gap-1.5">
           {questions.map((q, i) => {
             const done = !!answers[q.id];
             const active = i === currentIndex;
@@ -349,13 +445,25 @@ export default function InterviewSession() {
                 type="button"
                 onClick={() => goToIndex(i)}
                 aria-label={`Go to question ${i + 1}`}
-                className="rounded-full transition-all"
+                className="flex h-8 min-w-[32px] items-center justify-center rounded-lg text-[11px] font-bold transition-all px-2"
                 style={{
-                  width: active ? 22 : 10,
-                  height: 10,
-                  background: done ? '#34d399' : active ? '#a78bfa' : 'rgba(255,255,255,0.15)',
+                  background: active
+                    ? 'rgba(167,139,250,0.2)'
+                    : done
+                      ? 'rgba(52,211,153,0.14)'
+                      : 'rgba(255,255,255,0.04)',
+                  border: active
+                    ? '1px solid rgba(167,139,250,0.5)'
+                    : done
+                      ? '1px solid rgba(52,211,153,0.35)'
+                      : '1px solid rgba(255,255,255,0.08)',
+                  color: active ? '#c4b5fd' : done ? '#34d399' : 'rgba(255,255,255,0.55)',
+                  boxShadow: active ? '0 0 0 2px rgba(167,139,250,0.15)' : 'none',
                 }}
-              />
+              >
+                {done ? <Check className="h-3 w-3" /> : null}
+                <span>{i + 1}</span>
+              </button>
             );
           })}
         </div>

@@ -10,23 +10,22 @@ interface RobotAvatarProps {
 }
 
 /**
- * Small animated robot head.
- * - Mouth animates open/close while `speaking === true`
- * - Random blink loop when idle
- * - Antenna dot pulses while speaking
- * - When onClick is provided it renders as a button (tap to replay / stop)
+ * Friendly talking-robot avatar.
+ *
+ * Idle: subtle up/down float, occasional blink.
+ * Speaking: mouth opens/closes smoothly, antenna pulses,
+ *           subtle eye-color shift for liveliness.
  */
 export default function RobotAvatar({ speaking, size = 56, onClick, title }: RobotAvatarProps) {
   const [blink, setBlink] = useState(false);
 
-  // Random blinks
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout>;
     const schedule = () => {
-      const delay = 2800 + Math.random() * 2800;
+      const delay = 3200 + Math.random() * 3500;
       timer = setTimeout(() => {
         setBlink(true);
-        setTimeout(() => setBlink(false), 140);
+        setTimeout(() => setBlink(false), 130);
         schedule();
       }, delay);
     };
@@ -34,104 +33,163 @@ export default function RobotAvatar({ speaking, size = 56, onClick, title }: Rob
     return () => clearTimeout(timer);
   }, []);
 
-  // Mouth open-amount animation while speaking.
-  // A simple CSS keyframe handles the "talking" mouth shape; we toggle a class.
-  const mouthClass = speaking ? 'robot-mouth speaking' : 'robot-mouth';
-  const accent = speaking ? '#a78bfa' : '#764DF0';
-  const glow = speaking ? '0 0 0 6px rgba(167,139,250,0.15), 0 8px 20px rgba(118,77,240,0.35)' : '0 4px 14px rgba(118,77,240,0.22)';
+  const accent = speaking ? '#c4b5fd' : '#a78bfa';
+  const ring = speaking ? 'rgba(167,139,250,0.5)' : 'rgba(167,139,250,0.2)';
+  const glow = speaking
+    ? '0 0 0 6px rgba(167,139,250,0.15), 0 10px 24px rgba(118,77,240,0.4)'
+    : '0 4px 14px rgba(118,77,240,0.22)';
 
-  const content = (
+  const avatar = (
     <div
+      className={speaking ? 'robot-wrap robot-breathe-fast' : 'robot-wrap robot-breathe'}
       style={{
         width: size,
         height: size,
         borderRadius: '50%',
-        background: 'linear-gradient(135deg,#1a1f4a,#12163a)',
-        border: `1px solid ${speaking ? 'rgba(167,139,250,0.5)' : 'rgba(255,255,255,0.08)'}`,
+        background: 'radial-gradient(circle at 30% 30%, #2a2f5a, #12163a)',
+        border: `1.5px solid ${ring}`,
         boxShadow: glow,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        position: 'relative',
-        transition: 'box-shadow 180ms, border-color 180ms',
+        transition: 'box-shadow 220ms, border-color 220ms',
       }}
     >
       <svg
-        viewBox="0 0 48 48"
-        width={size * 0.65}
-        height={size * 0.65}
-        style={{ display: 'block' }}
+        viewBox="0 0 64 64"
+        width={size * 0.72}
+        height={size * 0.72}
+        style={{ display: 'block', overflow: 'visible' }}
         aria-hidden
       >
-        {/* Antenna stem + blob */}
-        <line x1="24" y1="4" x2="24" y2="10" stroke={accent} strokeWidth="1.6" strokeLinecap="round" />
-        <circle cx="24" cy="3.5" r="1.8" fill={accent} className={speaking ? 'robot-antenna-pulse' : ''} />
+        {/* Antenna */}
+        <line x1="32" y1="4" x2="32" y2="12" stroke={accent} strokeWidth="2" strokeLinecap="round" />
+        <circle
+          cx="32"
+          cy="3.5"
+          r="2.5"
+          fill={accent}
+          className={speaking ? 'robot-antenna-pulse' : ''}
+        />
 
-        {/* Head */}
-        <rect x="8" y="10" width="32" height="28" rx="7" ry="7" fill="#2a2f5a" stroke={accent} strokeWidth="1.4" />
-        {/* Head inner screen area */}
-        <rect x="11" y="14" width="26" height="16" rx="4" ry="4" fill="#0f1230" />
+        {/* Outer head shell */}
+        <rect
+          x="11"
+          y="13"
+          width="42"
+          height="38"
+          rx="12"
+          ry="12"
+          fill="#232759"
+          stroke={accent}
+          strokeWidth="1.5"
+        />
 
-        {/* Eyes (closed when blinking) */}
+        {/* Face screen */}
+        <rect x="16" y="18" width="32" height="22" rx="7" ry="7" fill="#0b0e28" />
+
+        {/* Eyes */}
         {blink ? (
           <>
-            <rect x="16.5" y="21.5" width="4" height="1.2" rx="0.6" fill={accent} />
-            <rect x="27.5" y="21.5" width="4" height="1.2" rx="0.6" fill={accent} />
+            <rect x="21" y="28.5" width="6" height="1.6" rx="0.8" fill={accent} />
+            <rect x="37" y="28.5" width="6" height="1.6" rx="0.8" fill={accent} />
           </>
         ) : (
           <>
-            <circle cx="18.5" cy="22" r="1.9" fill={accent} />
-            <circle cx="29.5" cy="22" r="1.9" fill={accent} />
-            {/* eye highlights */}
-            <circle cx="19" cy="21.4" r="0.55" fill="#fff" opacity="0.9" />
-            <circle cx="30" cy="21.4" r="0.55" fill="#fff" opacity="0.9" />
+            <circle cx="24" cy="28.5" r="2.8" fill={accent} />
+            <circle cx="40" cy="28.5" r="2.8" fill={accent} />
+            {/* highlights */}
+            <circle cx="24.8" cy="27.6" r="0.8" fill="#ffffff" opacity="0.95" />
+            <circle cx="40.8" cy="27.6" r="0.8" fill="#ffffff" opacity="0.95" />
           </>
         )}
 
-        {/* Mouth — animated when speaking */}
-        <rect
-          className={mouthClass}
-          x="20"
-          y="32"
-          width="8"
-          height="1.5"
-          rx="0.75"
-          fill={accent}
-        />
+        {/* Mouth — a group we scale/translate via CSS when speaking */}
+        <g className={speaking ? 'robot-mouth-group speaking' : 'robot-mouth-group'}>
+          <rect
+            x="25"
+            y="42"
+            width="14"
+            height="3"
+            rx="1.5"
+            fill={accent}
+          />
+          {/* Little tongue hint visible only when mouth is "open" */}
+          <rect
+            className="robot-tongue"
+            x="27"
+            y="43"
+            width="10"
+            height="1.2"
+            rx="0.6"
+            fill="#0b0e28"
+          />
+        </g>
 
-        {/* Ears / side knobs */}
-        <rect x="5" y="20" width="3" height="8" rx="1" fill="#2a2f5a" stroke={accent} strokeWidth="1" />
-        <rect x="40" y="20" width="3" height="8" rx="1" fill="#2a2f5a" stroke={accent} strokeWidth="1" />
+        {/* Side ears */}
+        <rect x="6" y="26" width="4" height="10" rx="1.5" fill="#1a1f4a" stroke={accent} strokeWidth="1" />
+        <rect x="54" y="26" width="4" height="10" rx="1.5" fill="#1a1f4a" strokeWidth="1" stroke={accent} />
+
+        {/* Chin bolt */}
+        <circle cx="32" cy="49" r="1.4" fill={accent} opacity="0.7" />
       </svg>
 
       <style jsx>{`
-        :global(.robot-mouth) {
-          transform-origin: 24px 33px;
-          transition: transform 120ms ease-in-out;
+        :global(.robot-wrap) {
+          will-change: transform;
         }
-        :global(.robot-mouth.speaking) {
-          animation: robot-talk 320ms ease-in-out infinite;
+        :global(.robot-breathe) {
+          animation: robot-breathe 4200ms ease-in-out infinite;
         }
-        :global(.robot-antenna-pulse) {
-          animation: robot-antenna 900ms ease-in-out infinite;
+        :global(.robot-breathe-fast) {
+          animation: robot-breathe 2400ms ease-in-out infinite;
+        }
+        @keyframes robot-breathe {
+          0%, 100% { transform: translateY(0);   }
+          50%      { transform: translateY(-2px); }
+        }
+
+        :global(.robot-mouth-group) {
+          transform-box: fill-box;
+          transform-origin: center center;
+          transition: transform 140ms ease-in-out;
+        }
+        :global(.robot-mouth-group.speaking) {
+          animation: robot-talk 360ms ease-in-out infinite;
+        }
+        :global(.robot-tongue) {
+          opacity: 0;
+          transition: opacity 120ms ease-in-out;
+        }
+        :global(.robot-mouth-group.speaking .robot-tongue) {
+          animation: robot-tongue 360ms ease-in-out infinite;
         }
         @keyframes robot-talk {
-          0%   { transform: scaleY(1)   translateY(0); }
-          25%  { transform: scaleY(3.2) translateY(-1px); }
-          50%  { transform: scaleY(1.5) translateY(0); }
-          75%  { transform: scaleY(4.2) translateY(-1.5px); }
-          100% { transform: scaleY(1)   translateY(0); }
+          0%   { transform: scaleY(1);    }
+          25%  { transform: scaleY(2.6);  }
+          50%  { transform: scaleY(1.2);  }
+          75%  { transform: scaleY(3.0);  }
+          100% { transform: scaleY(1);    }
+        }
+        @keyframes robot-tongue {
+          0%, 100% { opacity: 0;   }
+          25%, 75% { opacity: 0.9; }
+        }
+
+        :global(.robot-antenna-pulse) {
+          animation: robot-antenna 900ms ease-in-out infinite;
+          transform-box: fill-box;
+          transform-origin: center center;
         }
         @keyframes robot-antenna {
-          0%, 100% { opacity: 1;   r: 1.8; }
-          50%      { opacity: 0.5; r: 2.6; }
+          0%, 100% { transform: scale(1);   opacity: 1;   }
+          50%      { transform: scale(1.6); opacity: 0.5; }
         }
       `}</style>
     </div>
   );
 
-  if (!onClick) return content;
-
+  if (!onClick) return avatar;
   return (
     <button
       type="button"
@@ -140,7 +198,7 @@ export default function RobotAvatar({ speaking, size = 56, onClick, title }: Rob
       title={title}
       style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
     >
-      {content}
+      {avatar}
     </button>
   );
 }
