@@ -1,9 +1,11 @@
 // Rate limiting middleware
-// Checks api_usage table to enforce daily limits based on user's subscription plan.
+// Checks today's usage from feature_usage (one row per user/feature/day)
+// and blocks the request when the plan limit is reached.
 // Admin users are NOT bypassed — limits apply to everyone based on their plan.
 
 const supabase = require('../services/supabaseClient');
 const { getPlanLimits } = require('../services/stripeService');
+const { getTodayCount } = require('../services/usageService');
 
 const createRateLimiter = (feature, limitKey) => {
   return async (req, res, next) => {
@@ -25,34 +27,28 @@ const createRateLimiter = (feature, limitKey) => {
       const limits = getPlanLimits(plan);
       const limit = limits[limitKey];
 
-      // Count today's usage for this user + feature
-      const todayStart = new Date();
-      todayStart.setHours(0, 0, 0, 0);
+      // Unlimited plan — skip the count query entirely.
+      if (limit >= 999999) {
+        req.rateLimitInfo = { used: 0, limit, remaining: limit, plan };
+        return next();
+      }
 
-      const { count, error } = await supabase
-        .from('api_usage')
-        .select('*', { count: 'exact', head: true })
-        .eq('user_id', userId)
-        .eq('feature', feature)
-        .eq('success', true)
-        .gte('created_at', todayStart.toISOString());
+      const used = await getTodayCount(userId, feature);
 
-      // If table doesn't exist yet, skip rate limiting
-      if (error) return next();
-
-      if (count >= limit) {
+      if (used >= limit) {
         const planName = plan === 'pro_plus' ? 'Pro+' : plan === 'pro' ? 'Pro' : 'Free';
+        const todayStart = new Date();
+        todayStart.setHours(0, 0, 0, 0);
         return res.status(429).json({
           error: `Daily limit reached (${planName} plan: ${limit}/day). Upgrade your plan for more.`,
           limit,
-          used: count,
+          used,
           plan,
           resetsAt: new Date(todayStart.getTime() + 24 * 60 * 60 * 1000).toISOString(),
         });
       }
 
-      // Attach usage info for downstream use
-      req.rateLimitInfo = { used: count, limit, remaining: limit - count, plan };
+      req.rateLimitInfo = { used, limit, remaining: limit - used, plan };
       next();
     } catch {
       // Don't block requests if rate limiting fails

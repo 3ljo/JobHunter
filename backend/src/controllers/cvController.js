@@ -9,6 +9,7 @@ const { parsePDF } = require('../services/cvParserService');
 const { analyzeCVWithJD, refineCVWithInstructions } = require('../services/cvAnalyzerService');
 const { generateCVDocx } = require('../services/cvGeneratorService');
 const { generateCVPdfBuffer } = require('../services/cvPdfService');
+const { incrementUsage } = require('../services/usageService');
 
 // Configure multer for PDF uploads (max 5MB)
 const upload = multer({
@@ -55,6 +56,9 @@ const analyzeCV = async (req, res) => {
 
     // Stages 2-7: Run the full AI analysis pipeline
     const result = await analyzeCVWithJD(cvText, jobDescription, { userId: req.user.id, userEmail: req.user.email });
+
+    // Pipeline succeeded — count this as one analysis against the user's daily quota.
+    await incrementUsage(req.user.id, 'cv_analysis');
 
     // Save record to cvs table (no file storage — PDF is generated on-demand)
     const insertData = {

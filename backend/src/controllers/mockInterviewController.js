@@ -7,6 +7,7 @@ const {
   scoreAnswer,
   generateFinalReport,
 } = require('../services/mockInterviewService');
+const { incrementUsage } = require('../services/usageService');
 
 const DIFFICULTY_VALUES = ['standard', 'challenging', 'stress'];
 
@@ -110,6 +111,9 @@ const startInterview = async (req, res) => {
       }
       return res.status(500).json({ error: `Database insert failed: ${msg}` });
     }
+
+    // Session created — count this as one mock interview against the daily quota.
+    await incrementUsage(req.user.id, 'mock_interview');
 
     return res.status(200).json({ id: data.id, questions });
   } catch (err) {

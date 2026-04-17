@@ -3,34 +3,15 @@
 
 const supabase = require('../services/supabaseClient');
 const { stripe, PLANS, getPlanLimits } = require('../services/stripeService');
+const { getTodayCount } = require('../services/usageService');
 
 // GET /api/subscription — Get the user's current subscription
-// Count today's api_usage rows for a given user + feature.
-// Falls back to 0 if the table doesn't exist or query fails.
-const countTodayUsage = async (userId, feature) => {
-  try {
-    const todayStart = new Date();
-    todayStart.setHours(0, 0, 0, 0);
-    const { count, error } = await supabase
-      .from('api_usage')
-      .select('*', { count: 'exact', head: true })
-      .eq('user_id', userId)
-      .eq('feature', feature)
-      .eq('success', true)
-      .gte('created_at', todayStart.toISOString());
-    if (error) return 0;
-    return count || 0;
-  } catch {
-    return 0;
-  }
-};
-
 const buildUsage = async (userId, plan) => {
   const limits = getPlanLimits(plan);
   const [cvUsed, clUsed, miUsed] = await Promise.all([
-    countTodayUsage(userId, 'cv_analysis'),
-    countTodayUsage(userId, 'cover_letter'),
-    countTodayUsage(userId, 'mock_interview'),
+    getTodayCount(userId, 'cv_analysis'),
+    getTodayCount(userId, 'cover_letter'),
+    getTodayCount(userId, 'mock_interview'),
   ]);
   const today = new Date();
   today.setHours(0, 0, 0, 0);

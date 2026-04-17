@@ -50,12 +50,22 @@ const estimateCost = (model, inputTokens, outputTokens) => {
   return (inputTokens * rates.input + outputTokens * rates.output) / 1_000_000;
 };
 
-// Log usage to Supabase (fire-and-forget, never blocks)
+// Log usage to Supabase (fire-and-forget, never blocks).
+// NOTE: `api_usage` is the per-stage audit/cost log — NOT the quota source.
+// Quotas are tracked in `feature_usage` via usageService.incrementUsage.
+let warnedMissingApiUsage = false;
 const logUsage = (data) => {
   supabase.from('api_usage').insert(data).then(({ error }) => {
-    if (error && !error.message.includes('api_usage')) {
-      console.warn('Usage log failed:', error.message);
+    if (!error) return;
+    // Table missing — surface the hint once instead of spamming logs.
+    if (error.code === '42P01') {
+      if (!warnedMissingApiUsage) {
+        warnedMissingApiUsage = true;
+        console.warn('api_usage table missing — run backend/src/database/admin-schema.sql');
+      }
+      return;
     }
+    console.warn('Usage log failed:', error.message);
   });
 };
 

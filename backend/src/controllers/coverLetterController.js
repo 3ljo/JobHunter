@@ -6,6 +6,7 @@ const fs = require('fs');
 const multer = require('multer');
 const { callAI } = require('../services/aiClient');
 const { parsePDF } = require('../services/cvParserService');
+const { incrementUsage } = require('../services/usageService');
 
 // Configure multer for PDF uploads
 const upload = multer({
@@ -64,6 +65,8 @@ const generateCoverLetter = async (req, res) => {
       { userId: req.user?.id, userEmail: req.user?.email, feature: 'cover_letter' }
     );
 
+    await incrementUsage(req.user?.id, 'cover_letter');
+
     return res.status(200).json({ cover_letter: text });
   } catch (err) {
     console.error('Cover letter generation error:', err.message);
@@ -103,6 +106,8 @@ const generateFromPdf = async (req, res) => {
       2000,
       { userId: req.user?.id, userEmail: req.user?.email, feature: 'cover_letter' }
     );
+
+    await incrementUsage(req.user?.id, 'cover_letter');
 
     return res.status(200).json({ cover_letter: text });
   } catch (err) {
