@@ -1,5 +1,7 @@
 'use client';
 
+import { useRef, useState, useEffect } from 'react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { TEMPLATE_COMPONENTS, DEFAULT_TEMPLATE, type TemplateId } from './templates';
 
 interface CVPreviewProps {
@@ -9,48 +11,121 @@ interface CVPreviewProps {
 }
 
 export default function CVPreview({ cv, template, photo }: CVPreviewProps) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [canPrev, setCanPrev] = useState(false);
+  const [canNext, setCanNext] = useState(false);
+
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+
+    const update = () => {
+      const max = el.scrollWidth - el.clientWidth;
+      setCanPrev(el.scrollLeft > 4);
+      setCanNext(el.scrollLeft < max - 4);
+    };
+    update();
+    el.addEventListener('scroll', update, { passive: true });
+    window.addEventListener('resize', update);
+    return () => {
+      el.removeEventListener('scroll', update);
+      window.removeEventListener('resize', update);
+    };
+  }, [cv, template]);
+
   if (!cv) return null;
 
   const active: TemplateId = (template && TEMPLATE_COMPONENTS[template]) ? template : DEFAULT_TEMPLATE;
   const Template = TEMPLATE_COMPONENTS[active];
 
+  const scrollByPage = (dir: 1 | -1) => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const page = el.clientWidth * 0.9 * dir;
+    el.scrollBy({ left: page, behavior: 'smooth' });
+  };
+
   return (
-    <div className="cv-preview-scroller">
-      <div className="cv-preview-pages">
-        <Template cv={cv} photo={photo ?? null} />
+    <div style={{ position: 'relative' }}>
+      <div
+        ref={scrollRef}
+        style={{
+          overflowX: 'auto',
+          overflowY: 'hidden',
+          WebkitOverflowScrolling: 'touch',
+          scrollSnapType: 'x proximity',
+          height: 'min(calc(100vh - 240px), 860px)',
+          minHeight: 460,
+          background: '#ffffff',
+          borderRadius: 12,
+        }}
+      >
+        <div
+          style={{
+            height: '100%',
+            columnWidth: 'min(88vw, 620px)',
+            columnGap: 24,
+            columnFill: 'auto',
+            columnRule: '1px dashed #e5e7eb',
+          }}
+        >
+          <Template cv={cv} photo={photo ?? null} />
+        </div>
       </div>
 
-      <style jsx>{`
-        .cv-preview-scroller {
-          overflow-x: auto;
-          overflow-y: hidden;
-          scroll-snap-type: x proximity;
-          -webkit-overflow-scrolling: touch;
-          height: clamp(520px, calc(100vh - 280px), 880px);
-          background: #ffffff;
-          border-radius: 12px;
-        }
-        .cv-preview-pages {
-          height: 100%;
-          column-width: 620px;
-          column-gap: 28px;
-          column-fill: auto;
-          column-rule: 1px dashed #e5e7eb;
-          padding: 0;
-        }
-        .cv-preview-pages > :global(*) {
-          scroll-snap-align: start;
-        }
-        @media (max-width: 640px) {
-          .cv-preview-scroller {
-            height: clamp(460px, calc(100vh - 340px), 760px);
-          }
-          .cv-preview-pages {
-            column-width: 88vw;
-            column-gap: 18px;
-          }
-        }
-      `}</style>
+      {/* Page nav arrows — desktop only; mobile uses touch swipe */}
+      {canPrev && (
+        <button
+          type="button"
+          onClick={() => scrollByPage(-1)}
+          aria-label="Previous page"
+          className="hidden sm:flex"
+          style={{
+            position: 'absolute',
+            left: 6,
+            top: '50%',
+            transform: 'translateY(-50%)',
+            width: 36,
+            height: 36,
+            borderRadius: 999,
+            background: 'rgba(15,10,40,0.75)',
+            backdropFilter: 'blur(6px)',
+            border: '1px solid rgba(255,255,255,0.12)',
+            color: 'white',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: 'pointer',
+          }}
+        >
+          <ChevronLeft style={{ width: 18, height: 18 }} />
+        </button>
+      )}
+      {canNext && (
+        <button
+          type="button"
+          onClick={() => scrollByPage(1)}
+          aria-label="Next page"
+          className="hidden sm:flex"
+          style={{
+            position: 'absolute',
+            right: 6,
+            top: '50%',
+            transform: 'translateY(-50%)',
+            width: 36,
+            height: 36,
+            borderRadius: 999,
+            background: 'rgba(15,10,40,0.75)',
+            backdropFilter: 'blur(6px)',
+            border: '1px solid rgba(255,255,255,0.12)',
+            color: 'white',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: 'pointer',
+          }}
+        >
+          <ChevronRight style={{ width: 18, height: 18 }} />
+        </button>
+      )}
     </div>
   );
 }
