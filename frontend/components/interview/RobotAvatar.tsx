@@ -1,43 +1,54 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 interface RobotAvatarProps {
   speaking: boolean;
   loading?: boolean;
-  size?: number;             // rendered pixel height
+  size?: number;
   onClick?: () => void;
-  bubbleText?: string;       // caption displayed next to the robot
+  bubbleText?: string;
+  /** Optional looping talking video (muted). When speaking, it plays;
+   *  when idle, it's paused at frame 1. If it fails to load we fall
+   *  back to a static still image. */
+  videoSrc?: string;
+  /** Static fallback / poster image. */
+  posterSrc?: string;
 }
 
-/**
- * Full-body cartoon interviewer robot.
- * Light-blue body, orange eyes + feet, antenna, friendly teeth grid mouth,
- * little waving arms. Comes with a speech bubble caption on the right.
- *
- * Tap anywhere on the robot (or the bubble) to play/stop voice.
- */
-export default function RobotAvatar({ speaking, loading, size = 150, onClick, bubbleText }: RobotAvatarProps) {
-  const [blink, setBlink] = useState(false);
+const DEFAULT_VIDEO_SRC = '/interview/robot-talking.mp4';
+const DEFAULT_POSTER_SRC = '/aivent/misc/c2.webp';
 
+export default function RobotAvatar({
+  speaking,
+  loading,
+  size = 150,
+  onClick,
+  bubbleText,
+  videoSrc = DEFAULT_VIDEO_SRC,
+  posterSrc = DEFAULT_POSTER_SRC,
+}: RobotAvatarProps) {
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const [videoReady, setVideoReady] = useState(false);
+  const [videoFailed, setVideoFailed] = useState(false);
+
+  // Play / pause based on speaking state. Video is always muted (audio
+  // comes from the separate TTS/speechSynthesis system).
   useEffect(() => {
-    let t: ReturnType<typeof setTimeout>;
-    const tick = () => {
-      const delay = 3000 + Math.random() * 3500;
-      t = setTimeout(() => {
-        setBlink(true);
-        setTimeout(() => setBlink(false), 130);
-        tick();
-      }, delay);
-    };
-    tick();
-    return () => clearTimeout(t);
-  }, []);
+    const v = videoRef.current;
+    if (!v || videoFailed) return;
+    if (speaking) {
+      v.currentTime = 0;
+      const p = v.play();
+      if (p && typeof p.catch === 'function') p.catch(() => { /* autoplay blocked — that's fine */ });
+    } else {
+      v.pause();
+      // Reset to first frame so the robot looks "ready" rather than mid-sentence
+      try { v.currentTime = 0; } catch { /* noop */ }
+    }
+  }, [speaking, videoFailed]);
 
-  const width = size * (160 / 200); // keep aspect ratio 160x200
-  const bubble =
-    bubbleText ??
-    (loading ? 'Loading my voice…' : speaking ? 'Tap me to mute' : 'Tap me to talk');
+  const bubble = bubbleText ?? (loading ? 'Loading my voice…' : speaking ? 'Tap me to mute' : 'Tap me to talk');
 
   return (
     <div
@@ -59,163 +70,87 @@ export default function RobotAvatar({ speaking, loading, size = 150, onClick, bu
       }}
     >
       <div
-        className={speaking ? 'robot-breathe-fast' : 'robot-breathe'}
         style={{
-          width, height: size, flexShrink: 0,
-          filter: 'drop-shadow(0 8px 22px rgba(118,77,240,0.28))',
+          position: 'relative',
+          width: size,
+          height: size,
+          flexShrink: 0,
+          filter: 'drop-shadow(0 10px 28px rgba(118,77,240,0.35))',
         }}
       >
-        <svg
-          viewBox="0 0 160 200"
-          width={width}
-          height={size}
-          style={{ display: 'block' }}
-          aria-hidden
-        >
-          <defs>
-            <linearGradient id="robot-body" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%"  stopColor="#b6dff0" />
-              <stop offset="100%" stopColor="#7bb8d1" />
-            </linearGradient>
-            <linearGradient id="robot-panel" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%"  stopColor="#2a3540" />
-              <stop offset="100%" stopColor="#1b242e" />
-            </linearGradient>
-          </defs>
-
-          {/* Antenna stem + tip */}
-          <line x1="80" y1="6" x2="80" y2="22" stroke="#1f2a36" strokeWidth="2.5" strokeLinecap="round" />
-          <circle
-            cx="80" cy="5" r="5"
-            fill="#f97316"
-            className={speaking ? 'robot-antenna-pulse' : ''}
+        {/* Video layer (preferred) */}
+        {!videoFailed && (
+          <video
+            ref={videoRef}
+            src={videoSrc}
+            poster={posterSrc}
+            muted
+            playsInline
+            loop
+            preload="metadata"
+            onLoadedData={() => setVideoReady(true)}
+            onError={() => setVideoFailed(true)}
+            style={{
+              width: '100%',
+              height: '100%',
+              objectFit: 'contain',
+              display: 'block',
+              borderRadius: 18,
+              background: 'transparent',
+            }}
           />
-          {/* "Brain" dome patch */}
-          <ellipse cx="80" cy="25" rx="18" ry="6" fill="#f59e0b" stroke="#1f2a36" strokeWidth="1.8" />
-          <circle cx="74" cy="24" r="1.3" fill="#fbbf24" />
-          <circle cx="83" cy="22" r="1.3" fill="#fbbf24" />
-          <circle cx="88" cy="25" r="1.3" fill="#fbbf24" />
+        )}
 
-          {/* Ears / side pieces */}
-          <rect x="26" y="55" width="12" height="18" rx="4"
-            fill="url(#robot-body)" stroke="#1f2a36" strokeWidth="1.8" />
-          <rect x="122" y="55" width="12" height="18" rx="4"
-            fill="url(#robot-body)" stroke="#1f2a36" strokeWidth="1.8" />
+        {/* Fallback: static image shown only if the video failed to load */}
+        {videoFailed && (
+          <img
+            src={posterSrc}
+            alt="Robot interviewer"
+            className={speaking ? 'robot-img-talking' : 'robot-img-idle'}
+            style={{
+              width: '100%',
+              height: '100%',
+              objectFit: 'contain',
+              display: 'block',
+              borderRadius: 18,
+            }}
+          />
+        )}
 
-          {/* Head */}
-          <rect x="38" y="30" width="84" height="62" rx="10"
-            fill="url(#robot-body)" stroke="#1f2a36" strokeWidth="2" />
+        {/* Subtle "tap me" ring when idle, glow ring when speaking */}
+        <span
+          aria-hidden
+          style={{
+            position: 'absolute',
+            inset: -4,
+            borderRadius: 24,
+            border: `2px solid ${speaking ? 'rgba(239,68,68,0.45)' : 'rgba(167,139,250,0.30)'}`,
+            pointerEvents: 'none',
+            animation: speaking ? 'robot-ring-fast 1200ms ease-out infinite' : 'robot-ring-slow 2800ms ease-out infinite',
+          }}
+        />
 
-          {/* Face screen */}
-          <rect x="48" y="42" width="64" height="38" rx="6"
-            fill="#9fd0e2" stroke="#1f2a36" strokeWidth="1.5" />
-
-          {/* Eyes */}
-          {blink ? (
-            <>
-              <rect x="56"  y="57" width="14" height="2.4" rx="1.2" fill="#1f2a36" />
-              <rect x="90" y="57" width="14" height="2.4" rx="1.2" fill="#1f2a36" />
-            </>
-          ) : (
-            <>
-              <circle cx="63" cy="58" r="8" fill="white" stroke="#1f2a36" strokeWidth="1.8" />
-              <circle cx="97" cy="58" r="8" fill="white" stroke="#1f2a36" strokeWidth="1.8" />
-              <circle cx="63" cy="58" r="4.5" fill="#f97316" />
-              <circle cx="97" cy="58" r="4.5" fill="#f97316" />
-              <circle cx="61.5" cy="56" r="1.4" fill="white" />
-              <circle cx="95.5" cy="56" r="1.4" fill="white" />
-            </>
-          )}
-
-          {/* Mouth — teeth-grid smile when idle, open oval when speaking */}
-          {speaking ? (
-            <g>
-              <rect className="robot-mouth-open" x="68" y="70" width="24" height="6" rx="3" fill="#1f2a36">
-                <animate attributeName="height" values="6;12;4;10;6" dur="420ms" repeatCount="indefinite" />
-                <animate attributeName="y"      values="70;67;71;68;70" dur="420ms" repeatCount="indefinite" />
-              </rect>
-            </g>
-          ) : (
-            <g>
-              <rect x="68" y="70" width="24" height="6" fill="white" stroke="#1f2a36" strokeWidth="1.5" />
-              <line x1="74" y1="70" x2="74" y2="76" stroke="#1f2a36" strokeWidth="1" />
-              <line x1="80" y1="70" x2="80" y2="76" stroke="#1f2a36" strokeWidth="1" />
-              <line x1="86" y1="70" x2="86" y2="76" stroke="#1f2a36" strokeWidth="1" />
-            </g>
-          )}
-
-          {/* Neck */}
-          <rect x="72" y="92" width="16" height="8" fill="url(#robot-body)" stroke="#1f2a36" strokeWidth="1.5" />
-
-          {/* Body */}
-          <rect x="34" y="100" width="92" height="64" rx="8"
-            fill="url(#robot-body)" stroke="#1f2a36" strokeWidth="2" />
-
-          {/* Body panel */}
-          <rect x="50" y="110" width="60" height="42" rx="4"
-            fill="url(#robot-panel)" stroke="#1f2a36" strokeWidth="1.5" />
-          {/* "Hi!" text */}
-          <text x="80" y="138" fontFamily="'Manrope', sans-serif" fontSize="18"
-                fontWeight="800" fill="white" textAnchor="middle" letterSpacing="0.5">
-            Hi!
-          </text>
-
-          {/* Arms (left waving when speaking) */}
-          <g className={speaking ? 'robot-arm-left-wave' : ''} style={{ transformOrigin: '26px 108px' }}>
-            <rect x="20" y="106" width="10" height="34" rx="3"
-              fill="url(#robot-body)" stroke="#1f2a36" strokeWidth="1.6" />
-            <rect x="16" y="138" width="18" height="12" rx="3"
-              fill="url(#robot-body)" stroke="#1f2a36" strokeWidth="1.6" />
-            <path d="M 18 150 L 16 155 M 25 150 L 25 156 M 32 150 L 34 155"
-              stroke="#1f2a36" strokeWidth="2" strokeLinecap="round" fill="none" />
-          </g>
-          <g>
-            <rect x="130" y="106" width="10" height="34" rx="3"
-              fill="url(#robot-body)" stroke="#1f2a36" strokeWidth="1.6" />
-            <rect x="126" y="138" width="18" height="12" rx="3"
-              fill="url(#robot-body)" stroke="#1f2a36" strokeWidth="1.6" />
-            <path d="M 128 150 L 126 155 M 135 150 L 135 156 M 142 150 L 144 155"
-              stroke="#1f2a36" strokeWidth="2" strokeLinecap="round" fill="none" />
-          </g>
-
-          {/* Legs */}
-          <rect x="58" y="164" width="16" height="22" rx="3"
-            fill="url(#robot-body)" stroke="#1f2a36" strokeWidth="1.6" />
-          <rect x="86" y="164" width="16" height="22" rx="3"
-            fill="url(#robot-body)" stroke="#1f2a36" strokeWidth="1.6" />
-
-          {/* Feet (orange) */}
-          <rect x="50" y="186" width="28" height="10" rx="3"
-            fill="#f97316" stroke="#1f2a36" strokeWidth="1.6" />
-          <rect x="82" y="186" width="28" height="10" rx="3"
-            fill="#f97316" stroke="#1f2a36" strokeWidth="1.6" />
-        </svg>
-
-        <style jsx>{`
-          :global(.robot-breathe) { animation: rb-float 4200ms ease-in-out infinite; will-change: transform; }
-          :global(.robot-breathe-fast) { animation: rb-float 2200ms ease-in-out infinite; will-change: transform; }
-          @keyframes rb-float {
-            0%, 100% { transform: translateY(0); }
-            50%      { transform: translateY(-3px); }
-          }
-          :global(.robot-antenna-pulse) {
-            animation: rb-antenna 900ms ease-in-out infinite;
-            transform-box: fill-box; transform-origin: center;
-          }
-          @keyframes rb-antenna {
-            0%, 100% { transform: scale(1); opacity: 1; }
-            50%      { transform: scale(1.5); opacity: 0.45; }
-          }
-          :global(.robot-arm-left-wave) {
-            animation: rb-wave 1200ms ease-in-out infinite;
-            transform-box: fill-box;
-          }
-          @keyframes rb-wave {
-            0%, 100% { transform: rotate(0deg);  }
-            25%      { transform: rotate(-12deg); }
-            75%      { transform: rotate(8deg);   }
-          }
-        `}</style>
+        {/* Loading dots overlay while TTS fetch in flight */}
+        {loading && (
+          <div
+            style={{
+              position: 'absolute',
+              inset: 0,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              background: 'rgba(8,11,35,0.45)',
+              borderRadius: 18,
+              backdropFilter: 'blur(2px)',
+            }}
+          >
+            <div style={{ display: 'flex', gap: 4 }}>
+              <span style={{ width: 6, height: 6, borderRadius: 999, background: '#a78bfa', animation: 'robot-dot 1s ease-in-out infinite', animationDelay: '0s' }} />
+              <span style={{ width: 6, height: 6, borderRadius: 999, background: '#a78bfa', animation: 'robot-dot 1s ease-in-out infinite', animationDelay: '0.2s' }} />
+              <span style={{ width: 6, height: 6, borderRadius: 999, background: '#a78bfa', animation: 'robot-dot 1s ease-in-out infinite', animationDelay: '0.4s' }} />
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Speech bubble */}
@@ -239,7 +174,6 @@ export default function RobotAvatar({ speaking, loading, size = 150, onClick, bu
         }}
       >
         {bubble}
-        {/* Tail pointing left to the robot */}
         <span
           style={{
             position: 'absolute',
@@ -250,12 +184,39 @@ export default function RobotAvatar({ speaking, loading, size = 150, onClick, bu
             height: 0,
             borderTop: '7px solid transparent',
             borderBottom: '7px solid transparent',
-            borderRight: `8px solid ${
-              speaking ? '#ef4444' : loading ? '#a78bfa' : '#764DF0'
-            }`,
+            borderRight: `8px solid ${speaking ? '#ef4444' : loading ? '#a78bfa' : '#764DF0'}`,
           }}
         />
       </div>
+
+      <style jsx>{`
+        :global(.robot-img-idle)    { animation: robot-float 4200ms ease-in-out infinite; will-change: transform; }
+        :global(.robot-img-talking) { animation: robot-float 2000ms ease-in-out infinite; will-change: transform; }
+        @keyframes robot-float {
+          0%, 100% { transform: translateY(0); }
+          50%      { transform: translateY(-3px); }
+        }
+        @keyframes robot-ring-slow {
+          0%   { transform: scale(1);    opacity: 0.7; }
+          70%  { transform: scale(1.10); opacity: 0;   }
+          100% { transform: scale(1.10); opacity: 0;   }
+        }
+        @keyframes robot-ring-fast {
+          0%   { transform: scale(1);    opacity: 0.9; }
+          70%  { transform: scale(1.14); opacity: 0;   }
+          100% { transform: scale(1.14); opacity: 0;   }
+        }
+        @keyframes robot-dot {
+          0%, 100% { opacity: 0.2; transform: translateY(0); }
+          50%      { opacity: 1;   transform: translateY(-2px); }
+        }
+      `}</style>
+
+      {/* Hide video controls on all browsers even if they sneak in */}
+      <style jsx>{`
+        :global(video::-webkit-media-controls) { display: none !important; }
+        :global(video::-webkit-media-controls-enclosure) { display: none !important; }
+      `}</style>
     </div>
   );
 }
