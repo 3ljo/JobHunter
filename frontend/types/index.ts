@@ -86,9 +86,23 @@ export interface Subscription {
   stripe_subscription_id?: string;
 }
 
+export interface UsageBucket {
+  used: number;
+  limit: number;
+  remaining: number;
+}
+
+export interface UsageSnapshot {
+  cv: UsageBucket;
+  cover_letter: UsageBucket;
+  mock_interview: UsageBucket;
+  resetsAt: string;
+}
+
 export interface SubscriptionResponse {
   subscription: Subscription;
-  limits: { cv_limit: number; cl_limit: number };
+  limits: { cv_limit: number; cl_limit: number; mi_limit?: number };
+  usage?: UsageSnapshot;
 }
 
 export interface ApiResponse<T> {

@@ -5,6 +5,44 @@ const supabase = require('../services/supabaseClient');
 const { stripe, PLANS, getPlanLimits } = require('../services/stripeService');
 
 // GET /api/subscription — Get the user's current subscription
+// Count today's api_usage rows for a given user + feature.
+// Falls back to 0 if the table doesn't exist or query fails.
+const countTodayUsage = async (userId, feature) => {
+  try {
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+    const { count, error } = await supabase
+      .from('api_usage')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', userId)
+      .eq('feature', feature)
+      .eq('success', true)
+      .gte('created_at', todayStart.toISOString());
+    if (error) return 0;
+    return count || 0;
+  } catch {
+    return 0;
+  }
+};
+
+const buildUsage = async (userId, plan) => {
+  const limits = getPlanLimits(plan);
+  const [cvUsed, clUsed, miUsed] = await Promise.all([
+    countTodayUsage(userId, 'cv_analysis'),
+    countTodayUsage(userId, 'cover_letter'),
+    countTodayUsage(userId, 'mock_interview'),
+  ]);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const resetsAt = new Date(today.getTime() + 24 * 60 * 60 * 1000).toISOString();
+  return {
+    cv:             { used: cvUsed, limit: limits.cv_limit, remaining: Math.max(0, limits.cv_limit - cvUsed) },
+    cover_letter:   { used: clUsed, limit: limits.cl_limit, remaining: Math.max(0, limits.cl_limit - clUsed) },
+    mock_interview: { used: miUsed, limit: limits.mi_limit, remaining: Math.max(0, limits.mi_limit - miUsed) },
+    resetsAt,
+  };
+};
+
 const getSubscription = async (req, res) => {
   try {
     const { data, error } = await supabase
@@ -13,23 +51,23 @@ const getSubscription = async (req, res) => {
       .eq('user_id', req.user.id)
       .single();
 
-    if (error || !data) {
-      // No subscription record — user is on free plan
-      return res.json({
-        subscription: {
+    const plan = (error || !data) ? 'free' : data.plan;
+    const subscription = (error || !data)
+      ? {
           plan: 'free',
           status: 'active',
           billing_interval: null,
           current_period_end: null,
           cancel_at_period_end: false,
-        },
-        limits: getPlanLimits('free'),
-      });
-    }
+        }
+      : data;
+
+    const usage = await buildUsage(req.user.id, plan);
 
     return res.json({
-      subscription: data,
-      limits: getPlanLimits(data.plan),
+      subscription,
+      limits: getPlanLimits(plan),
+      usage,
     });
   } catch (err) {
     return res.status(500).json({ error: err.message });

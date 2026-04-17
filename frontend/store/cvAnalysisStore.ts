@@ -3,6 +3,7 @@ import { CVAnalysisResult } from '@/types';
 import { analyzeCV } from '@/lib/api';
 import toast from 'react-hot-toast';
 import { DEFAULT_TEMPLATE, type TemplateId } from '@/components/cv/templates';
+import { useSubscriptionStore } from '@/store/subscriptionStore';
 
 const STEPS = ['Parsing & auditing...', 'Rewriting & humanizing...', 'Done'];
 const TEMPLATE_KEY = 'cv_template_id';
@@ -78,11 +79,22 @@ export const useCVAnalysisStore = create<CVAnalysisState>((set, get) => ({
       }
 
       toast.success('CV analysis complete!');
+      // Bump local usage so the meter on the CV page reflects this run
+      // without needing a full subscription refetch.
+      try { useSubscriptionStore.getState().bumpLocalUsage('cv'); } catch { /* noop */ }
     } catch (err: any) {
       clearInterval(interval);
+      const status = err.response?.status;
       const message = err.response?.data?.error || 'Analysis failed';
       set({ loading: false, error: message });
-      toast.error(message);
+
+      if (status === 429) {
+        // Refresh subscription so the lock UI kicks in without a reload
+        try { useSubscriptionStore.getState().fetchSubscription(); } catch { /* noop */ }
+        toast.error(message, { duration: 6000 });
+      } else {
+        toast.error(message);
+      }
     }
   },
 
