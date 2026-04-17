@@ -102,14 +102,15 @@ const startInterview = async (req, res) => {
 
     if (error) {
       console.error('Failed to create interview row:', error);
-      const msg = error.message || '';
-      // Friendly hint when the table is missing from the DB.
-      if (/relation.*does not exist|mock_interviews/i.test(msg)) {
+      // Only suggest running the migration when Postgres actually reports the
+      // relation as missing (undefined_table = 42P01). Matching the table name
+      // anywhere in the message falsely fires on unrelated insert errors.
+      if (error.code === '42P01') {
         return res.status(500).json({
           error: 'mock_interviews table is missing in Supabase. Run backend/src/database/mock-interview-schema.sql in the Supabase SQL editor, then try again.',
         });
       }
-      return res.status(500).json({ error: `Database insert failed: ${msg}` });
+      return res.status(500).json({ error: `Database insert failed: ${error.message || 'unknown error'}` });
     }
 
     // Session created — count this as one mock interview against the daily quota.

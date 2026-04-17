@@ -20,6 +20,7 @@ CREATE TABLE IF NOT EXISTS mock_interviews (
 ALTER TABLE mock_interviews ENABLE ROW LEVEL SECURITY;
 
 -- Users can only read their own interviews; all writes go through backend service role
+DROP POLICY IF EXISTS "Users read own interviews" ON mock_interviews;
 CREATE POLICY "Users read own interviews" ON mock_interviews
   FOR SELECT USING (auth.uid() = user_id);
 
@@ -28,6 +29,7 @@ CREATE INDEX IF NOT EXISTS idx_mock_interviews_user_id ON mock_interviews(user_i
 CREATE INDEX IF NOT EXISTS idx_mock_interviews_user_created ON mock_interviews(user_id, created_at DESC);
 
 -- Auto-update updated_at
+DROP TRIGGER IF EXISTS update_mock_interviews_updated_at ON mock_interviews;
 CREATE TRIGGER update_mock_interviews_updated_at
   BEFORE UPDATE ON mock_interviews
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
