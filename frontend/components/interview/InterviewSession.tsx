@@ -5,6 +5,7 @@ import { Mic, MicOff, ChevronRight, Volume2, VolumeX, Check, Keyboard, Sparkles,
 import { useInterviewStore } from '@/store/interviewStore';
 import { useVoiceRecognition } from './useVoiceRecognition';
 import { useSpeak } from './useSpeak';
+import RobotAvatar from './RobotAvatar';
 
 const glass = {
   background: 'rgba(0,0,0,0.30)',
@@ -115,55 +116,62 @@ export default function InterviewSession() {
 
       {/* Question card */}
       <div className="rounded-2xl p-5 sm:p-6" style={glass}>
-        <div className="flex items-center gap-2 flex-wrap mb-3">
-          <span
-            className="text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider"
-            style={{ background: kindBadge.bg, color: kindBadge.color, border: `1px solid ${kindBadge.color}33` }}
-          >
-            {kindBadge.label}
-          </span>
-          <span className="text-[10px] font-bold uppercase tracking-widest text-white/35">
-            Question {currentIndex + 1}
-          </span>
+        <div className="flex items-start gap-3 sm:gap-4">
+          {/* Animated robot interviewer — tap to replay / stop */}
+          {speak.supported && (
+            <div className="shrink-0">
+              <RobotAvatar
+                speaking={speak.speaking}
+                size={56}
+                onClick={() => {
+                  if (speak.speaking) speak.cancel();
+                  else if (!mutedNarration) replayQuestion();
+                }}
+                title={speak.speaking ? 'Stop' : mutedNarration ? 'Narration is muted' : 'Replay question'}
+              />
+            </div>
+          )}
 
-          {/* Replay / mute */}
-          <div className="ml-auto flex items-center gap-1">
-            {speak.supported && (
-              <button
-                type="button"
-                onClick={() => { if (speak.speaking) speak.cancel(); else replayQuestion(); }}
-                aria-label="Replay question"
-                disabled={mutedNarration}
-                className="flex h-8 w-8 items-center justify-center rounded-lg disabled:opacity-40"
-                style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.7)' }}
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 flex-wrap mb-2">
+              <span
+                className="text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider"
+                style={{ background: kindBadge.bg, color: kindBadge.color, border: `1px solid ${kindBadge.color}33` }}
               >
-                <Volume2 className="h-3.5 w-3.5" />
-              </button>
-            )}
-            <button
-              type="button"
-              onClick={() => {
-                setMutedNarration((v) => {
-                  const next = !v;
-                  if (next) speak.cancel();
-                  return next;
-                });
-              }}
-              aria-label="Toggle narration"
-              className="flex h-8 w-8 items-center justify-center rounded-lg"
-              style={{
-                background: mutedNarration ? 'rgba(239,68,68,0.1)' : 'rgba(255,255,255,0.04)',
-                border: `1px solid ${mutedNarration ? 'rgba(239,68,68,0.25)' : 'rgba(255,255,255,0.08)'}`,
-                color: mutedNarration ? '#fca5a5' : 'rgba(255,255,255,0.7)',
-              }}
-            >
-              {mutedNarration ? <VolumeX className="h-3.5 w-3.5" /> : <Mic className="h-3.5 w-3.5 opacity-0" />}
-              {mutedNarration ? null : <VolumeX className="h-3.5 w-3.5 hidden" />}
-            </button>
+                {kindBadge.label}
+              </span>
+              <span className="text-[10px] font-bold uppercase tracking-widest text-white/35">
+                Question {currentIndex + 1}
+              </span>
+
+              {/* Single clean mute toggle */}
+              {speak.supported && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMutedNarration((v) => {
+                      const next = !v;
+                      if (next) speak.cancel();
+                      return next;
+                    });
+                  }}
+                  aria-label={mutedNarration ? 'Unmute narration' : 'Mute narration'}
+                  className="ml-auto flex h-8 items-center gap-1 px-2.5 rounded-lg text-[11px] font-bold"
+                  style={{
+                    background: mutedNarration ? 'rgba(239,68,68,0.1)' : 'rgba(118,77,240,0.12)',
+                    border: `1px solid ${mutedNarration ? 'rgba(239,68,68,0.25)' : 'rgba(118,77,240,0.3)'}`,
+                    color: mutedNarration ? '#fca5a5' : '#c4b5fd',
+                  }}
+                >
+                  {mutedNarration ? <VolumeX className="h-3.5 w-3.5" /> : <Volume2 className="h-3.5 w-3.5" />}
+                  <span>{mutedNarration ? 'Muted' : 'Voice on'}</span>
+                </button>
+              )}
+            </div>
+
+            <p className="text-base sm:text-lg md:text-xl font-semibold text-white leading-snug">{currentQ.text}</p>
           </div>
         </div>
-
-        <p className="text-lg sm:text-xl font-semibold text-white leading-snug">{currentQ.text}</p>
       </div>
 
       {/* Mic / typing input */}
