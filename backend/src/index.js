@@ -12,6 +12,7 @@ const onboardingRoutes = require('./routes/onboarding');
 const cvRoutes = require('./routes/cv');
 const jobTrackerRoutes = require('./routes/jobTracker');
 const coverLetterRoutes = require('./routes/coverLetter');
+const interviewRoutes = require('./routes/interview');
 const adminRoutes = require('./routes/admin');
 
 const subscriptionRoutes = require('./routes/subscription');
@@ -46,6 +47,7 @@ app.use('/api/onboarding', onboardingRoutes);
 app.use('/api/cv', cvRoutes);
 app.use('/api/tracker', jobTrackerRoutes);
 app.use('/api/cover-letter', coverLetterRoutes);
+app.use('/api/interview', interviewRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/subscription', subscriptionRoutes);
 app.use('/api/promo', promoRoutes);

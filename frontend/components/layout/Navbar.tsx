@@ -20,6 +20,7 @@ const navItems = [
   { href: '/dashboard',    label: 'Dashboard'    },
   { href: '/cv',           label: 'CV Analyzer'  },
   { href: '/cover-letter', label: 'Cover Letter' },
+  { href: '/interview',    label: 'Interview', badge: 'PRO+' },
   { href: '/tracker',      label: 'Tracker'      },
   { href: '/cv-history',   label: 'History'      },
 ];
@@ -92,13 +93,21 @@ export default function Navbar() {
                 <Link
                   key={item.href}
                   href={item.href}
-                  className="relative px-4 py-2 text-sm font-semibold transition-colors duration-200"
+                  className="relative px-4 py-2 text-sm font-semibold transition-colors duration-200 inline-flex items-center gap-1.5"
                   style={{
                     color: isActive ? '#fff' : 'rgba(255,255,255,0.55)',
                     letterSpacing: '0.01em',
                   }}
                 >
                   {item.label}
+                  {item.badge && (
+                    <span
+                      className="text-[9px] font-black px-1.5 py-0.5 rounded"
+                      style={{ background: 'rgba(192,132,252,0.15)', color: '#c084fc', border: '1px solid rgba(192,132,252,0.3)' }}
+                    >
+                      {item.badge}
+                    </span>
+                  )}
                   {/* violet underline — same scaleX transition as landing page */}
                   <span
                     className="absolute left-4 right-4 transition-all duration-300"
@@ -239,13 +248,21 @@ export default function Navbar() {
                   key={item.href}
                   href={item.href}
                   onClick={() => setMobileOpen(false)}
-                  className="block py-3 text-sm font-semibold border-b transition-colors duration-200"
+                  className="flex items-center gap-2 py-3 text-sm font-semibold border-b transition-colors duration-200"
                   style={{
                     color: isActive ? '#764DF0' : 'rgba(255,255,255,0.7)',
                     borderColor: 'rgba(255,255,255,0.06)',
                   }}
                 >
                   {item.label}
+                  {item.badge && (
+                    <span
+                      className="text-[9px] font-black px-1.5 py-0.5 rounded"
+                      style={{ background: 'rgba(192,132,252,0.15)', color: '#c084fc', border: '1px solid rgba(192,132,252,0.3)' }}
+                    >
+                      {item.badge}
+                    </span>
+                  )}
                 </Link>
               );
             })}

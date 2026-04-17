@@ -223,4 +223,65 @@ export const getAdminSettings = () =>
 export const updateAdminSettings = (settings: Record<string, any>) =>
   api.put('/api/admin/settings', settings);
 
+// ═════════════════════ Mock Interview (Pro+ only) ═════════════════════
+
+export interface InterviewQuestion {
+  id: string;
+  text: string;
+  kind: 'behavioral' | 'technical' | 'situational';
+  expected_signals?: string[];
+}
+
+export interface InterviewAnswer {
+  question_id: string;
+  transcript: string;
+  score: number;
+  feedback: string;
+  missing_signals?: string[];
+}
+
+export interface InterviewReport {
+  overall_score: number;
+  strengths: string[];
+  weaknesses: string[];
+  top_improvements: string[];
+}
+
+export interface StartInterviewBody {
+  cv_id?: string | null;
+  job_description: string;
+  job_title?: string;
+  difficulty?: 'standard' | 'challenging' | 'stress';
+}
+
+export interface InterviewHistoryItem {
+  id: string;
+  job_title: string | null;
+  difficulty: string;
+  status: string;
+  created_at: string;
+  completed_at: string | null;
+  final_report: InterviewReport | null;
+}
+
+export const startInterview = (body: StartInterviewBody) =>
+  api.post<{ id: string; questions: InterviewQuestion[] }>('/api/interview/start', body, { timeout: 120000 });
+
+export const submitInterviewAnswer = (interviewId: string, questionId: string, transcript: string) =>
+  api.post<{
+    question_id: string;
+    score: number;
+    feedback: string;
+    missing_signals: string[];
+  }>(`/api/interview/${interviewId}/answer`, { question_id: questionId, transcript }, { timeout: 60000 });
+
+export const finishInterview = (interviewId: string) =>
+  api.post<{ id: string; final_report: InterviewReport }>(`/api/interview/${interviewId}/finish`, {}, { timeout: 90000 });
+
+export const getInterview = (interviewId: string) =>
+  api.get(`/api/interview/${interviewId}`);
+
+export const getInterviewHistory = () =>
+  api.get<{ interviews: InterviewHistoryItem[] }>('/api/interview/history');
+
 export default api;

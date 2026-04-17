@@ -10,10 +10,11 @@ import { ArrowRight } from 'lucide-react';
 
 /* ─── config ──────────────────────────────────────────────────────── */
 const TOOLS = [
-  { href: '/cv',           label: 'CV Analyzer',   desc: 'ATS scoring & keyword gap analysis for any job.',        img: '/aivent/misc/s3.webp' },
-  { href: '/cover-letter', label: 'Cover Letter',  desc: 'AI-tailored cover letters generated in seconds.',         img: '/aivent/misc/s4.webp' },
-  { href: '/tracker',      label: 'Job Tracker',   desc: 'Kanban & table view for every application you send.',     img: '/aivent/misc/s5.webp' },
-  { href: '/cv-history',   label: 'CV History',    desc: 'Full history of every analysis with score progression.',  img: '/aivent/misc/s6.webp' },
+  { href: '/cv',           label: 'CV Analyzer',     desc: 'ATS scoring & keyword gap analysis for any job.',        img: '/aivent/misc/s3.webp' },
+  { href: '/cover-letter', label: 'Cover Letter',    desc: 'AI-tailored cover letters generated in seconds.',         img: '/aivent/misc/s4.webp' },
+  { href: '/interview',    label: 'Mock Interview',  desc: 'Voice-based AI interview practice with scored feedback.', img: '/aivent/misc/s7.webp', badge: 'PRO+' },
+  { href: '/tracker',      label: 'Job Tracker',     desc: 'Kanban & table view for every application you send.',    img: '/aivent/misc/s5.webp' },
+  { href: '/cv-history',   label: 'CV History',      desc: 'Full history of every analysis with score progression.', img: '/aivent/misc/s6.webp' },
 ] as const;
 
 const STATUS_MAP: Record<string, { label: string; color: string; bg: string }> = {
@@ -176,6 +177,22 @@ export default function DashboardPage() {
                 <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity duration-300" style={{ zIndex: 3 }}>
                   <ArrowRight className="h-4 w-4 text-white/70" />
                 </div>
+                {/* PRO+ ribbon */}
+                {'badge' in tool && tool.badge && (
+                  <div className="absolute top-3 left-3" style={{ zIndex: 3 }}>
+                    <span
+                      className="text-[9px] font-black px-2 py-0.5 rounded"
+                      style={{
+                        background: 'rgba(192,132,252,0.2)',
+                        color: '#e9d5ff',
+                        border: '1px solid rgba(192,132,252,0.4)',
+                        backdropFilter: 'blur(6px)',
+                      }}
+                    >
+                      {tool.badge}
+                    </span>
+                  </div>
+                )}
                 {/* text */}
                 <div className="absolute bottom-0 left-0 right-0 p-3 sm:p-5" style={{ zIndex: 3 }}>
                   <h4 className="text-white font-bold text-sm sm:text-lg mb-0.5 sm:mb-1 tracking-tight">{tool.label}</h4>

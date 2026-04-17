@@ -62,5 +62,6 @@ const createRateLimiter = (feature, limitKey) => {
 
 const rateLimitCV = createRateLimiter('cv_analysis', 'cv_limit');
 const rateLimitCL = createRateLimiter('cover_letter', 'cl_limit');
+const rateLimitMI = createRateLimiter('mock_interview', 'mi_limit');
 
-module.exports = { rateLimitCV, rateLimitCL };
+module.exports = { rateLimitCV, rateLimitCL, rateLimitMI };
