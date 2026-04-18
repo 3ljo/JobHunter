@@ -245,7 +245,7 @@ export default function ContactPage() {
         <div style={{ height: '1px', background: 'linear-gradient(90deg, transparent, rgba(118,77,240,0.4), transparent)' }} />
         <div className="mx-auto max-w-6xl px-6 py-8 flex flex-col sm:flex-row items-center justify-between gap-4">
           <Link href="/">
-            <img src="/aivent/logo.webp" alt="JobHunter" style={{ height: '28px', width: 'auto', opacity: 0.5 }} />
+            <img src="/aivent/logo.png" alt="JobHunter" style={{ height: '28px', width: 'auto', opacity: 0.5 }} />
           </Link>
           <p className="text-white/20 text-xs">&copy; {new Date().getFullYear()} JobHunter. All rights reserved.</p>
         </div>

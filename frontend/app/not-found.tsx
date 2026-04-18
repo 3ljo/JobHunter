@@ -53,7 +53,7 @@ export default function NotFound() {
       <div className="relative z-10 flex flex-col items-center text-center max-w-lg">
         {/* Logo */}
         <img
-          src="/aivent/logo.webp"
+          src="/aivent/logo.png"
           alt="JobHunter"
           style={{ height: '36px', width: 'auto', opacity: 0.7 }}
           className="mb-14"

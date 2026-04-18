@@ -79,7 +79,7 @@ export default function Navbar() {
           {/* ── LOGO ── */}
           <Link href="/dashboard" className="flex-shrink-0">
             <img
-              src="/aivent/logo.webp"
+              src="/aivent/logo.png"
               alt="JobHunter"
               style={{ height: '34px', width: 'auto' }}
             />
