@@ -92,10 +92,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         >
           <div className="mx-auto flex max-w-7xl items-center justify-between">
             <Link href="/dashboard" className="shrink-0">
-              <img src="/aivent/logo.png" alt="JobHunter" style={{ height: '48px', width: 'auto', opacity: 0.5 }} />
+              <img src="/aivent/logo.png" alt="CvClimber" style={{ height: '48px', width: 'auto', opacity: 0.5 }} />
             </Link>
             <p className="text-white/20 text-xs tracking-wide" style={{ fontWeight: 400 }}>
-              &copy; {new Date().getFullYear()} JobHunter
+              &copy; {new Date().getFullYear()} CvClimber
             </p>
           </div>
         </footer>

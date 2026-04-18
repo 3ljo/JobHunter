@@ -61,7 +61,7 @@ export default function ContactPage() {
             </div>
             <div>
               <p className="text-white/50 text-base leading-relaxed" style={{ fontWeight: 400 }}>
-                Have a question about JobHunter? Want to partner with us or need help with your account? We're here for you.
+                Have a question about CvClimber? Want to partner with us or need help with your account? We're here for you.
               </p>
             </div>
           </div>
@@ -111,7 +111,7 @@ export default function ContactPage() {
                   </div>
                   <div>
                     <h4 className="text-white text-sm font-bold mb-1">Send a Message</h4>
-                    <p className="text-white/40 text-sm" style={{ fontWeight: 400 }}>support@jobhunter.ai</p>
+                    <p className="text-white/40 text-sm" style={{ fontWeight: 400 }}>support@cvclimber.ai</p>
                   </div>
                 </div>
 
@@ -245,9 +245,9 @@ export default function ContactPage() {
         <div style={{ height: '1px', background: 'linear-gradient(90deg, transparent, rgba(118,77,240,0.4), transparent)' }} />
         <div className="mx-auto max-w-6xl px-6 py-8 flex flex-col sm:flex-row items-center justify-between gap-4">
           <Link href="/">
-            <img src="/aivent/logo.png" alt="JobHunter" style={{ height: '56px', width: 'auto', opacity: 0.5 }} />
+            <img src="/aivent/logo.png" alt="CvClimber" style={{ height: '56px', width: 'auto', opacity: 0.5 }} />
           </Link>
-          <p className="text-white/20 text-xs">&copy; {new Date().getFullYear()} JobHunter. All rights reserved.</p>
+          <p className="text-white/20 text-xs">&copy; {new Date().getFullYear()} CvClimber. All rights reserved.</p>
         </div>
       </footer>
     </div>

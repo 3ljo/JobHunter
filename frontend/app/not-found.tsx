@@ -54,7 +54,7 @@ export default function NotFound() {
         {/* Logo */}
         <img
           src="/aivent/logo.png"
-          alt="JobHunter"
+          alt="CvClimber"
           style={{ height: '36px', width: 'auto', opacity: 0.7 }}
           className="mb-14"
         />

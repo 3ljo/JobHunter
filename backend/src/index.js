@@ -1,4 +1,4 @@
-// JobHunter Backend API
+// CvClimber Backend API
 // Main entry point — configures Express server with CORS, routes, and error handling
 
 const path = require('path');
@@ -37,7 +37,7 @@ app.use(express.json({ limit: '2mb' }));
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', message: 'JobHunter API is running' });
+  res.json({ status: 'ok', message: 'CvClimber API is running' });
 });
 
 // Mount auth routes

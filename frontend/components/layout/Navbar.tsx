@@ -80,7 +80,7 @@ export default function Navbar() {
           <Link href="/dashboard" className="flex-shrink-0">
             <img
               src="/aivent/logo.png"
-              alt="JobHunter"
+              alt="CvClimber"
               style={{ height: '64px', width: 'auto' }}
             />
           </Link>
