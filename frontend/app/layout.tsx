@@ -35,7 +35,7 @@ export default function RootLayout({
       lang="en"
       className={`${manrope.variable} dark h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">
+      <body className="min-h-full flex flex-col" suppressHydrationWarning>
         {children}
         <Toaster
           position="top-center"
