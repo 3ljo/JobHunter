@@ -261,11 +261,11 @@ export default function Home() {
           ),
         }}
       >
-        <div className="mx-auto max-w-7xl px-6 flex items-center justify-between h-[72px]">
+        <div className="mx-auto max-w-7xl px-6 flex items-center justify-between h-[96px]">
 
           {/* Logo */}
           <Link href="/" className="flex-shrink-0">
-            <img src="/aivent/logo.png" alt="JobHunter" style={{ height: '36px', width: 'auto' }} />
+            <img src="/aivent/logo.png" alt="JobHunter" style={{ height: '64px', width: 'auto' }} />
           </Link>
 
           {/* Desktop nav links */}
@@ -702,7 +702,7 @@ export default function Home() {
                 <div className="d-ticket-card mb-0 rounded-b-none" style={{ backgroundImage: `url(${p.bg})`, border: p.highlight ? '2px solid oklch(0.59 0.245 291)' : '2px solid rgba(255,255,255,0.08)', borderBottom: 'none' }}>
                   <div className="absolute inset-0" style={{ background: 'rgba(16,20,53,0.82)', borderRadius: '10px 10px 0 0' }} />
                   <div className="relative" style={{ zIndex: 1 }}>
-                    <img src="/aivent/logo.png" alt="" style={{ height: '28px', marginBottom: '20px', opacity: 0.8 }} />
+                    <img src="/aivent/logo.png" alt="" style={{ height: '56px', marginBottom: '20px', opacity: 0.8 }} />
                     <h2 className="text-white mb-1" style={{ fontSize: '1.875rem', fontWeight: 800 }}>{p.plan}</h2>
                     <h4 className="text-white/80 mb-4" style={{ fontWeight: 600 }}>
                       <span className="text-white" style={{ fontSize: '2.25rem', fontWeight: 800 }}>{p.price}</span>
@@ -777,7 +777,7 @@ export default function Home() {
 
             {/* Brand */}
             <div className="md:col-span-1">
-              <img src="/aivent/logo.png" alt="JobHunter" style={{ height: '36px', width: 'auto', marginBottom: '16px' }} />
+              <img src="/aivent/logo.png" alt="JobHunter" style={{ height: '64px', width: 'auto', marginBottom: '16px' }} />
               <p className="text-white/40 text-sm leading-relaxed" style={{ fontWeight: 400 }}>
                 AI-powered CV analysis, cover letter generation, and job tracking — all in one platform.
               </p>

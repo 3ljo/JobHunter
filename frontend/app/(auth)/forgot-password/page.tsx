@@ -57,7 +57,7 @@ export default function ForgotPasswordPage() {
       <div className="relative z-10 w-full max-w-sm">
         {/* Logo */}
         <div className="mb-12 flex justify-center">
-          <img src="/aivent/logo.png" alt="AIvent" style={{ height: '40px', width: 'auto' }} />
+          <img src="/aivent/logo.png" alt="AIvent" style={{ height: '72px', width: 'auto' }} />
         </div>
 
         {!sent ? (

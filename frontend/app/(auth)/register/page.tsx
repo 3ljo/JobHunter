@@ -138,7 +138,7 @@ function RegisterForm() {
         <div className="relative z-10 w-full max-w-sm">
           {/* Mobile logo */}
           <div className="mb-10 lg:hidden">
-            <img src="/aivent/logo.png" alt="AIvent" style={{ height: '36px', width: 'auto' }} />
+            <img src="/aivent/logo.png" alt="AIvent" style={{ height: '64px', width: 'auto' }} />
           </div>
 
           <div className="mb-8">
@@ -343,7 +343,7 @@ function RegisterForm() {
 
         {/* Content */}
         <div className="relative z-10 flex flex-col items-center text-center px-12 max-w-lg">
-          <img src="/aivent/logo.png" alt="AIvent" style={{ height: '44px', width: 'auto' }} className="mb-10 opacity-90" />
+          <img src="/aivent/logo.png" alt="AIvent" style={{ height: '80px', width: 'auto' }} className="mb-10 opacity-90" />
           <h1 className="text-white leading-[1.1] mb-6" style={{ fontSize: 'clamp(32px, 3.5vw, 48px)', fontWeight: 800, letterSpacing: '-0.02em' }}>
             Your Career Journey{' '}
             <span style={{ color: 'oklch(0.59 0.245 291)' }}>Starts Here</span>

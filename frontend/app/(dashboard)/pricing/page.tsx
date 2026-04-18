@@ -146,7 +146,7 @@ function PricingContent() {
                 <div className="absolute inset-0" style={{ background: 'rgba(16,20,53,0.82)', borderRadius: '10px 10px 0 0' }} />
 
                 <div className="relative" style={{ zIndex: 1 }}>
-                  <img src="/aivent/logo.png" alt="" style={{ height: '28px', marginBottom: '20px', opacity: 0.8 }} />
+                  <img src="/aivent/logo.png" alt="" style={{ height: '56px', marginBottom: '20px', opacity: 0.8 }} />
 
                   <h2 className="text-white mb-1" style={{ fontSize: '1.875rem', fontWeight: 800 }}>
                     {p.name}
