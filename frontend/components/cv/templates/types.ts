@@ -25,7 +25,17 @@ export interface TemplateProps {
   photo?: string | null;
 }
 
-export type TemplateId = 'harvard' | 'modern' | 'minimalist' | 'european';
+export type TemplateId =
+  | 'harvard'
+  | 'modern'
+  | 'minimalist'
+  | 'european'
+  | 'tech'
+  | 'compact'
+  | 'executive'
+  | 'academic'
+  | 'consulting'
+  | 'swiss';
 
 export interface TemplateMeta {
   id: TemplateId;
@@ -72,6 +82,60 @@ export const TEMPLATES: Record<TemplateId, TemplateMeta> = {
     supportsPhoto: true,
     atsScore: 94,
     region: 'Europe',
+    proOnly: true,
+  },
+  tech: {
+    id: 'tech',
+    name: 'Technical Engineer',
+    description: 'Skills front-and-center. Ideal for software, data, and engineering roles.',
+    supportsPhoto: false,
+    atsScore: 98,
+    region: 'Global',
+    proOnly: false,
+  },
+  compact: {
+    id: 'compact',
+    name: 'Compact One-Page',
+    description: 'Tight spacing for senior candidates with lots of content that must fit on one page.',
+    supportsPhoto: false,
+    atsScore: 97,
+    region: 'Global',
+    proOnly: false,
+  },
+  executive: {
+    id: 'executive',
+    name: 'Executive Narrative',
+    description: 'Strong summary opening, serif typography — built for director and VP roles.',
+    supportsPhoto: false,
+    atsScore: 96,
+    region: 'Global',
+    proOnly: true,
+  },
+  academic: {
+    id: 'academic',
+    name: 'Academic / Research',
+    description: 'Traditional academic layout with Publications section (uses Certifications field).',
+    supportsPhoto: false,
+    atsScore: 95,
+    region: 'Global',
+    proOnly: true,
+  },
+  consulting: {
+    id: 'consulting',
+    name: 'Consulting Metrics',
+    description: 'McKinsey-style with numbers-first bullets. Built for consulting and strategy roles.',
+    supportsPhoto: false,
+    atsScore: 97,
+    region: 'US / UK',
+    proOnly: true,
+  },
+  swiss: {
+    id: 'swiss',
+    name: 'Swiss Grid',
+    description: 'Minimalist Swiss typography with strict hierarchy and wide letterspacing.',
+    supportsPhoto: false,
+    atsScore: 96,
+    region: 'Europe / Global',
     proOnly: true,
   },
 };
