@@ -75,14 +75,14 @@ export default function Navbar() {
               }
         }
       >
-        <div className="mx-auto flex h-[72px] max-w-7xl items-center justify-between px-6">
+        <div className="mx-auto flex h-[96px] max-w-7xl items-center justify-between px-6">
 
           {/* ── LOGO ── */}
           <Link href="/dashboard" className="flex-shrink-0">
             <img
-              src="/aivent/logo.webp"
-              alt="JobHunter"
-              style={{ height: '34px', width: 'auto' }}
+              src="/aivent/logo.png"
+              alt="CvClimber"
+              style={{ height: '64px', width: 'auto' }}
             />
           </Link>
 

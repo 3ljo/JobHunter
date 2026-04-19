@@ -105,7 +105,7 @@ export default function ReferralsPage() {
           <div className="flex flex-col md:flex-row md:items-end gap-6">
             {/* Left — code */}
             <div className="flex-1">
-              <img src="/aivent/logo.webp" className="mb-4" style={{ width: '60px', opacity: 0.7 }} alt="" />
+              <img src="/aivent/logo.png" className="mb-4" style={{ width: '60px', opacity: 0.7 }} alt="" />
               <label className="text-[10px] font-bold uppercase tracking-widest text-white/50 block mb-2">Your Referral Code</label>
               <div className="flex items-center gap-3">
                 <span className="text-3xl font-black text-white tracking-[0.12em] font-mono">{code}</span>

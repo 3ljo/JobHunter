@@ -10,7 +10,7 @@ const manrope = Manrope({
 });
 
 export const metadata: Metadata = {
-  title: "JobHunter — AI-Powered Job Search",
+  title: "CvClimber — AI-Powered Job Search",
   description: "Land your dream job with AI-powered CV analysis, cover letter generation, and smart job tracking.",
   icons: {
     icon: '/icon.png',
@@ -35,7 +35,7 @@ export default function RootLayout({
       lang="en"
       className={`${manrope.variable} dark h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">
+      <body className="min-h-full flex flex-col" suppressHydrationWarning>
         {children}
         <Toaster
           position="top-center"

@@ -216,7 +216,7 @@ function CheckoutForm() {
 
           {/* d-ticket card — from tickets-2.html */}
           <div className={`d-ticket ${plan.ticketClass}`}>
-            <img src="/aivent/logo.webp" className="mb-4" style={{ width: '80px' }} alt="" />
+            <img src="/aivent/logo.png" className="mb-4" style={{ width: '80px' }} alt="" />
             <h2 className="text-white">{plan.name}</h2>
             <h4 className="text-white/80 mb-4" style={{ fontWeight: 600 }}>
               <span className="text-white" style={{ fontSize: '2.25rem', fontWeight: 800 }}>

@@ -1,7 +1,7 @@
 {
-  "name": "jobhunter-backend",
+  "name": "cvclimber-backend",
   "version": "1.0.0",
-  "description": "Backend API for JobHunter job assistant web app",
+  "description": "Backend API for CvClimber job assistant web app",
   "main": "src/index.js",
   "scripts": {
     "start": "node src/index.js",

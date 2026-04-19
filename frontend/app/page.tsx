@@ -192,9 +192,9 @@ export default function Home() {
   ];
 
   const faqItems = [
-    { q: 'What is JobHunter?', a: 'JobHunter is an AI-powered job search platform that analyzes your CV against any job description, generates tailored cover letters, and helps you track all your applications in one place.' },
+    { q: 'What is CvClimber?', a: 'CvClimber is an AI-powered job search platform that analyzes your CV against any job description, generates tailored cover letters, and helps you track all your applications in one place.' },
     { q: 'How does the CV analysis work?', a: 'Upload your CV and paste a job description. Our AI scores your CV for ATS compatibility, identifies missing keywords, and gives you actionable suggestions to improve your score instantly.' },
-    { q: 'Is JobHunter free to use?', a: 'Yes — create a free account and start analyzing your CV right away. No credit card required. Pro and Teams plans unlock unlimited usage.' },
+    { q: 'Is CvClimber free to use?', a: 'Yes — create a free account and start analyzing your CV right away. No credit card required. Pro and Teams plans unlock unlimited usage.' },
     { q: 'What file formats does it support?', a: 'You can paste your CV text directly or upload a document. The AI processes the content and matches it against your target job description.' },
     { q: 'How does the cover letter generator work?', a: 'After your CV is analyzed, click "Generate Cover Letter". Choose your tone — balanced, formal, or friendly — and our AI crafts a personalized letter in seconds.' },
     { q: 'Is my data secure?', a: 'Yes. Your CV data is stored securely with Supabase and is only used to power your analysis. We never share your data with third parties.' },
@@ -261,11 +261,11 @@ export default function Home() {
           ),
         }}
       >
-        <div className="mx-auto max-w-7xl px-6 flex items-center justify-between h-[72px]">
+        <div className="mx-auto max-w-7xl px-6 flex items-center justify-between h-[96px]">
 
           {/* Logo */}
           <Link href="/" className="flex-shrink-0">
-            <img src="/aivent/logo.webp" alt="JobHunter" style={{ height: '36px', width: 'auto' }} />
+            <img src="/aivent/logo.png" alt="CvClimber" style={{ height: '96px', width: 'auto' }} />
           </Link>
 
           {/* Desktop nav links */}
@@ -385,10 +385,10 @@ export default function Home() {
         <div className="relative mx-auto max-w-7xl px-4 sm:px-6 pb-16 sm:pb-24" style={{ zIndex: 2 }}>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 items-center">
 
-            {/* Left — c2.webp hero robot image */}
+            {/* Left — landingrobot.png hero robot image */}
             <div className="wow fadeInUp order-first lg:order-none text-center lg:text-left" data-wow-delay=".3s">
               <img
-                src="/aivent/misc/c2.webp"
+                src="/aivent/misc/landingrobot.png"
                 alt="AI Job Search"
                 className="w-full mx-auto max-h-[280px] sm:max-h-[400px] lg:max-h-[560px]"
                 style={{ objectFit: 'contain' }}
@@ -397,7 +397,7 @@ export default function Home() {
 
             {/* Right — headline + CTA */}
             <div>
-              <span className="aivent-subtitle s2 wow fadeInUp" data-wow-delay=".0s">Welcome to JobHunter</span>
+              <span className="aivent-subtitle s2 wow fadeInUp" data-wow-delay=".0s">Welcome to CvClimber</span>
               <h1
                 className="wow fadeInUp text-white leading-[1.1] mb-6"
                 style={{ fontSize: 'clamp(30px,7vw,62px)', letterSpacing: '-0.02em', fontWeight: 800 }}
@@ -406,7 +406,7 @@ export default function Home() {
                 Land Your Dream Job with Artificial Intelligence
               </h1>
               <p className="wow fadeInUp text-white/60 text-base leading-relaxed mb-8" style={{ fontWeight: 400, maxWidth: '32rem' }} data-wow-delay=".4s">
-                Upload your CV, paste any job description, and get an instant ATS score, keyword gap analysis, and a tailored cover letter. JobHunter gives every job seeker an unfair advantage.
+                Upload your CV, paste any job description, and get an instant ATS score, keyword gap analysis, and a tailored cover letter. CvClimber gives every job seeker an unfair advantage.
               </p>
               <div className="flex flex-wrap items-center gap-4 wow fadeInUp" data-wow-delay=".6s">
                 {isLoggedIn
@@ -444,10 +444,10 @@ export default function Home() {
         <div className="mx-auto max-w-6xl">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
             <div>
-              <span className="aivent-subtitle wow fadeInUp" data-wow-delay=".2s">About JobHunter</span>
+              <span className="aivent-subtitle wow fadeInUp" data-wow-delay=".2s">About CvClimber</span>
               <h2 className="wow fadeInUp text-white tracking-tight mb-6" style={{ fontSize: 'clamp(32px,4vw,48px)', fontWeight: 800 }} data-wow-delay=".4s">A Global AI Platform for Job Seekers</h2>
               <p className="wow fadeInUp text-white/55 text-base leading-relaxed mb-8" style={{ fontWeight: 400 }} data-wow-delay=".6s">
-                Join thousands of job seekers using cutting-edge AI to perfect their CVs, craft winning cover letters, and land interviews faster. JobHunter gives you the AI-powered edge in every application.
+                Join thousands of job seekers using cutting-edge AI to perfect their CVs, craft winning cover letters, and land interviews faster. CvClimber gives you the AI-powered edge in every application.
               </p>
               <ul className="ul-check">
                 <li className="wow fadeInUp" data-wow-delay=".7s">Instant ATS scoring against any job description</li>
@@ -457,7 +457,7 @@ export default function Home() {
               </ul>
             </div>
             <div className="flex justify-center wow scaleIn">
-              <img src="/aivent/misc/c1.webp" alt="JobHunter AI" className="rotate-slow" style={{ width: '80%', maxWidth: '420px' }} />
+              <img src="/aivent/misc/c1.webp" alt="CvClimber AI" className="rotate-slow" style={{ width: '80%', maxWidth: '420px' }} />
             </div>
           </div>
         </div>
@@ -527,7 +527,7 @@ export default function Home() {
       <section id="features" className="py-16 sm:py-32 px-4 sm:px-6" style={{ background: '#101435', position: 'relative', zIndex: 1 }}>
         <div className="mx-auto max-w-6xl">
           <div className="text-center mb-16">
-            <span className="aivent-subtitle" data-reveal>Why JobHunter</span>
+            <span className="aivent-subtitle" data-reveal>Why CvClimber</span>
             <h2 className="text-white tracking-tight wow fadeInUp" data-wow-delay=".1s" style={{ fontSize: 'clamp(32px,4vw,48px)', fontWeight: 800 }}>What You Will Gain</h2>
             <p className="text-white/55 text-lg mt-4 max-w-2xl mx-auto wow fadeInUp" style={{ fontWeight: 400 }} data-wow-delay=".2s">
               From ATS-beating CVs to automated cover letters — every tool you need to land your next role faster.
@@ -580,7 +580,7 @@ export default function Home() {
           <div className="text-center mb-16">
             <span className="aivent-subtitle" data-reveal>Success Stories</span>
             <h2 className="text-white tracking-tight wow fadeInUp" data-wow-delay=".1s" style={{ fontSize: 'clamp(32px,4vw,48px)', fontWeight: 800 }}>Meet Our Top Users</h2>
-            <p className="text-white/55 text-lg mt-4 max-w-2xl mx-auto wow fadeInUp" style={{ fontWeight: 400 }} data-wow-delay=".2s">Real job seekers who used JobHunter to land roles at the world's top companies.</p>
+            <p className="text-white/55 text-lg mt-4 max-w-2xl mx-auto wow fadeInUp" style={{ fontWeight: 400 }} data-wow-delay=".2s">Real job seekers who used CvClimber to land roles at the world's top companies.</p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {testimonials.map((t, i) => (
@@ -630,7 +630,7 @@ export default function Home() {
               <span className="aivent-subtitle wow fadeInUp" data-wow-delay=".2s">How It Works</span>
               <h2 className="wow fadeInUp text-white tracking-tight mb-6" style={{ fontSize: 'clamp(32px,4vw,48px)', fontWeight: 800 }} data-wow-delay=".4s">Your Path to Getting Hired</h2>
               <p className="wow fadeInUp text-white/55 text-base leading-relaxed mb-8" style={{ fontWeight: 400 }} data-wow-delay=".6s">
-                From uploading your CV to landing interviews — JobHunter's AI handles every step.
+                From uploading your CV to landing interviews — CvClimber's AI handles every step.
                 Get your ATS score, optimize your profile, generate cover letters, and track every application in one place.
               </p>
               <ul className="ul-check mb-8">
@@ -702,7 +702,7 @@ export default function Home() {
                 <div className="d-ticket-card mb-0 rounded-b-none" style={{ backgroundImage: `url(${p.bg})`, border: p.highlight ? '2px solid oklch(0.59 0.245 291)' : '2px solid rgba(255,255,255,0.08)', borderBottom: 'none' }}>
                   <div className="absolute inset-0" style={{ background: 'rgba(16,20,53,0.82)', borderRadius: '10px 10px 0 0' }} />
                   <div className="relative" style={{ zIndex: 1 }}>
-                    <img src="/aivent/logo.webp" alt="" style={{ height: '28px', marginBottom: '20px', opacity: 0.8 }} />
+                    <img src="/aivent/logo.png" alt="" style={{ height: '56px', marginBottom: '20px', opacity: 0.8 }} />
                     <h2 className="text-white mb-1" style={{ fontSize: '1.875rem', fontWeight: 800 }}>{p.plan}</h2>
                     <h4 className="text-white/80 mb-4" style={{ fontWeight: 600 }}>
                       <span className="text-white" style={{ fontSize: '2.25rem', fontWeight: 800 }}>{p.price}</span>
@@ -777,7 +777,7 @@ export default function Home() {
 
             {/* Brand */}
             <div className="md:col-span-1">
-              <img src="/aivent/logo.webp" alt="JobHunter" style={{ height: '36px', width: 'auto', marginBottom: '16px' }} />
+              <img src="/aivent/logo.png" alt="CvClimber" style={{ height: '64px', width: 'auto', marginBottom: '16px' }} />
               <p className="text-white/40 text-sm leading-relaxed" style={{ fontWeight: 400 }}>
                 AI-powered CV analysis, cover letter generation, and job tracking — all in one platform.
               </p>
@@ -837,7 +837,7 @@ export default function Home() {
           {/* Bottom bar */}
           <div className="pt-6 flex flex-col sm:flex-row items-center justify-between gap-4" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
             <p className="text-white/20 text-xs" style={{ fontWeight: 400 }}>
-              &copy; {new Date().getFullYear()} JobHunter. All rights reserved.
+              &copy; {new Date().getFullYear()} CvClimber. All rights reserved.
             </p>
             <div className="flex items-center gap-5">
               <a href="https://x.com" target="_blank" rel="noopener noreferrer" className="text-white/20 hover:text-white/50 transition-colors text-xs">X / Twitter</a>
