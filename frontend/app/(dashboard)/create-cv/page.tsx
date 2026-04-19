@@ -35,7 +35,7 @@ export default function CreateCVPage() {
       <section
         className="relative overflow-hidden pt-10 sm:pt-16 pb-10 sm:pb-14"
         style={{
-          backgroundImage: 'url(/aivent/background/6.webp)',
+          backgroundImage: 'url(/aivent/background/1.webp)',
           backgroundSize: 'cover',
           backgroundPosition: 'center',
           backgroundAttachment: 'fixed',
