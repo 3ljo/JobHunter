@@ -316,4 +316,102 @@ const refineCV = async (req, res) => {
   }
 };
 
-module.exports = { analyzeCV, getCVHistory, deleteCVRecord, downloadCVPdf, previewCVPdf, refineCV };
+// POST /api/cv/create — Generate a CV from user-supplied structured data (no AI analysis).
+// Saves to the `cvs` table using the same shape analyzeCV produces, so the existing
+// download/preview endpoints render it without any further changes.
+const createCV = async (req, res) => {
+  try {
+    const { cv, template, photo } = req.body || {};
+
+    if (!cv || typeof cv !== 'object') {
+      return res.status(400).json({ error: 'cv object is required' });
+    }
+    if (!cv.full_name || !String(cv.full_name).trim()) {
+      return res.status(400).json({ error: 'Full name is required' });
+    }
+
+    // Normalize: drop empty strings/arrays so the templates render cleanly.
+    const clean = {
+      full_name:  String(cv.full_name || '').trim() || undefined,
+      email:      String(cv.email || '').trim() || undefined,
+      phone:      String(cv.phone || '').trim() || undefined,
+      location:   String(cv.location || '').trim() || undefined,
+      linkedin:   String(cv.linkedin || '').trim() || undefined,
+      summary:    String(cv.summary || '').trim() || undefined,
+      experience: Array.isArray(cv.experience)
+        ? cv.experience
+            .map((e) => ({
+              title:    String(e?.title || '').trim() || undefined,
+              company:  String(e?.company || '').trim() || undefined,
+              duration: String(e?.duration || '').trim() || undefined,
+              bullets:  Array.isArray(e?.bullets)
+                ? e.bullets.map((b) => String(b || '').trim()).filter(Boolean)
+                : [],
+            }))
+            .filter((e) => e.title || e.company || (e.bullets && e.bullets.length))
+        : [],
+      education: Array.isArray(cv.education)
+        ? cv.education
+            .map((e) => ({
+              degree:      String(e?.degree || '').trim() || undefined,
+              institution: String(e?.institution || '').trim() || undefined,
+              year:        String(e?.year || '').trim() || undefined,
+            }))
+            .filter((e) => e.degree || e.institution || e.year)
+        : [],
+      skills: Array.isArray(cv.skills)
+        ? cv.skills.map((s) => String(s || '').trim()).filter(Boolean)
+        : [],
+      certifications: Array.isArray(cv.certifications)
+        ? cv.certifications
+            .map((c) => (typeof c === 'string' ? c.trim() : String(c?.name || '').trim()))
+            .filter(Boolean)
+        : [],
+    };
+
+    const insertData = {
+      user_id: req.user.id,
+      file_name: `cv_created_${Date.now()}.pdf`,
+      file_url: null,
+      raw_text: null,
+      ats_score: null,
+      ats_feedback: {
+        final: {
+          final_cv: clean,
+          // Remember what the user picked so the history list can show it
+          // and re-downloads default to the same template.
+          template: typeof template === 'string' ? template : 'harvard',
+          photo: typeof photo === 'string' && photo.startsWith('data:image/') ? photo : null,
+        },
+      },
+      is_generated: true,
+    };
+
+    let { data: cvRecord, error: dbError } = await supabase
+      .from('cvs')
+      .insert(insertData)
+      .select()
+      .single();
+
+    // Retry without projected_score column if the legacy schema doesn't have it — same
+    // defensive pattern analyzeCV uses. `projected_score` isn't in insertData here, but
+    // other optional columns could also be missing on older Supabase projects.
+    if (dbError) {
+      console.error('createCV insert failed:', dbError.message);
+      return res.status(500).json({ error: `Failed to save CV: ${dbError.message}` });
+    }
+
+    // Counts against the daily CV quota (same quota as analyze — one "CV" per day).
+    await incrementUsage(req.user.id, 'cv_analysis');
+
+    return res.status(200).json({
+      cv_record_id: cvRecord.id,
+      final_cv: clean,
+    });
+  } catch (err) {
+    console.error('CV create error:', err.message);
+    return res.status(500).json({ error: err.message || 'CV creation failed' });
+  }
+};
+
+module.exports = { analyzeCV, createCV, getCVHistory, deleteCVRecord, downloadCVPdf, previewCVPdf, refineCV };

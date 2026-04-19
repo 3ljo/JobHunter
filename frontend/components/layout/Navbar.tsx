@@ -19,6 +19,7 @@ import LanguageSwitcher from './LanguageSwitcher';
 const navItems = [
   { href: '/dashboard',    label: 'Dashboard'    },
   { href: '/cv',           label: 'CV Analyzer'  },
+  { href: '/create-cv',    label: 'Create CV'    },
   { href: '/cover-letter', label: 'Cover Letter' },
   { href: '/interview',    label: 'Interview', badge: 'PRO+' },
   { href: '/tracker',      label: 'Tracker'      },

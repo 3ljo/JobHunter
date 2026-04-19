@@ -112,6 +112,26 @@ export const refineCV = (cvId: string, instructions: string) =>
     instructions,
   }, { timeout: 60000 });
 
+export interface CreateCVData {
+  full_name: string;
+  email?: string;
+  phone?: string;
+  location?: string;
+  linkedin?: string;
+  summary?: string;
+  experience?: Array<{ title?: string; company?: string; duration?: string; bullets?: string[] }>;
+  education?: Array<{ degree?: string; institution?: string; year?: string }>;
+  skills?: string[];
+  certifications?: string[];
+}
+
+export const createCV = (cv: CreateCVData, template?: string, photo?: string | null) =>
+  api.post<{ cv_record_id: string; final_cv: any }>('/api/cv/create', {
+    cv,
+    template,
+    photo: photo || null,
+  }, { timeout: 30000 });
+
 // Tracker
 export const getAllTrackerJobs = () =>
   api.get<{ jobs: TrackerJob[] }>('/api/tracker');
