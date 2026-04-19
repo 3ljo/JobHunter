@@ -15,6 +15,10 @@ import CVPreview from './CVPreview';
 import QuickEditBox from './QuickEditBox';
 import { TEMPLATES, type TemplateId } from './templates';
 
+interface CreateCVFormProps {
+  onSubmittingChange?: (submitting: boolean) => void;
+}
+
 const glass = {
   background: 'rgba(0,0,0,0.30)',
   backdropFilter: 'blur(18px)',
@@ -40,7 +44,7 @@ const emptyLanguage   = (): Language   => ({ name: '', level: 'Fluent' });
 
 const LANGUAGE_LEVELS = ['Native', 'Fluent', 'Advanced', 'Intermediate', 'Basic'] as const;
 
-export default function CreateCVForm() {
+export default function CreateCVForm({ onSubmittingChange }: CreateCVFormProps = {}) {
   const router = useRouter();
   const { subscription, bumpLocalUsage, fetchSubscription } = useSubscriptionStore();
   const isPro = subscription?.plan === 'pro' || subscription?.plan === 'pro_plus';
@@ -151,6 +155,7 @@ export default function CreateCVForm() {
     };
 
     setSubmitting(true);
+    onSubmittingChange?.(true);
     try {
       // Template is picked at preview stage — we save the record with the default
       // and let the download endpoint override per request.
@@ -168,6 +173,7 @@ export default function CreateCVForm() {
       toast.error(msg);
     } finally {
       setSubmitting(false);
+      onSubmittingChange?.(false);
     }
   };
 
