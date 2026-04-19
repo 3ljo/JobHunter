@@ -133,6 +133,26 @@ function renderCertifications(cv) {
   `;
 }
 
+function langText(lang) {
+  if (!lang) return '';
+  if (typeof lang === 'string') return lang.trim();
+  const name = String(lang.name || '').trim();
+  const level = String(lang.level || '').trim();
+  if (name && level) return `${name} — ${level}`;
+  return name || level;
+}
+
+function renderLanguages(cv, heading = 'LANGUAGES') {
+  const entries = (cv.languages || []).filter((l) => langText(l).length > 0);
+  if (entries.length === 0) return '';
+  return `
+    <div class="section">
+      <h2>${heading}</h2>
+      <p>${escapeHtml(entries.map(langText).join('  ·  '))}</p>
+    </div>
+  `;
+}
+
 function baseStyles() {
   return `
     * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -169,6 +189,7 @@ li { font-size: 11pt; }
   ${renderExperience(cv)}
   ${renderSkills(cv)}
   ${renderEducation(cv)}
+  ${renderLanguages(cv)}
   ${renderCertifications(cv)}
 </body></html>`;
 }
@@ -219,6 +240,7 @@ li { font-size: 10.5pt; }
   ${experienceHtml}
   ${renderSkills(cv, ' · ')}
   ${renderEducation(cv)}
+  ${renderLanguages(cv)}
   ${renderCertifications(cv)}
 </body></html>`;
 }
@@ -250,6 +272,7 @@ li { font-size: 11pt; }
   ${renderExperience(cv, 'EXPERIENCE')}
   ${renderSkills(cv, ' · ', 'EXPERTISE')}
   ${renderEducation(cv)}
+  ${renderLanguages(cv)}
   ${renderCertifications(cv)}
 </body></html>`;
 }
@@ -288,6 +311,7 @@ li { font-size: 11pt; }
   ${renderExperience(cv)}
   ${renderEducation(cv)}
   ${renderSkills(cv)}
+  ${renderLanguages(cv)}
   ${renderCertifications(cv)}
 </body></html>`;
 }
@@ -346,6 +370,7 @@ li { font-size: 10.5pt; }
   ${cv.summary ? `<div class="section"><h2>Summary</h2><p>${escapeHtml(cv.summary)}</p></div>` : ''}
   ${experienceHtml}
   ${renderEducation(cv)}
+  ${renderLanguages(cv)}
   ${renderCertifications(cv)}
 </body></html>`;
 }
@@ -396,6 +421,7 @@ li { font-size: 9.5pt; margin-bottom: 1pt; }
   ${experienceHtml}
   ${renderSkills(cv, ' · ')}
   ${renderEducation(cv)}
+  ${renderLanguages(cv)}
   ${renderCertifications(cv)}
 </body></html>`;
 }
@@ -467,6 +493,7 @@ li { font-size: 11pt; }
   ${experienceHtml}
   ${renderSkills(cv, '  ·  ', 'Core Competencies')}
   ${renderEducation(cv)}
+  ${renderLanguages(cv)}
   ${renderCertifications(cv)}
 </body></html>`;
 }
@@ -543,6 +570,7 @@ li { font-size: 11pt; }
   ${experienceHtml}
   ${publicationsHtml}
   ${renderSkills(cv, '; ', 'Technical &amp; Methodological Skills')}
+  ${renderLanguages(cv)}
 </body></html>`;
 }
 
@@ -598,6 +626,7 @@ strong { color: #0c2340; }
   ${experienceHtml}
   ${renderSkills(cv, ' · ', 'Expertise')}
   ${renderEducation(cv)}
+  ${renderLanguages(cv)}
   ${renderCertifications(cv)}
 </body></html>`;
 }
@@ -678,6 +707,7 @@ li { font-size: 10.5pt; }
   ${experienceHtml}
   ${educationHtml}
   ${renderSkills(cv, ' / ', '04 / Skills')}
+  ${renderLanguages(cv)}
   ${renderCertifications(cv)}
 </body></html>`;
 }

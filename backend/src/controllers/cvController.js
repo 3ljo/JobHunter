@@ -367,6 +367,18 @@ const createCV = async (req, res) => {
             .map((c) => (typeof c === 'string' ? c.trim() : String(c?.name || '').trim()))
             .filter(Boolean)
         : [],
+      languages: Array.isArray(cv.languages)
+        ? cv.languages
+            .map((l) => {
+              if (!l) return null;
+              if (typeof l === 'string') return { name: l.trim() };
+              const name = String(l.name || '').trim();
+              const level = String(l.level || '').trim();
+              if (!name) return null;
+              return level ? { name, level } : { name };
+            })
+            .filter(Boolean)
+        : [],
     };
 
     const insertData = {

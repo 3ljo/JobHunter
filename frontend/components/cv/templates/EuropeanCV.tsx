@@ -1,13 +1,14 @@
 'use client';
 
 import type { TemplateProps } from './types';
-import { certText, cleanCerts, cleanEducation } from './types';
+import { certText, cleanCerts, cleanEducation, cleanLanguages, langText } from './types';
 
 export default function EuropeanCV({ cv, photo }: TemplateProps) {
   if (!cv) return null;
   const contactParts = [cv.email, cv.phone, cv.location, cv.linkedin].filter(Boolean);
   const certs = cleanCerts(cv.certifications);
   const edu = cleanEducation(cv.education);
+  const langs = cleanLanguages(cv.languages);
   const skills = (cv.skills || []).filter((s) => s && String(s).trim());
 
   return (
@@ -85,6 +86,14 @@ export default function EuropeanCV({ cv, photo }: TemplateProps) {
       {skills.length > 0 && (
         <Section title="Skills">
           <p className="text-[13px] sm:text-sm text-gray-800">{skills.join(', ')}</p>
+        </Section>
+      )}
+
+      {langs.length > 0 && (
+        <Section title="Languages">
+          <p className="text-[13px] sm:text-sm text-gray-800">
+            {langs.map((l) => langText(l)).join(', ')}
+          </p>
         </Section>
       )}
 

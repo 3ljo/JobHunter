@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import {
   User, Mail, Phone, MapPin, Link2, Briefcase, GraduationCap, Wrench,
-  Award, Sparkles, Plus, Trash2, Download, ArrowLeft, Palette,
+  Award, Sparkles, Plus, Trash2, Download, ArrowLeft, Palette, Globe,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useRouter } from 'next/navigation';
@@ -32,9 +32,13 @@ const inputClass = 'w-full rounded-xl px-3 py-2.5 text-sm outline-none';
 
 type Experience = { title: string; company: string; duration: string; bullets: string[] };
 type Education  = { degree: string; institution: string; year: string };
+type Language   = { name: string; level: string };
 
 const emptyExperience = (): Experience => ({ title: '', company: '', duration: '', bullets: [''] });
 const emptyEducation  = (): Education  => ({ degree: '', institution: '', year: '' });
+const emptyLanguage   = (): Language   => ({ name: '', level: 'Fluent' });
+
+const LANGUAGE_LEVELS = ['Native', 'Fluent', 'Advanced', 'Intermediate', 'Basic'] as const;
 
 export default function CreateCVForm() {
   const router = useRouter();
@@ -52,6 +56,7 @@ export default function CreateCVForm() {
   const [education, setEducation]   = useState<Education[]>([emptyEducation()]);
   const [skillsInput, setSkillsInput] = useState('');
   const [certifications, setCertifications] = useState<string[]>(['']);
+  const [languages, setLanguages] = useState<Language[]>([emptyLanguage()]);
 
   /* ─── Preview-phase state (template + photo picked AFTER generation) ─── */
   const [template, setTemplate] = useState<TemplateId>('harvard');
@@ -101,6 +106,13 @@ export default function CreateCVForm() {
   const updateCert = (i: number, value: string) =>
     setCertifications((cs) => cs.map((c, idx) => (idx === i ? value : c)));
 
+  /* ─── Language handlers ─── */
+  const addLanguage = () => setLanguages((ls) => [...ls, emptyLanguage()]);
+  const removeLanguage = (i: number) =>
+    setLanguages((ls) => (ls.length <= 1 ? ls : ls.filter((_, idx) => idx !== i)));
+  const updateLanguage = (i: number, patch: Partial<Language>) =>
+    setLanguages((ls) => ls.map((l, idx) => (idx === i ? { ...l, ...patch } : l)));
+
   const canSubmit = fullName.trim().length > 0 && !submitting;
 
   const handleGenerate = async () => {
@@ -133,6 +145,9 @@ export default function CreateCVForm() {
         .filter((e) => e.degree || e.institution || e.year),
       skills: skillsInput.split(',').map((s) => s.trim()).filter(Boolean),
       certifications: certifications.map((c) => c.trim()).filter(Boolean),
+      languages: languages
+        .map((l) => ({ name: l.name.trim(), level: l.level.trim() }))
+        .filter((l) => l.name),
     };
 
     setSubmitting(true);
@@ -489,6 +504,43 @@ export default function CreateCVForm() {
             )}
           </div>
         ))}
+      </div>
+
+      {/* Languages */}
+      <div className="rounded-2xl p-4 sm:p-5 mt-4" style={glass}>
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <Globe className="h-4 w-4" style={{ color: '#a78bfa' }} />
+            <p className="text-xs font-bold uppercase tracking-widest text-white/50">Languages</p>
+          </div>
+          <AddButton onClick={addLanguage} label="Add language" />
+        </div>
+        {languages.map((l, i) => (
+          <div key={i} className="flex items-center gap-2 mb-2 last:mb-0">
+            <input
+              type="text"
+              value={l.name}
+              onChange={(e) => updateLanguage(i, { name: e.target.value })}
+              placeholder="e.g. English"
+              className={`${inputClass} flex-1`}
+              style={inputStyle}
+            />
+            <select
+              value={l.level}
+              onChange={(e) => updateLanguage(i, { level: e.target.value })}
+              className="rounded-xl px-3 py-2.5 text-sm outline-none shrink-0"
+              style={{ ...inputStyle, minWidth: 140 }}
+            >
+              {LANGUAGE_LEVELS.map((lvl) => (
+                <option key={lvl} value={lvl} style={{ background: '#12163a' }}>{lvl}</option>
+              ))}
+            </select>
+            {languages.length > 1 && (
+              <IconButton onClick={() => removeLanguage(i)} icon={<Trash2 className="h-3.5 w-3.5" />} />
+            )}
+          </div>
+        ))}
+        <p className="text-[11px] text-white/35 mt-2">Standard levels: Native, Fluent, Advanced, Intermediate, Basic.</p>
       </div>
 
       {/* Generate — takes user to the preview phase, where they pick template and download */}

@@ -123,6 +123,7 @@ export interface CreateCVData {
   education?: Array<{ degree?: string; institution?: string; year?: string }>;
   skills?: string[];
   certifications?: string[];
+  languages?: Array<{ name: string; level?: string }>;
 }
 
 export const createCV = (cv: CreateCVData, template?: string, photo?: string | null) =>

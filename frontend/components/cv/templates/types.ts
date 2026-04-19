@@ -1,3 +1,8 @@
+export interface CVLanguage {
+  name?: string;
+  level?: string;
+}
+
 export interface CVData {
   full_name?: string;
   email?: string;
@@ -18,6 +23,7 @@ export interface CVData {
     year?: string;
   }>;
   certifications?: Array<string | { name?: string }>;
+  languages?: Array<string | CVLanguage>;
 }
 
 export interface TemplateProps {
@@ -174,4 +180,18 @@ export function cleanEducation<T extends { degree?: string; institution?: string
 ): T[] {
   if (!Array.isArray(list)) return [];
   return list.filter((e) => eduText(e).length > 0);
+}
+
+export function langText(lang: string | CVLanguage | undefined | null): string {
+  if (!lang) return '';
+  if (typeof lang === 'string') return lang.trim();
+  const name = (lang.name || '').trim();
+  const level = (lang.level || '').trim();
+  if (name && level) return `${name} — ${level}`;
+  return name || level;
+}
+
+export function cleanLanguages(list: Array<string | CVLanguage> | undefined | null): Array<string | CVLanguage> {
+  if (!Array.isArray(list)) return [];
+  return list.filter((l) => langText(l).length > 0);
 }
