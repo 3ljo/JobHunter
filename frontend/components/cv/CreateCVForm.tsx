@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import {
-  User, Mail, Phone, MapPin, Linkedin, Briefcase, GraduationCap, Wrench,
+  User, Mail, Phone, MapPin, Link2, Briefcase, GraduationCap, Wrench,
   Award, Sparkles, Plus, Trash2, Download,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -171,7 +171,7 @@ export default function CreateCVForm() {
           <LabeledInput icon={<Mail className="h-3.5 w-3.5" />} value={email} onChange={setEmail} placeholder="Email" />
           <LabeledInput icon={<Phone className="h-3.5 w-3.5" />} value={phone} onChange={setPhone} placeholder="Phone" />
           <LabeledInput icon={<MapPin className="h-3.5 w-3.5" />} value={location} onChange={setLocation} placeholder="Location (e.g. Berlin, DE)" />
-          <LabeledInput icon={<Linkedin className="h-3.5 w-3.5" />} value={linkedin} onChange={setLinkedin} placeholder="LinkedIn URL" />
+          <LabeledInput icon={<Link2 className="h-3.5 w-3.5" />} value={linkedin} onChange={setLinkedin} placeholder="LinkedIn URL" />
         </div>
       </div>
 
