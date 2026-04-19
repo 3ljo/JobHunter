@@ -14,9 +14,9 @@ type Row = {
 };
 
 const ROWS: Row[] = [
-  { feature: 'cv',             label: 'CV Analyses',     href: '/cv',           icon: FileText,        color: '#a78bfa' },
-  { feature: 'cover_letter',   label: 'Cover Letters',   href: '/cover-letter', icon: MessageSquare,   color: '#60a5fa' },
-  { feature: 'mock_interview', label: 'Mock Interviews', href: '/interview',    icon: Mic2,            color: '#fbbf24' },
+  { feature: 'cv',             label: 'CVs (Analyze + Create)', href: '/cv',           icon: FileText,        color: '#a78bfa' },
+  { feature: 'cover_letter',   label: 'Cover Letters',           href: '/cover-letter', icon: MessageSquare,   color: '#60a5fa' },
+  { feature: 'mock_interview', label: 'Mock Interviews',         href: '/interview',    icon: Mic2,            color: '#fbbf24' },
 ];
 
 const planLabel = (plan?: string | null) =>

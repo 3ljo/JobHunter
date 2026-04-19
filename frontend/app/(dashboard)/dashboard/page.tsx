@@ -12,7 +12,7 @@ import { ArrowRight } from 'lucide-react';
 /* ─── config ──────────────────────────────────────────────────────── */
 const TOOLS = [
   { href: '/cv',           label: 'CV Analyzer',     desc: 'ATS scoring & keyword gap analysis for any job.',        img: '/aivent/misc/s3.webp' },
-  { href: '/create-cv',    label: 'Create CV',       desc: 'Build a CV from scratch — fill the form, preview live, tune with AI, download.', img: '/aivent/misc/s6.webp' },
+  { href: '/create-cv',    label: 'Create CV',       desc: 'Build a CV from scratch — fill the form, preview live, tune with AI, download.', img: '/aivent/misc/s2.webp' },
   { href: '/cover-letter', label: 'Cover Letter',    desc: 'AI-tailored cover letters generated in seconds.',         img: '/aivent/misc/s4.webp' },
   { href: '/interview',    label: 'Mock Interview',  desc: 'Voice-based AI interview practice with scored feedback.', img: '/aivent/misc/s7.webp', badge: 'PRO+' },
   { href: '/tracker',      label: 'Job Tracker',     desc: 'Kanban & table view for every application you send.',    img: '/aivent/misc/s5.webp' },
