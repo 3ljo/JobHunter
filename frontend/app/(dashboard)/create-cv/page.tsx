@@ -3,7 +3,6 @@
 import { useEffect } from 'react';
 import { FilePlus } from 'lucide-react';
 import { useSubscriptionStore } from '@/store/subscriptionStore';
-import UsageMeter from '@/components/usage/UsageMeter';
 import LimitReachedCard from '@/components/usage/LimitReachedCard';
 import CreateCVForm from '@/components/cv/CreateCVForm';
 
@@ -67,14 +66,7 @@ export default function CreateCVPage() {
           </div>
 
           <div className="relative mx-auto max-w-4xl px-0 sm:px-0">
-            {cvOverLimit ? (
-              <LimitReachedCard feature="cv" />
-            ) : (
-              <>
-                <UsageMeter feature="cv" />
-                <CreateCVForm />
-              </>
-            )}
+            {cvOverLimit ? <LimitReachedCard feature="cv" /> : <CreateCVForm />}
           </div>
         </div>
       </section>

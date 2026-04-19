@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import {
   User, Mail, Phone, MapPin, Link2, Briefcase, GraduationCap, Wrench,
-  Award, Sparkles, Plus, Trash2, Download,
+  Award, Sparkles, Plus, Trash2, Download, ArrowLeft, Palette,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useRouter } from 'next/navigation';
@@ -11,7 +11,9 @@ import { createCV, downloadCVPdf, type CreateCVData } from '@/lib/api';
 import { useSubscriptionStore } from '@/store/subscriptionStore';
 import TemplatePicker from './TemplatePicker';
 import PhotoUpload from './PhotoUpload';
-import type { TemplateId } from './templates';
+import CVPreview from './CVPreview';
+import QuickEditBox from './QuickEditBox';
+import { TEMPLATES, type TemplateId } from './templates';
 
 const glass = {
   background: 'rgba(0,0,0,0.30)',
@@ -39,6 +41,7 @@ export default function CreateCVForm() {
   const { subscription, bumpLocalUsage, fetchSubscription } = useSubscriptionStore();
   const isPro = subscription?.plan === 'pro' || subscription?.plan === 'pro_plus';
 
+  /* ─── Form fields ─── */
   const [fullName, setFullName] = useState('');
   const [email, setEmail]       = useState('');
   const [phone, setPhone]       = useState('');
@@ -49,9 +52,17 @@ export default function CreateCVForm() {
   const [education, setEducation]   = useState<Education[]>([emptyEducation()]);
   const [skillsInput, setSkillsInput] = useState('');
   const [certifications, setCertifications] = useState<string[]>(['']);
+
+  /* ─── Preview-phase state (template + photo picked AFTER generation) ─── */
   const [template, setTemplate] = useState<TemplateId>('harvard');
   const [photo, setPhoto] = useState<string | null>(null);
+
+  /* ─── Flow state ─── */
+  const [phase, setPhase] = useState<'form' | 'preview'>('form');
   const [submitting, setSubmitting] = useState(false);
+  const [downloading, setDownloading] = useState(false);
+  const [cvRecordId, setCvRecordId] = useState<string | null>(null);
+  const [generatedCV, setGeneratedCV] = useState<any>(null);
 
   /* ─── Experience handlers ─── */
   const addExperience = () => setExperience((xs) => [...xs, emptyExperience()]);
@@ -126,20 +137,15 @@ export default function CreateCVForm() {
 
     setSubmitting(true);
     try {
-      const res = await createCV(cv, template, template === 'european' ? photo : null);
-      const cvId = res.data.cv_record_id;
-
+      // Template is picked at preview stage — we save the record with the default
+      // and let the download endpoint override per request.
+      const res = await createCV(cv);
+      setCvRecordId(res.data.cv_record_id);
+      setGeneratedCV(res.data.final_cv);
       bumpLocalUsage('cv');
-      toast.success('CV created! Downloading…');
-
-      await downloadCVPdf(cvId, {
-        template,
-        photo: template === 'european' ? photo : null,
-      });
-
-      // Refresh subscription to show updated daily count, then send user to history
       fetchSubscription();
-      setTimeout(() => router.push('/cv-history'), 800);
+      setPhase('preview');
+      toast.success('CV generated — pick a template and preview below.');
     } catch (err: unknown) {
       const axErr = err as { response?: { status?: number; data?: { error?: string } } };
       if (axErr.response?.status === 429) fetchSubscription();
@@ -150,6 +156,117 @@ export default function CreateCVForm() {
     }
   };
 
+  const handleRefine = (updatedCV: any) => {
+    setGeneratedCV(updatedCV);
+  };
+
+  const handleDownload = async () => {
+    if (!cvRecordId) return;
+    setDownloading(true);
+    try {
+      await downloadCVPdf(cvRecordId, {
+        template,
+        photo: template === 'european' ? photo : null,
+      });
+    } catch {
+      toast.error('Failed to download PDF');
+    } finally {
+      setDownloading(false);
+    }
+  };
+
+  const handleBackToEdit = () => {
+    setPhase('form');
+  };
+
+  /* ═════════════════════════════════════════════════════════════════════ */
+  /*                              PREVIEW PHASE                             */
+  /* ═════════════════════════════════════════════════════════════════════ */
+  if (phase === 'preview' && generatedCV && cvRecordId) {
+    return (
+      <div className="mx-auto max-w-5xl">
+        {/* Back button */}
+        <button
+          type="button"
+          onClick={handleBackToEdit}
+          className="inline-flex items-center gap-1.5 text-xs font-bold text-white/55 hover:text-white mb-3"
+        >
+          <ArrowLeft className="h-3.5 w-3.5" /> Back to edit
+        </button>
+
+        {/* Preview */}
+        <div className="rounded-2xl p-4 sm:p-5" style={glass}>
+          <div className="flex items-center gap-2 mb-3">
+            <Sparkles className="h-4 w-4" style={{ color: '#a78bfa' }} />
+            <p className="text-xs font-bold uppercase tracking-widest text-white/50">Preview</p>
+          </div>
+          <CVPreview cv={generatedCV} template={template} photo={template === 'european' ? photo : null} />
+        </div>
+
+        {/* Template picker */}
+        <div className="rounded-2xl p-4 sm:p-5 mt-4" style={glass}>
+          <div className="flex items-center gap-2 mb-3">
+            <Palette className="h-4 w-4" style={{ color: '#a78bfa' }} />
+            <p className="text-xs font-bold uppercase tracking-widest text-white/50">
+              Template — {TEMPLATES[template].name}
+            </p>
+          </div>
+          <TemplatePicker
+            value={template}
+            onChange={setTemplate}
+            isPro={isPro}
+            onUpgrade={() => router.push('/pricing')}
+          />
+          {template === 'european' && (
+            <div className="mt-4">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-white/40 mb-2">
+                Photo (optional — European CV only)
+              </p>
+              <PhotoUpload value={photo} onChange={setPhoto} />
+            </div>
+          )}
+        </div>
+
+        {/* AI edits */}
+        <div className="mt-4">
+          <QuickEditBox cvRecordId={cvRecordId} onRefine={handleRefine} />
+        </div>
+
+        {/* Download */}
+        <button
+          type="button"
+          onClick={handleDownload}
+          disabled={downloading}
+          className="mt-5 w-full flex items-center justify-center gap-2 rounded-xl py-3.5 text-sm font-bold transition-all disabled:opacity-40"
+          style={{
+            background: 'linear-gradient(135deg,#764DF0,#5b21b6)',
+            color: 'white',
+            boxShadow: !downloading ? '0 8px 24px rgba(118,77,240,0.35)' : 'none',
+          }}
+        >
+          {downloading ? (
+            <>
+              <span className="lds-roller-sm"><span /><span /><span /><span /><span /><span /><span /><span /></span>
+              Preparing PDF…
+            </>
+          ) : (
+            <>
+              <Download className="h-4 w-4" />
+              Download CV (PDF)
+            </>
+          )}
+        </button>
+
+        <p className="text-[11px] text-white/35 mt-3 text-center">
+          Your CV is already saved to History — you can come back and re-download it later in any template.
+        </p>
+      </div>
+    );
+  }
+
+  /* ═════════════════════════════════════════════════════════════════════ */
+  /*                                FORM PHASE                              */
+  /* ═════════════════════════════════════════════════════════════════════ */
   return (
     <div className="mx-auto max-w-3xl">
       {/* Personal info */}
@@ -374,26 +491,7 @@ export default function CreateCVForm() {
         ))}
       </div>
 
-      {/* Template */}
-      <div className="rounded-2xl p-4 sm:p-5 mt-4" style={glass}>
-        <p className="text-xs font-bold uppercase tracking-widest text-white/50 mb-3">Template</p>
-        <TemplatePicker
-          value={template}
-          onChange={setTemplate}
-          isPro={isPro}
-          onUpgrade={() => router.push('/pricing')}
-        />
-        {template === 'european' && (
-          <div className="mt-4">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-white/40 mb-2">
-              Photo (optional — European CV only)
-            </p>
-            <PhotoUpload value={photo} onChange={setPhoto} />
-          </div>
-        )}
-      </div>
-
-      {/* Submit */}
+      {/* Generate — takes user to the preview phase, where they pick template and download */}
       <button
         type="button"
         onClick={handleGenerate}
@@ -408,19 +506,18 @@ export default function CreateCVForm() {
         {submitting ? (
           <>
             <span className="lds-roller-sm"><span /><span /><span /><span /><span /><span /><span /><span /></span>
-            Generating PDF…
+            Generating…
           </>
         ) : (
           <>
             <Sparkles className="h-4 w-4" />
-            Generate &amp; Download CV
-            <Download className="h-4 w-4" />
+            Generate CV
           </>
         )}
       </button>
 
       <p className="text-[11px] text-white/35 mt-3 text-center">
-        Counts as 1 CV against your daily quota. Your CV is saved to History and can be re-downloaded anytime.
+        You&apos;ll preview the CV next, pick a template, fine-tune with AI, then download.
       </p>
     </div>
   );
