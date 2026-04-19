@@ -3,7 +3,7 @@
 import type { TemplateProps } from './types';
 import { certText, cleanCerts, cleanEducation } from './types';
 
-export default function SwissGrid({ cv }: TemplateProps) {
+export default function SwissGrid({ cv, photo }: TemplateProps) {
   if (!cv) return null;
   const contactParts = [cv.email, cv.phone, cv.location, cv.linkedin].filter(Boolean);
   const certs = cleanCerts(cv.certifications);
@@ -21,17 +21,42 @@ export default function SwissGrid({ cv }: TemplateProps) {
         fontSize: '13.5px',
       }}
     >
-      <h1
-        className="text-3xl sm:text-[32px] font-bold"
-        style={{ color: '#111', letterSpacing: '-0.02em', lineHeight: 1.05 }}
-      >
-        {cv.full_name || 'Your Name'}
-      </h1>
-
-      {contactParts.length > 0 && (
-        <p className="text-[11px] sm:text-xs text-gray-600 mt-2 break-all" style={{ letterSpacing: '0.5px' }}>
-          {contactParts.join('   /   ')}
-        </p>
+      {photo ? (
+        <div className="flex items-start justify-between gap-5">
+          <div className="flex-1 min-w-0">
+            <h1
+              className="text-3xl sm:text-[32px] font-bold"
+              style={{ color: '#111', letterSpacing: '-0.02em', lineHeight: 1.05 }}
+            >
+              {cv.full_name || 'Your Name'}
+            </h1>
+            {contactParts.length > 0 && (
+              <p className="text-[11px] sm:text-xs text-gray-600 mt-2 break-all" style={{ letterSpacing: '0.5px' }}>
+                {contactParts.join('   /   ')}
+              </p>
+            )}
+          </div>
+          <img
+            src={photo}
+            alt={cv.full_name || 'Profile'}
+            className="w-24 h-24 sm:w-28 sm:h-28 object-cover shrink-0"
+            style={{ borderRadius: 0 }}
+          />
+        </div>
+      ) : (
+        <>
+          <h1
+            className="text-3xl sm:text-[32px] font-bold"
+            style={{ color: '#111', letterSpacing: '-0.02em', lineHeight: 1.05 }}
+          >
+            {cv.full_name || 'Your Name'}
+          </h1>
+          {contactParts.length > 0 && (
+            <p className="text-[11px] sm:text-xs text-gray-600 mt-2 break-all" style={{ letterSpacing: '0.5px' }}>
+              {contactParts.join('   /   ')}
+            </p>
+          )}
+        </>
       )}
 
       <div style={{ height: '4px', background: '#111', margin: '16px 0 20px', width: '48px' }} />

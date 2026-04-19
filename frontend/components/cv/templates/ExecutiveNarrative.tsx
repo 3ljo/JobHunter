@@ -3,7 +3,7 @@
 import type { TemplateProps } from './types';
 import { certText, cleanCerts, cleanEducation } from './types';
 
-export default function ExecutiveNarrative({ cv }: TemplateProps) {
+export default function ExecutiveNarrative({ cv, photo }: TemplateProps) {
   if (!cv) return null;
   const contactParts = [cv.email, cv.phone, cv.location, cv.linkedin].filter(Boolean);
   const certs = cleanCerts(cv.certifications);
@@ -21,14 +21,36 @@ export default function ExecutiveNarrative({ cv }: TemplateProps) {
         fontSize: '14px',
       }}
     >
-      <h1 className="text-center text-2xl sm:text-[28px] font-normal" style={{ color: '#1f2937', letterSpacing: '0.02em' }}>
-        {cv.full_name || 'Your Name'}
-      </h1>
-
-      {contactParts.length > 0 && (
-        <p className="text-center text-[11px] sm:text-xs text-gray-600 mt-1 break-all">
-          {contactParts.join('  ·  ')}
-        </p>
+      {photo ? (
+        <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4 sm:gap-6">
+          <img
+            src={photo}
+            alt={cv.full_name || 'Profile'}
+            className="w-24 h-24 sm:w-[104px] sm:h-[104px] object-cover rounded-full shrink-0"
+            style={{ border: '2px solid #7c2d12' }}
+          />
+          <div className="flex-1 min-w-0 text-center sm:text-left">
+            <h1 className="text-2xl sm:text-[28px] font-normal" style={{ color: '#1f2937', letterSpacing: '0.02em' }}>
+              {cv.full_name || 'Your Name'}
+            </h1>
+            {contactParts.length > 0 && (
+              <p className="text-[11px] sm:text-xs text-gray-600 mt-1 break-all">
+                {contactParts.join('  ·  ')}
+              </p>
+            )}
+          </div>
+        </div>
+      ) : (
+        <>
+          <h1 className="text-center text-2xl sm:text-[28px] font-normal" style={{ color: '#1f2937', letterSpacing: '0.02em' }}>
+            {cv.full_name || 'Your Name'}
+          </h1>
+          {contactParts.length > 0 && (
+            <p className="text-center text-[11px] sm:text-xs text-gray-600 mt-1 break-all">
+              {contactParts.join('  ·  ')}
+            </p>
+          )}
+        </>
       )}
 
       <div style={{ height: '1px', background: '#7c2d12', margin: '12px auto 16px', width: '48%' }} />

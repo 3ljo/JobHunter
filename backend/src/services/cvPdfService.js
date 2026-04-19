@@ -10,9 +10,13 @@ const TEMPLATES = [
   'tech', 'compact', 'executive', 'academic', 'consulting', 'swiss',
 ];
 
+const PHOTO_TEMPLATES = ['european', 'executive', 'swiss'];
+
 const generateCVPdfBuffer = async (finalCV, options = {}) => {
   const templateId = TEMPLATES.includes(options.template) ? options.template : DEFAULT_TEMPLATE;
-  const photo = templateId === 'european' && typeof options.photo === 'string' && options.photo.startsWith('data:image/')
+  const photo = PHOTO_TEMPLATES.includes(templateId)
+    && typeof options.photo === 'string'
+    && options.photo.startsWith('data:image/')
     ? options.photo
     : null;
 
@@ -56,10 +60,10 @@ function buildCVHtml(cv, templateId, photo) {
     case 'european':    return europeanTemplate(cv, photo);
     case 'tech':        return techTemplate(cv);
     case 'compact':     return compactTemplate(cv);
-    case 'executive':   return executiveTemplate(cv);
+    case 'executive':   return executiveTemplate(cv, photo);
     case 'academic':    return academicTemplate(cv);
     case 'consulting':  return consultingTemplate(cv);
-    case 'swiss':       return swissTemplate(cv);
+    case 'swiss':       return swissTemplate(cv, photo);
     case 'harvard':
     default:            return harvardTemplate(cv);
   }
@@ -398,13 +402,26 @@ li { font-size: 9.5pt; margin-bottom: 1pt; }
 
 /* ═══════════════════════ Executive Narrative ═══════════════════════ */
 
-function executiveTemplate(cv) {
+function executiveTemplate(cv, photo) {
   const contactParts = [cv.email, cv.phone, cv.location, cv.linkedin].filter(Boolean);
 
   const summaryBlock = !cv.summary ? '' : `
     <div class="summary-box">
       <p class="summary-text">${escapeHtml(cv.summary)}</p>
     </div>
+  `;
+
+  const headerHtml = photo ? `
+    <div class="header-with-photo">
+      <img src="${photo}" class="photo" alt="Profile" />
+      <div class="header-text">
+        <div class="name-left">${escapeHtml(cv.full_name)}</div>
+        ${contactParts.length > 0 ? `<div class="contact-left">${escapeHtml(contactParts.join('  ·  '))}</div>` : ''}
+      </div>
+    </div>
+  ` : `
+    <div class="name">${escapeHtml(cv.full_name)}</div>
+    ${contactParts.length > 0 ? `<div class="contact">${escapeHtml(contactParts.join('  ·  '))}</div>` : ''}
   `;
 
   const experienceHtml = !cv.experience || cv.experience.length === 0 ? '' : `
@@ -428,6 +445,11 @@ ${baseStyles()}
 body { font-family: Georgia, 'Times New Roman', serif; font-size: 11pt; line-height: 1.5; color: #1f2937; }
 .name { text-align: center; font-size: 24pt; font-weight: 400; letter-spacing: 1px; color: #1f2937; }
 .contact { text-align: center; font-size: 10pt; color: #555; margin-top: 3pt; }
+.header-with-photo { display: flex; align-items: center; gap: 16pt; }
+.photo { width: 78pt; height: 78pt; object-fit: cover; border-radius: 50%; border: 2pt solid #7c2d12; flex-shrink: 0; }
+.header-text { flex: 1; }
+.name-left { font-size: 24pt; font-weight: 400; letter-spacing: 1px; color: #1f2937; }
+.contact-left { font-size: 10pt; color: #555; margin-top: 3pt; }
 .rule { height: 1pt; background: #7c2d12; margin: 12pt auto 16pt; width: 48%; }
 .summary-box { background: #fafaf9; border-left: 3pt solid #7c2d12; padding: 10pt 14pt; margin-bottom: 16pt; }
 .summary-text { font-size: 11pt; font-style: italic; color: #374151; }
@@ -439,8 +461,7 @@ h2 { text-align: center; font-size: 10pt; font-weight: bold; text-transform: upp
 p { font-size: 11pt; margin-bottom: 3pt; }
 li { font-size: 11pt; }
 </style></head><body>
-  <div class="name">${escapeHtml(cv.full_name)}</div>
-  ${contactParts.length > 0 ? `<div class="contact">${escapeHtml(contactParts.join('  ·  '))}</div>` : ''}
+  ${headerHtml}
   <div class="rule"></div>
   ${summaryBlock}
   ${experienceHtml}
@@ -583,8 +604,21 @@ strong { color: #0c2340; }
 
 /* ═══════════════════════ Swiss Grid ═══════════════════════ */
 
-function swissTemplate(cv) {
+function swissTemplate(cv, photo) {
   const contactParts = [cv.email, cv.phone, cv.location, cv.linkedin].filter(Boolean);
+
+  const headerHtml = photo ? `
+    <div class="swiss-header">
+      <div class="swiss-header-text">
+        <div class="name">${escapeHtml(cv.full_name)}</div>
+        ${contactParts.length > 0 ? `<div class="contact">${escapeHtml(contactParts.join('   /   '))}</div>` : ''}
+      </div>
+      <img src="${photo}" class="swiss-photo" alt="Profile" />
+    </div>
+  ` : `
+    <div class="name">${escapeHtml(cv.full_name)}</div>
+    ${contactParts.length > 0 ? `<div class="contact">${escapeHtml(contactParts.join('   /   '))}</div>` : ''}
+  `;
 
   const experienceHtml = !cv.experience || cv.experience.length === 0 ? '' : `
     <div class="section">
@@ -624,6 +658,9 @@ ${baseStyles()}
 body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 10.5pt; line-height: 1.5; color: #111; }
 .name { font-size: 28pt; font-weight: bold; letter-spacing: -0.5px; line-height: 1.05; }
 .contact { font-size: 10pt; color: #64748b; margin-top: 5pt; letter-spacing: 0.5px; }
+.swiss-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16pt; }
+.swiss-header-text { flex: 1; }
+.swiss-photo { width: 72pt; height: 72pt; object-fit: cover; flex-shrink: 0; border-radius: 0; }
 .rule { height: 3pt; background: #111; margin: 16pt 0 20pt; width: 40pt; }
 .section { margin-bottom: 18pt; }
 h2 { font-size: 10pt; font-weight: bold; text-transform: uppercase; letter-spacing: 3px; color: #111; margin-bottom: 10pt; }
@@ -635,8 +672,7 @@ h2 { font-size: 10pt; font-weight: bold; text-transform: uppercase; letter-spaci
 p { font-size: 10.5pt; margin-bottom: 2pt; }
 li { font-size: 10.5pt; }
 </style></head><body>
-  <div class="name">${escapeHtml(cv.full_name)}</div>
-  ${contactParts.length > 0 ? `<div class="contact">${escapeHtml(contactParts.join('   /   '))}</div>` : ''}
+  ${headerHtml}
   <div class="rule"></div>
   ${cv.summary ? `<div class="section"><h2>01 / Profile</h2><p>${escapeHtml(cv.summary)}</p></div>` : ''}
   ${experienceHtml}

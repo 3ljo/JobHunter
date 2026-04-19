@@ -105,8 +105,8 @@ export const TEMPLATES: Record<TemplateId, TemplateMeta> = {
   executive: {
     id: 'executive',
     name: 'Executive Narrative',
-    description: 'Strong summary opening, serif typography — built for director and VP roles.',
-    supportsPhoto: false,
+    description: 'Strong summary opening, serif typography, optional photo — built for director and VP roles.',
+    supportsPhoto: true,
     atsScore: 96,
     region: 'Global',
     proOnly: true,
@@ -132,8 +132,8 @@ export const TEMPLATES: Record<TemplateId, TemplateMeta> = {
   swiss: {
     id: 'swiss',
     name: 'Swiss Grid',
-    description: 'Minimalist Swiss typography with strict hierarchy and wide letterspacing.',
-    supportsPhoto: false,
+    description: 'Minimalist Swiss typography with strict hierarchy, optional photo (DACH standard).',
+    supportsPhoto: true,
     atsScore: 96,
     region: 'Europe / Global',
     proOnly: true,
