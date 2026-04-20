@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import CVUpload from '@/components/cv/CVUpload';
@@ -300,8 +301,31 @@ export default function CVPage() {
             </h1>
           </div>
 
-          {/* score card */}
-          <div className="mx-auto max-w-3xl rounded-2xl overflow-hidden" style={glass}>
+          {/* score card + robot mascot on the right (desktop only) */}
+          <div className="relative mx-auto max-w-3xl">
+            <div
+              aria-hidden
+              className="hidden lg:block pointer-events-none select-none"
+              style={{
+                position: 'absolute',
+                right: -120,
+                bottom: -4,
+                width: 140,
+                height: 180,
+                filter: 'drop-shadow(0 10px 24px rgba(118,77,240,0.45))',
+              }}
+            >
+              <Image
+                src="/aivent/misc/robot-idle.png"
+                alt=""
+                fill
+                sizes="140px"
+                priority={false}
+                style={{ objectFit: 'contain', objectPosition: 'bottom right' }}
+              />
+            </div>
+
+          <div className="rounded-2xl overflow-hidden" style={glass}>
             <div style={{ height: '2px', background: 'linear-gradient(90deg,transparent,rgba(118,77,240,0.9),transparent)' }} />
             <div className="flex flex-col sm:flex-row items-center justify-between gap-5 sm:gap-6 px-4 sm:px-8 py-5 sm:py-6">
 
@@ -383,6 +407,7 @@ export default function CVPage() {
                 </button>
               </div>
             </div>
+          </div>
           </div>
         </div>
       </section>

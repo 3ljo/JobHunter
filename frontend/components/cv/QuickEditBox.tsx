@@ -1,6 +1,5 @@
 'use client';
 
-import Image from 'next/image';
 import { useState } from 'react';
 import { refineCV } from '@/lib/api';
 import toast from 'react-hot-toast';
@@ -81,70 +80,41 @@ export default function QuickEditBox({ cvRecordId, onRefine }: QuickEditBoxProps
       )}
 
       <div className="px-4 sm:px-5 pt-4 pb-4">
-        {/* HEADER — compact row: robot (free, no circle), title, pro badge */}
-        <div className="flex items-center gap-3">
-          {/* robot: shown whole, proper aspect, subtle purple glow, no circle mask */}
-          <div
-            className="relative shrink-0"
+        {/* HEADER — compact row: title, pro badge, thinking indicator */}
+        <div className="flex items-center gap-2 mb-3">
+          <p className="text-[13px] sm:text-[14px] font-black leading-none" style={{ color: '#f5f3ff' }}>
+            AI Editor
+          </p>
+          <span
+            className="text-[9px] font-black px-1.5 py-[2px] rounded leading-none"
             style={{
-              width: 36,
-              height: 44,
-              filter: refining
-                ? 'drop-shadow(0 0 10px rgba(167,139,250,0.7))'
-                : 'drop-shadow(0 4px 8px rgba(118,77,240,0.35))',
-              transition: 'filter 0.3s',
+              background: 'rgba(192,132,252,0.18)',
+              color: '#e9d5ff',
+              border: '1px solid rgba(192,132,252,0.35)',
             }}
           >
-            <Image
-              src="/aivent/misc/robot-idle.png"
-              alt=""
-              fill
-              sizes="36px"
-              priority={false}
-              style={{ objectFit: 'contain', objectPosition: 'center bottom' }}
-            />
-          </div>
-
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2">
-              <p className="text-[13px] sm:text-[14px] font-black leading-none" style={{ color: '#f5f3ff' }}>
-                AI Editor
-              </p>
+            PRO
+          </span>
+          {refining && (
+            <span className="flex items-center gap-1 text-[10px] font-bold ml-auto" style={{ color: '#a78bfa' }}>
               <span
-                className="text-[9px] font-black px-1.5 py-[2px] rounded leading-none"
+                className="inline-block rounded-full"
                 style={{
-                  background: 'rgba(192,132,252,0.18)',
-                  color: '#e9d5ff',
-                  border: '1px solid rgba(192,132,252,0.35)',
+                  width: 5,
+                  height: 5,
+                  background: '#34d399',
+                  boxShadow: '0 0 6px rgba(52,211,153,0.75)',
                 }}
-              >
-                PRO
-              </span>
-              {refining && (
-                <span className="flex items-center gap-1 text-[10px] font-bold" style={{ color: '#a78bfa' }}>
-                  <span
-                    className="inline-block rounded-full"
-                    style={{
-                      width: 5,
-                      height: 5,
-                      background: '#34d399',
-                      boxShadow: '0 0 6px rgba(52,211,153,0.75)',
-                    }}
-                  />
-                  thinking…
-                </span>
-              )}
-            </div>
-            <p className="text-[11px] mt-1" style={{ color: 'rgba(255,255,255,0.48)' }}>
-              Tell me what to change in your CV.
-            </p>
-          </div>
+              />
+              thinking…
+            </span>
+          )}
         </div>
 
         {/* INPUT row */}
         <div className="mt-3 flex gap-2 items-stretch">
           <textarea
-            placeholder="e.g. Add a short summary highlighting my Python experience…"
+            placeholder="e.g. Add 5 years of experience"
             value={text}
             onChange={(e) => {
               setText(e.target.value);
