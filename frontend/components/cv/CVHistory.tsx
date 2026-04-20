@@ -6,7 +6,7 @@ import { getCVHistory, deleteCV, downloadCVPdf, previewCVPdf } from '@/lib/api';
 import { CVRecord } from '@/types';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import toast from 'react-hot-toast';
-import { Eye, X, Download, Trash2, FileText, Calendar } from 'lucide-react';
+import { Eye, X, Download, Trash2, FileText, Calendar, AlertTriangle } from 'lucide-react';
 
 export default function CVHistory() {
   const [cvs, setCvs] = useState<CVRecord[]>([]);
@@ -15,6 +15,19 @@ export default function CVHistory() {
   const [previewLoading, setPreviewLoading] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [bulkBusy, setBulkBusy] = useState(false);
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
+
+  useEffect(() => {
+    if (!confirmDeleteOpen) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setConfirmDeleteOpen(false); };
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    window.addEventListener('keydown', onKey);
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      window.removeEventListener('keydown', onKey);
+    };
+  }, [confirmDeleteOpen]);
 
   const load = async () => {
     try {
@@ -74,10 +87,14 @@ export default function CVHistory() {
     else toast.error('Failed to download');
   };
 
-  const handleBulkDelete = async () => {
+  const requestBulkDelete = () => {
     if (!selected.size) return;
-    const count = selected.size;
-    if (!window.confirm(`Delete ${count} CV${count > 1 ? 's' : ''}? This cannot be undone.`)) return;
+    setConfirmDeleteOpen(true);
+  };
+
+  const confirmBulkDelete = async () => {
+    if (!selected.size) return;
+    setConfirmDeleteOpen(false);
     setBulkBusy(true);
     const ids = Array.from(selected);
     const results = await Promise.allSettled(ids.map((id) => deleteCV(id)));
@@ -161,7 +178,7 @@ export default function CVHistory() {
             <Button
               size="sm"
               variant="ghost"
-              onClick={handleBulkDelete}
+              onClick={requestBulkDelete}
               disabled={bulkBusy}
               className="gap-1.5 text-muted-foreground hover:text-red-400 rounded-lg text-xs"
             >
@@ -287,6 +304,60 @@ export default function CVHistory() {
           );
         })}
       </div>
+
+      {/* Delete confirmation modal */}
+      {confirmDeleteOpen && (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center px-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="bulk-delete-title"
+        >
+          <div
+            className="absolute inset-0 bg-black/70 backdrop-blur-sm animate-in fade-in duration-150"
+            onClick={() => setConfirmDeleteOpen(false)}
+          />
+          <div className="relative w-full max-w-md rounded-2xl border border-border bg-card/95 backdrop-blur-xl shadow-[0_24px_60px_rgba(0,0,0,0.55)] animate-in fade-in zoom-in-95 duration-150">
+            <div className="px-6 pt-6 pb-5">
+              <div className="flex items-start gap-4">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-red-500/10 ring-1 ring-red-500/25">
+                  <AlertTriangle className="h-5 w-5 text-red-400" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <h3
+                    id="bulk-delete-title"
+                    className="text-base font-semibold text-foreground tracking-tight"
+                  >
+                    Delete {selected.size} CV{selected.size > 1 ? 's' : ''}?
+                  </h3>
+                  <p className="mt-1.5 text-sm text-muted-foreground leading-relaxed">
+                    This action is permanent. The selected CV{selected.size > 1 ? 's' : ''} and
+                    {' '}{selected.size > 1 ? 'their' : 'its'} analysis data will be removed from your history.
+                  </p>
+                </div>
+              </div>
+            </div>
+            <div className="flex items-center justify-end gap-2 px-6 py-4 border-t border-border/60 bg-muted/30 rounded-b-2xl">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setConfirmDeleteOpen(false)}
+                className="rounded-lg"
+              >
+                Cancel
+              </Button>
+              <Button
+                size="sm"
+                onClick={confirmBulkDelete}
+                className="rounded-lg bg-red-500/90 text-white hover:bg-red-500 shadow-[0_6px_18px_rgba(239,68,68,0.35)] gap-1.5"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+                Delete
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Preview Modal */}
       {(previewUrl || previewLoading) && (
