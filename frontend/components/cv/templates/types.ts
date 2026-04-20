@@ -69,11 +69,11 @@ export interface TemplateMeta {
 export const TEMPLATES: Record<TemplateId, TemplateMeta> = {
   original: {
     id: 'original',
-    name: 'Keep My Own',
-    description: 'Show your uploaded CV exactly as-is. Template + PDF export are hidden; use the AI improvements on the side to edit your own file.',
+    name: 'Original PDF',
+    description: 'Preview-only. Shows your uploaded file as-is. AI edits still apply — switch to a template to see them rendered.',
     supportsPhoto: false,
     atsScore: 0,
-    region: 'Your layout',
+    region: 'Preview only',
     proOnly: false,
   },
   harvard: {

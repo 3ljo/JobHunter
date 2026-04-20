@@ -9,6 +9,7 @@ const STEPS = ['Parsing & auditing...', 'Rewriting & humanizing...', 'Done'];
 const TEMPLATE_KEY = 'cv_template_id';
 const PHOTO_KEY = 'cv_photo_data';
 const ORIGINAL_PDF_KEY = 'cv_original_pdf_data_url';
+const EDITS_KEY = 'cv_edits_applied';
 
 interface CVAnalysisState {
   loading: boolean;
@@ -19,10 +20,13 @@ interface CVAnalysisState {
   template: TemplateId;
   photo: string | null;
   originalPdfDataUrl: string | null;
+  /** Number of AI edits applied since the last analysis. Resets on reset/new analysis. */
+  editsApplied: number;
   startAnalysis: (file: File, jobDescription: string) => void;
   setResult: (result: CVAnalysisResult | null) => void;
   setTemplate: (t: TemplateId) => void;
   setPhoto: (photo: string | null) => void;
+  bumpEdits: () => void;
   reset: () => void;
 }
 
@@ -61,11 +65,23 @@ export const useCVAnalysisStore = create<CVAnalysisState>((set, get) => ({
     if (typeof window === 'undefined') return null;
     try { return sessionStorage.getItem(ORIGINAL_PDF_KEY); } catch { return null; }
   })(),
+  editsApplied: (() => {
+    if (typeof window === 'undefined') return 0;
+    try {
+      const raw = sessionStorage.getItem(EDITS_KEY);
+      const n = raw ? parseInt(raw, 10) : 0;
+      return Number.isFinite(n) && n > 0 ? n : 0;
+    } catch {
+      return 0;
+    }
+  })(),
 
   startAnalysis: async (file: File, jobDescription: string) => {
     if (get().loading) return;
 
-    set({ loading: true, step: 0, error: null });
+    // Reset edits counter for the new analysis.
+    try { sessionStorage.setItem(EDITS_KEY, '0'); } catch {}
+    set({ loading: true, step: 0, error: null, editsApplied: 0 });
 
     // Stash the original PDF as a data URL so "Keep my CV" mode can show it.
     // Skip if the file is too large to fit in sessionStorage (~5MB after base64).
@@ -150,9 +166,23 @@ export const useCVAnalysisStore = create<CVAnalysisState>((set, get) => ({
     set({ photo });
   },
 
+  bumpEdits: () => {
+    const next = get().editsApplied + 1;
+    try { sessionStorage.setItem(EDITS_KEY, String(next)); } catch {}
+    set({ editsApplied: next });
+  },
+
   reset: () => {
     sessionStorage.removeItem('cv_analysis_result');
     sessionStorage.removeItem(ORIGINAL_PDF_KEY);
-    set({ loading: false, step: 0, error: null, result: null, originalPdfDataUrl: null });
+    sessionStorage.removeItem(EDITS_KEY);
+    set({
+      loading: false,
+      step: 0,
+      error: null,
+      result: null,
+      originalPdfDataUrl: null,
+      editsApplied: 0,
+    });
   },
 }));

@@ -10,7 +10,7 @@ import ScoreRing from '@/components/cv/ScoreRing';
 import AnalysisSidebar from '@/components/cv/AnalysisSidebar';
 import TemplatePicker, { TemplateThumbnail } from '@/components/cv/TemplatePicker';
 import PhotoUpload from '@/components/cv/PhotoUpload';
-import { TEMPLATES } from '@/components/cv/templates';
+import { TEMPLATES, type TemplateId } from '@/components/cv/templates';
 import UsageMeter from '@/components/usage/UsageMeter';
 import LimitReachedCard from '@/components/usage/LimitReachedCard';
 import { downloadCVPdf } from '@/lib/api';
@@ -43,9 +43,11 @@ export default function CVPage() {
     loading: analysisLoading, step: analysisStep, steps: analysisSteps,
     template, photo, setTemplate, setPhoto,
     originalPdfDataUrl,
+    editsApplied, bumpEdits,
   } = useCVAnalysisStore();
 
   const isOriginal = template === 'original';
+  const FALLBACK_TEMPLATE: TemplateId = 'harvard';
 
   const { subscription, usage, fetchSubscription } = useSubscriptionStore();
   const isPro = subscription?.plan === 'pro' || subscription?.plan === 'pro_plus';
@@ -57,6 +59,7 @@ export default function CVPage() {
 
   const [downloading, setDownloading] = useState(false);
   const [templatesExpanded, setTemplatesExpanded] = useState(false);
+  const [downloadDialogOpen, setDownloadDialogOpen] = useState(false);
 
   const activeTemplateMeta = TEMPLATES[template];
   const showPhotoSlot = activeTemplateMeta?.supportsPhoto;
@@ -80,28 +83,62 @@ export default function CVPage() {
   const handleRefine = (updatedFinalCV: any) => {
     if (!result) return;
     setResult({ ...result, final: { ...result.final, final_cv: updatedFinalCV } });
-    // On "Keep My Own" the preview is a static PDF and can't show the edits,
+    bumpEdits();
+    // On "Original PDF" the preview is a static file and can't show the edits,
     // so nudge the user to a template view where the changes are visible.
     if (template === 'original') {
       toast(
-        'Your original PDF can\'t be re-rendered. Switch to an ATS template to see the edits applied.',
+        'Edit applied. Switch to an ATS template to see it rendered.',
         { icon: '💡', duration: 5500 },
       );
     }
   };
 
-  const handleDownload = async () => {
+  const runDownload = async (templateId: TemplateId) => {
     if (!result?.cv_record_id) return;
     setDownloading(true);
     try {
-      const photoForExport = showPhotoSlot ? photo : null;
-      await downloadCVPdf(result.cv_record_id, { template, photo: photoForExport });
+      const meta = TEMPLATES[templateId];
+      const photoForExport = meta?.supportsPhoto ? photo : null;
+      await downloadCVPdf(result.cv_record_id, { template: templateId, photo: photoForExport });
       toast.success('PDF downloaded');
     } catch {
       toast.error('Failed to download PDF');
     } finally {
       setDownloading(false);
     }
+  };
+
+  const handleDownload = async () => {
+    if (!result?.cv_record_id) return;
+    // When the user is viewing the original PDF, make the choice explicit:
+    // do they want the untouched file or the AI-edited version?
+    if (isOriginal) {
+      setDownloadDialogOpen(true);
+      return;
+    }
+    await runDownload(template);
+  };
+
+  const handleDownloadOriginal = () => {
+    if (!originalPdfDataUrl) {
+      toast.error('Original file is not cached in this session');
+      return;
+    }
+    const a = document.createElement('a');
+    a.href = originalPdfDataUrl;
+    a.download = 'original_cv.pdf';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setDownloadDialogOpen(false);
+    toast.success('Original file downloaded');
+  };
+
+  const handleSwitchAndDownload = async () => {
+    setTemplate(FALLBACK_TEMPLATE);
+    setDownloadDialogOpen(false);
+    await runDownload(FALLBACK_TEMPLATE);
   };
 
   const handleReset       = () => { resetAnalysis(); setShowCL(false); resetInline(); };
@@ -414,19 +451,17 @@ export default function CVPage() {
 
               {/* actions */}
               <div className="flex flex-wrap items-center justify-center gap-2 w-full sm:w-auto">
-                {!isOriginal && (
-                  <button
-                    onClick={handleDownload}
-                    disabled={downloading}
-                    className="flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition-all duration-200"
-                    style={{ background: 'rgba(118,77,240,0.18)', border: '1px solid rgba(118,77,240,0.32)', color: '#c4b5fd' }}
-                    onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(118,77,240,0.28)'; }}
-                    onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(118,77,240,0.18)'; }}
-                  >
-                    <Download className="h-4 w-4" />
-                    {downloading ? 'Downloading…' : 'PDF'}
-                  </button>
-                )}
+                <button
+                  onClick={handleDownload}
+                  disabled={downloading}
+                  className="flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition-all duration-200"
+                  style={{ background: 'rgba(118,77,240,0.18)', border: '1px solid rgba(118,77,240,0.32)', color: '#c4b5fd' }}
+                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(118,77,240,0.28)'; }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(118,77,240,0.18)'; }}
+                >
+                  <Download className="h-4 w-4" />
+                  {downloading ? 'Downloading…' : 'PDF'}
+                </button>
                 <button
                   onClick={() => setShowCL(true)}
                   className="flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition-all duration-200"
@@ -667,6 +702,53 @@ export default function CVPage() {
               )}
             </div>
 
+            {/* Edits pill — only meaningful while viewing Original PDF (edits
+                aren't reflected in the preview). Shows a nudge to switch. */}
+            {isOriginal && editsApplied > 0 && (
+              <div
+                className="flex flex-wrap items-center justify-between gap-2 rounded-xl px-3 sm:px-4 py-2.5"
+                style={{
+                  background:
+                    'linear-gradient(90deg, rgba(118,77,240,0.18), rgba(118,77,240,0.06))',
+                  border: '1px solid rgba(118,77,240,0.35)',
+                }}
+              >
+                <div className="flex items-center gap-2 min-w-0">
+                  <span
+                    className="inline-flex items-center justify-center rounded-full text-[10px] font-black"
+                    style={{
+                      width: 22,
+                      height: 22,
+                      background: '#764df0',
+                      color: '#fff',
+                      boxShadow: '0 0 0 3px rgba(118,77,240,0.25)',
+                    }}
+                  >
+                    {editsApplied}
+                  </span>
+                  <p className="text-[12px] sm:text-[13px] font-semibold" style={{ color: '#ddd6fe' }}>
+                    {editsApplied === 1 ? 'edit applied' : 'edits applied'} — not visible on the original PDF
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setTemplate(FALLBACK_TEMPLATE);
+                    toast.success(`Viewing in ${TEMPLATES[FALLBACK_TEMPLATE].name}`);
+                  }}
+                  className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[11px] font-bold whitespace-nowrap"
+                  style={{
+                    background: 'rgba(118,77,240,0.32)',
+                    border: '1px solid rgba(167,139,250,0.5)',
+                    color: '#f5f3ff',
+                  }}
+                >
+                  View in {TEMPLATES[FALLBACK_TEMPLATE].name}
+                  <ArrowRight className="h-3 w-3" />
+                </button>
+              </div>
+            )}
+
             {/* CV Preview — horizontal pages, sticky on large screens.
                 For template === 'original', CVPreview renders the uploaded PDF. */}
             <div
@@ -739,6 +821,115 @@ export default function CVPage() {
           </div>
         </div>
       </div>
+
+      {/* Download choice modal — only used when the user is on the Original PDF
+          template. Makes the trade-off explicit instead of silently exporting
+          one version or the other. */}
+      {downloadDialogOpen && (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center px-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="download-choice-title"
+        >
+          <div
+            className="absolute inset-0"
+            style={{ background: 'rgba(4,6,20,0.72)', backdropFilter: 'blur(6px)' }}
+            onClick={() => setDownloadDialogOpen(false)}
+          />
+          <div
+            className="relative w-full max-w-md rounded-2xl overflow-hidden"
+            style={{
+              background: 'rgba(15,10,40,0.95)',
+              border: '1px solid rgba(118,77,240,0.35)',
+              boxShadow: '0 24px 60px rgba(0,0,0,0.55)',
+            }}
+          >
+            <div style={{ height: '2px', background: 'linear-gradient(90deg,transparent,rgba(118,77,240,0.9),transparent)' }} />
+            <div className="px-6 pt-6 pb-5">
+              <div className="flex items-start gap-3">
+                <div
+                  className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl"
+                  style={{ background: 'rgba(118,77,240,0.18)', border: '1px solid rgba(118,77,240,0.35)' }}
+                >
+                  <Download className="h-5 w-5" style={{ color: '#c4b5fd' }} />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <h3
+                    id="download-choice-title"
+                    className="text-base font-bold tracking-tight"
+                    style={{ color: '#f5f3ff' }}
+                  >
+                    Which version do you want?
+                  </h3>
+                  <p className="mt-1.5 text-sm leading-relaxed" style={{ color: 'rgba(255,255,255,0.6)' }}>
+                    You&apos;re viewing your original PDF, which can&apos;t be re-rendered with
+                    AI edits{editsApplied > 0 ? ` (${editsApplied} pending)` : ''}. Pick what to download.
+                  </p>
+                </div>
+              </div>
+            </div>
+            <div className="px-6 pb-6 space-y-2">
+              <button
+                type="button"
+                onClick={handleDownloadOriginal}
+                disabled={!originalPdfDataUrl}
+                className="w-full flex items-start gap-3 rounded-xl px-4 py-3 text-left transition-colors disabled:opacity-50"
+                style={{
+                  background: 'rgba(255,255,255,0.04)',
+                  border: '1px solid rgba(255,255,255,0.1)',
+                  color: 'rgba(255,255,255,0.85)',
+                }}
+                onMouseEnter={e => { if (originalPdfDataUrl) (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.08)'; }}
+                onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.04)'; }}
+              >
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-bold" style={{ color: '#f5f3ff' }}>Download original file</p>
+                  <p className="text-[12px] mt-0.5" style={{ color: 'rgba(255,255,255,0.5)' }}>
+                    Exactly what you uploaded. No AI edits applied.
+                  </p>
+                </div>
+              </button>
+              <button
+                type="button"
+                onClick={handleSwitchAndDownload}
+                disabled={downloading}
+                className="w-full flex items-start gap-3 rounded-xl px-4 py-3 text-left transition-all disabled:opacity-50"
+                style={{
+                  background: 'linear-gradient(135deg, rgba(118,77,240,0.28), rgba(91,33,182,0.28))',
+                  border: '1px solid rgba(167,139,250,0.5)',
+                  color: '#f5f3ff',
+                  boxShadow: '0 6px 16px rgba(118,77,240,0.25)',
+                }}
+              >
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-bold">
+                    {downloading
+                      ? `Rendering ${TEMPLATES[FALLBACK_TEMPLATE].name}…`
+                      : `Switch to ${TEMPLATES[FALLBACK_TEMPLATE].name} and download`}
+                  </p>
+                  <p className="text-[12px] mt-0.5" style={{ color: 'rgba(221,214,254,0.8)' }}>
+                    AI-rewritten CV{editsApplied > 0 ? ` with your ${editsApplied} ${editsApplied === 1 ? 'edit' : 'edits'}` : ''} — ATS-optimized.
+                  </p>
+                </div>
+              </button>
+            </div>
+            <div
+              className="flex items-center justify-end px-6 py-3"
+              style={{ borderTop: '1px solid rgba(255,255,255,0.06)', background: 'rgba(255,255,255,0.02)' }}
+            >
+              <button
+                type="button"
+                onClick={() => setDownloadDialogOpen(false)}
+                className="text-[12px] font-semibold"
+                style={{ color: 'rgba(255,255,255,0.5)' }}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
