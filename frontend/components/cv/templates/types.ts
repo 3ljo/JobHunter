@@ -44,6 +44,7 @@ export interface TemplateProps {
 }
 
 export type TemplateId =
+  | 'original'
   | 'harvard'
   | 'modern'
   | 'minimalist'
@@ -66,6 +67,15 @@ export interface TemplateMeta {
 }
 
 export const TEMPLATES: Record<TemplateId, TemplateMeta> = {
+  original: {
+    id: 'original',
+    name: 'Keep My Own',
+    description: 'Show your uploaded CV exactly as-is. Template + PDF export are hidden; use the AI improvements on the side to edit your own file.',
+    supportsPhoto: false,
+    atsScore: 0,
+    region: 'Your layout',
+    proOnly: false,
+  },
   harvard: {
     id: 'harvard',
     name: 'Harvard Classic',

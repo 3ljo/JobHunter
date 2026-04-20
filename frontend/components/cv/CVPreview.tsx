@@ -8,9 +8,11 @@ interface CVPreviewProps {
   cv: any;
   template?: TemplateId;
   photo?: string | null;
+  /** Data URL of the originally uploaded PDF — used when template === 'original'. */
+  originalPdfDataUrl?: string | null;
 }
 
-export default function CVPreview({ cv, template, photo }: CVPreviewProps) {
+export default function CVPreview({ cv, template, photo, originalPdfDataUrl }: CVPreviewProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [canPrev, setCanPrev] = useState(false);
   const [canNext, setCanNext] = useState(false);
@@ -37,6 +39,31 @@ export default function CVPreview({ cv, template, photo }: CVPreviewProps) {
 
   const active: TemplateId = (template && TEMPLATE_COMPONENTS[template]) ? template : DEFAULT_TEMPLATE;
   const Template = TEMPLATE_COMPONENTS[active];
+
+  // "original" template: show the user's uploaded PDF directly in an iframe.
+  if (active === 'original') {
+    if (originalPdfDataUrl) {
+      return (
+        <div style={{ background: '#ffffff' }}>
+          <iframe
+            src={originalPdfDataUrl}
+            title="Your original CV"
+            className="w-full block bg-white"
+            style={{ height: 'min(calc(100vh - 180px), 900px)', border: 'none' }}
+          />
+        </div>
+      );
+    }
+    return (
+      <div
+        className="px-5 py-12 text-center text-sm"
+        style={{ color: 'rgba(15,23,42,0.6)', background: '#ffffff' }}
+      >
+        Your original PDF isn&apos;t cached in this session. Re-upload your CV to see it here,
+        or pick another template to view the AI-rewritten version.
+      </div>
+    );
+  }
 
   const scrollByPage = (dir: 1 | -1) => {
     const el = scrollRef.current;

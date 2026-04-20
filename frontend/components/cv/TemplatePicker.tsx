@@ -78,6 +78,44 @@ export function TemplateThumbnail({ id }: { id: TemplateId }) {
   const common = 'w-full aspect-[4/5] rounded-md overflow-hidden';
   const paperStyle = { background: '#ffffff' };
 
+  if (id === 'original') {
+    return (
+      <div
+        className={common}
+        style={{
+          background: 'linear-gradient(160deg,#1a1440 0%,#2a1b68 100%)',
+          border: '1px dashed rgba(196,181,253,0.4)',
+        }}
+      >
+        <svg viewBox="0 0 60 80" preserveAspectRatio="xMidYMid meet" className="w-full h-full">
+          <rect x="14" y="14" width="32" height="52" rx="2" fill="#fff" opacity="0.92" />
+          <rect x="18" y="20" width="24" height="2" fill="#0f172a" />
+          <rect x="18" y="25" width="18" height="1" fill="#64748b" />
+          <line x1="18" y1="29" x2="42" y2="29" stroke="#cbd5e1" strokeWidth="0.4" />
+          <rect x="18" y="33" width="10" height="1.2" fill="#0f172a" />
+          <rect x="18" y="36" width="24" height="0.8" fill="#94a3b8" />
+          <rect x="18" y="38" width="20" height="0.8" fill="#94a3b8" />
+          <rect x="18" y="43" width="10" height="1.2" fill="#0f172a" />
+          <rect x="18" y="46" width="22" height="0.8" fill="#94a3b8" />
+          <rect x="18" y="48" width="18" height="0.8" fill="#94a3b8" />
+          <rect x="18" y="53" width="10" height="1.2" fill="#0f172a" />
+          <rect x="18" y="56" width="20" height="0.8" fill="#94a3b8" />
+          <g transform="translate(38, 56)">
+            <circle r="6" fill="#764df0" />
+            <path
+              d="M-2.5 -0.2 L-0.6 1.8 L2.8 -1.8"
+              stroke="#fff"
+              strokeWidth="1.2"
+              fill="none"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </g>
+        </svg>
+      </div>
+    );
+  }
+
   if (id === 'harvard') {
     return (
       <div className={common} style={paperStyle}>

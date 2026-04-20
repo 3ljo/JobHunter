@@ -20,7 +20,6 @@ import toast from 'react-hot-toast';
 import {
   Download, RotateCcw, ArrowRight, TrendingUp, FileSignature,
   Sparkles, Copy, Check, X, Send, Palette, ChevronDown, ChevronUp,
-  FileText, Wand2,
 } from 'lucide-react';
 
 const tones = [
@@ -42,9 +41,10 @@ export default function CVPage() {
     result, setResult, reset: resetAnalysis,
     loading: analysisLoading, step: analysisStep, steps: analysisSteps,
     template, photo, setTemplate, setPhoto,
-    suggestionsOnly, setSuggestionsOnly,
     originalPdfDataUrl,
   } = useCVAnalysisStore();
+
+  const isOriginal = template === 'original';
 
   const { subscription, usage, fetchSubscription } = useSubscriptionStore();
   const isPro = subscription?.plan === 'pro' || subscription?.plan === 'pro_plus';
@@ -348,7 +348,7 @@ export default function CVPage() {
 
               {/* actions */}
               <div className="flex flex-wrap items-center justify-center gap-2 w-full sm:w-auto">
-                {!suggestionsOnly && (
+                {!isOriginal && (
                   <button
                     onClick={handleDownload}
                     disabled={downloading}
@@ -389,52 +389,6 @@ export default function CVPage() {
 
       {/* ── CONTENT ───────────────────────────────────────────────── */}
       <div className="mx-auto max-w-7xl px-4 sm:px-6 space-y-6" style={{ position: 'relative', zIndex: 1 }}>
-
-        {/* mode switch — keep own CV vs. use template */}
-        <div
-          className="rounded-2xl p-1 flex items-center gap-1"
-          style={{ ...glass, alignSelf: 'start' }}
-        >
-          <button
-            type="button"
-            onClick={() => setSuggestionsOnly(false)}
-            className="flex items-center gap-2 rounded-xl px-3 sm:px-4 py-2 text-xs sm:text-sm font-semibold transition-all duration-150 flex-1 sm:flex-initial justify-center"
-            style={
-              !suggestionsOnly
-                ? { background: 'rgba(118,77,240,0.22)', color: '#ddd6fe', border: '1px solid rgba(118,77,240,0.4)' }
-                : { background: 'transparent', color: 'rgba(255,255,255,0.5)', border: '1px solid transparent' }
-            }
-          >
-            <FileText className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">Apply ATS template</span>
-            <span className="sm:hidden">Template</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setSuggestionsOnly(true)}
-            className="flex items-center gap-2 rounded-xl px-3 sm:px-4 py-2 text-xs sm:text-sm font-semibold transition-all duration-150 flex-1 sm:flex-initial justify-center"
-            style={
-              suggestionsOnly
-                ? { background: 'rgba(118,77,240,0.22)', color: '#ddd6fe', border: '1px solid rgba(118,77,240,0.4)' }
-                : { background: 'transparent', color: 'rgba(255,255,255,0.5)', border: '1px solid transparent' }
-            }
-          >
-            <Wand2 className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">Keep my CV — suggestions only</span>
-            <span className="sm:hidden">Suggestions only</span>
-          </button>
-        </div>
-
-        {suggestionsOnly && (
-          <div
-            className="rounded-xl px-4 py-3 text-xs sm:text-[13px] leading-relaxed"
-            style={{ background: 'rgba(118,77,240,0.08)', border: '1px solid rgba(118,77,240,0.2)', color: 'rgba(221,214,254,0.95)' }}
-          >
-            You're keeping your own CV layout. Template picker and PDF export are hidden — use
-            the preview below as reference and apply the improvements on the right (keyword
-            gaps, rewritten bullets, quick wins) to your own file directly.
-          </div>
-        )}
 
         {/* cover letter panel */}
         {(showCL || clLoading) && (
@@ -546,19 +500,12 @@ export default function CVPage() {
           </div>
         )}
 
-        {/* two-column grid — collapses to one column in suggestions-only mode */}
-        <div
-          className={
-            suggestionsOnly
-              ? 'grid grid-cols-1 gap-4 sm:gap-5 lg:gap-6'
-              : 'grid grid-cols-1 lg:grid-cols-[1fr_400px] gap-4 sm:gap-5 lg:gap-6'
-          }
-        >
-          {/* CV column — preview always visible; template picker hidden in suggestions-only */}
+        {/* two-column grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_400px] gap-4 sm:gap-5 lg:gap-6">
+          {/* CV column */}
           <div className="min-w-0 space-y-3 sm:space-y-4">
 
             {/* Template strip — collapsible to save vertical room */}
-            {!suggestionsOnly && (
             <div className="rounded-2xl overflow-hidden p-3 sm:p-4" style={glass}>
               <button
                 type="button"
@@ -652,46 +599,29 @@ export default function CVPage() {
                 </div>
               )}
             </div>
-            )}
 
             {/* CV Preview — horizontal pages, sticky on large screens.
-                In suggestions-only mode, show the ORIGINAL uploaded PDF
-                (if we stashed it on upload) instead of the templated version. */}
+                For template === 'original', CVPreview renders the uploaded PDF. */}
             <div
               className="rounded-2xl overflow-hidden lg:sticky lg:top-20"
               style={glass}
             >
               <div style={{ height: '1px', background: 'linear-gradient(90deg,transparent,rgba(118,77,240,0.5),transparent)' }} />
               <div className="flex items-center justify-between px-3 sm:px-4 py-2 text-[10px] font-bold uppercase tracking-widest text-white/35">
-                <span>{suggestionsOnly ? 'Your Original CV' : 'Preview'}</span>
-                {!suggestionsOnly && (
+                <span>{isOriginal ? 'Your Original CV' : 'Preview'}</span>
+                {!isOriginal && (
                   <>
                     <span className="hidden sm:inline">Swipe pages →</span>
                     <span className="sm:hidden">← Swipe →</span>
                   </>
                 )}
               </div>
-              {suggestionsOnly ? (
-                originalPdfDataUrl ? (
-                  <iframe
-                    src={originalPdfDataUrl}
-                    title="Your original CV"
-                    className="w-full block bg-white"
-                    style={{ height: '85vh', border: 'none' }}
-                  />
-                ) : (
-                  <div
-                    className="px-5 py-10 text-center text-sm"
-                    style={{ color: 'rgba(255,255,255,0.55)' }}
-                  >
-                    Your original PDF isn't available in this session. Re-upload your CV to see
-                    it here, or switch to &ldquo;Apply ATS template&rdquo; to view the rewritten
-                    version.
-                  </div>
-                )
-              ) : (
-                <CVPreview cv={finalCV} template={template} photo={showPhotoSlot ? photo : null} />
-              )}
+              <CVPreview
+                cv={finalCV}
+                template={template}
+                photo={showPhotoSlot ? photo : null}
+                originalPdfDataUrl={originalPdfDataUrl}
+              />
             </div>
           </div>
 

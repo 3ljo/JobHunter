@@ -10,7 +10,10 @@ import ConsultingMetrics from './ConsultingMetrics';
 import SwissGrid from './SwissGrid';
 import { TEMPLATES, DEFAULT_TEMPLATE, type TemplateId, type TemplateMeta, type TemplateProps, type CVData } from './types';
 
+// 'original' is handled specially by CVPreview (renders the uploaded PDF in an iframe).
+// Fall back to Harvard so accidental direct usage still produces something.
 export const TEMPLATE_COMPONENTS: Record<TemplateId, React.FC<TemplateProps>> = {
+  original: HarvardClassic,
   harvard: HarvardClassic,
   modern: ModernProfessional,
   minimalist: MinimalistExecutive,
