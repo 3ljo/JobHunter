@@ -125,9 +125,12 @@ export default function CVPreview({ cv, template, photo, originalPdfDataUrl }: C
   };
 
   // A4 portrait — 210 × 297 mm → 1 : 1.414.
+  // The page width is capped so the full page (height = width * 1.4143) also
+  // fits inside `100vh - 200px`. That way the whole A4 is visible without
+  // vertical clipping regardless of content length — no scrolling on a single page.
   const A4_RATIO = 1.4143;
-  const pageWidth = 'min(90vw, 595px)';
-  const pageHeight = `calc(min(90vw, 595px) * ${A4_RATIO})`;
+  const pageWidth = `min(88vw, 560px, calc((100vh - 200px) / ${A4_RATIO}))`;
+  const pageHeight = `calc(${pageWidth} * ${A4_RATIO})`;
 
   return (
     <div style={{ position: 'relative' }}>
@@ -139,10 +142,9 @@ export default function CVPreview({ cv, template, photo, originalPdfDataUrl }: C
           WebkitOverflowScrolling: 'touch',
           scrollSnapType: 'x mandatory',
           height: pageHeight,
-          maxHeight: 'calc(100vh - 180px)',
           background: 'transparent',
           borderRadius: 12,
-          padding: '0 12px',
+          padding: '8px 12px',
         }}
       >
         <div
@@ -151,10 +153,13 @@ export default function CVPreview({ cv, template, photo, originalPdfDataUrl }: C
             columnWidth: pageWidth,
             columnGap: 24,
             columnFill: 'auto',
+            margin: '0 auto',
+            width: 'fit-content',
           }}
         >
           <div
             style={{
+              width: pageWidth,
               background: '#ffffff',
               boxShadow: '0 4px 24px rgba(0,0,0,0.18)',
               borderRadius: 4,

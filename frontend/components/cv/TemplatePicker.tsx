@@ -8,10 +8,13 @@ interface TemplatePickerProps {
   onChange: (id: TemplateId) => void;
   isPro?: boolean;
   onUpgrade?: () => void;
+  /** Template ids to hide from the grid — e.g. ['original'] in flows with no uploaded PDF. */
+  exclude?: TemplateId[];
 }
 
-export default function TemplatePicker({ value, onChange, isPro = false, onUpgrade }: TemplatePickerProps) {
-  const list = Object.values(TEMPLATES);
+export default function TemplatePicker({ value, onChange, isPro = false, onUpgrade, exclude }: TemplatePickerProps) {
+  const excluded = new Set(exclude || []);
+  const list = Object.values(TEMPLATES).filter((t) => !excluded.has(t.id));
 
   return (
     <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-2.5">

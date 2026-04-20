@@ -252,6 +252,7 @@ export default function CreateCVForm({ onSubmittingChange }: CreateCVFormProps =
                 onChange={setTemplate}
                 isPro={isPro}
                 onUpgrade={() => router.push('/pricing')}
+                exclude={['original']}
               />
             </div>
           ) : (
