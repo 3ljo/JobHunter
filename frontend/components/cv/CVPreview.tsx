@@ -1,7 +1,8 @@
 'use client';
 
 import { useRef, useState, useEffect } from 'react';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Copy, Check, Sparkles } from 'lucide-react';
+import toast from 'react-hot-toast';
 import { TEMPLATE_COMPONENTS, DEFAULT_TEMPLATE, type TemplateId } from './templates';
 
 interface CVPreviewProps {
@@ -40,27 +41,29 @@ export default function CVPreview({ cv, template, photo, originalPdfDataUrl }: C
   const active: TemplateId = (template && TEMPLATE_COMPONENTS[template]) ? template : DEFAULT_TEMPLATE;
   const Template = TEMPLATE_COMPONENTS[active];
 
-  // "original" template: show the user's uploaded PDF directly in an iframe.
+  // "original" template: show the user's uploaded PDF directly in an iframe,
+  // followed by an AI-suggestions panel so Quick-Edit content (summary,
+  // bullets) is still visible even though the PDF itself can't be modified.
   if (active === 'original') {
-    if (originalPdfDataUrl) {
-      return (
-        <div style={{ background: '#ffffff' }}>
+    return (
+      <div style={{ background: '#ffffff' }}>
+        {originalPdfDataUrl ? (
           <iframe
             src={originalPdfDataUrl}
             title="Your original CV"
             className="w-full block bg-white"
             style={{ height: 'min(calc(100vh - 180px), 900px)', border: 'none' }}
           />
-        </div>
-      );
-    }
-    return (
-      <div
-        className="px-5 py-12 text-center text-sm"
-        style={{ color: 'rgba(15,23,42,0.6)', background: '#ffffff' }}
-      >
-        Your original PDF isn&apos;t cached in this session. Re-upload your CV to see it here,
-        or pick another template to view the AI-rewritten version.
+        ) : (
+          <div
+            className="px-5 py-12 text-center text-sm"
+            style={{ color: 'rgba(15,23,42,0.6)' }}
+          >
+            Your original PDF isn&apos;t cached in this session. Re-upload your CV to see it
+            here, or pick another template to view the AI-rewritten version.
+          </div>
+        )}
+        <OriginalAISuggestions cv={cv} />
       </div>
     );
   }
@@ -174,6 +177,156 @@ export default function CVPreview({ cv, template, photo, originalPdfDataUrl }: C
           <ChevronRight style={{ width: 18, height: 18 }} />
         </button>
       )}
+    </div>
+  );
+}
+
+/**
+ * Panel shown under the original uploaded PDF in "Keep My Own" mode.
+ * The PDF itself can't be edited, so if the user asks the AI for a new
+ * summary / extra bullets / skills, we surface those as copyable blocks
+ * here — the user applies them to their own file manually.
+ */
+function OriginalAISuggestions({ cv }: { cv: any }) {
+  const [copied, setCopied] = useState<string | null>(null);
+
+  const copy = async (id: string, value: string) => {
+    try {
+      await navigator.clipboard.writeText(value);
+      setCopied(id);
+      toast.success('Copied');
+      setTimeout(() => setCopied(null), 1500);
+    } catch {
+      toast.error('Copy failed');
+    }
+  };
+
+  const summary = typeof cv?.summary === 'string' ? cv.summary.trim() : '';
+  const skills: string[] = Array.isArray(cv?.skills)
+    ? cv.skills.map((s: any) => String(s || '').trim()).filter(Boolean)
+    : [];
+  const bullets: string[] = Array.isArray(cv?.experience)
+    ? cv.experience.flatMap((role: any) => Array.isArray(role?.bullets) ? role.bullets : [])
+      .map((b: any) => String(b || '').trim())
+      .filter(Boolean)
+    : [];
+
+  const hasAnything = summary || skills.length > 0 || bullets.length > 0;
+  if (!hasAnything) return null;
+
+  return (
+    <div
+      className="border-t"
+      style={{
+        background: '#f8fafc',
+        borderColor: '#e2e8f0',
+        padding: '18px 20px 22px',
+        color: '#0f172a',
+      }}
+    >
+      <div className="flex items-center gap-2 mb-3">
+        <Sparkles className="h-3.5 w-3.5" style={{ color: '#7c3aed' }} />
+        <p className="text-[11px] font-black uppercase tracking-widest" style={{ color: '#4b5563' }}>
+          AI-suggested content
+        </p>
+        <span
+          className="text-[9px] font-bold px-1.5 py-0.5 rounded"
+          style={{ background: '#ede9fe', color: '#6d28d9', border: '1px solid #ddd6fe' }}
+        >
+          COPY INTO YOUR CV
+        </span>
+      </div>
+      <p className="text-[11.5px] mb-3" style={{ color: '#64748b' }}>
+        Your PDF stays untouched. Copy any block below into your own file to apply the AI edits.
+      </p>
+
+      {summary && (
+        <SuggestionBlock
+          label="Summary"
+          value={summary}
+          id="sum"
+          copied={copied}
+          onCopy={copy}
+        />
+      )}
+
+      {skills.length > 0 && (
+        <SuggestionBlock
+          label="Skills"
+          value={skills.join(', ')}
+          id="skills"
+          copied={copied}
+          onCopy={copy}
+        />
+      )}
+
+      {bullets.length > 0 && (
+        <SuggestionBlock
+          label={`Rewritten bullets (${bullets.length})`}
+          value={bullets.map((b) => `• ${b}`).join('\n')}
+          id="bullets"
+          copied={copied}
+          onCopy={copy}
+        />
+      )}
+    </div>
+  );
+}
+
+function SuggestionBlock({
+  label,
+  value,
+  id,
+  copied,
+  onCopy,
+}: {
+  label: string;
+  value: string;
+  id: string;
+  copied: string | null;
+  onCopy: (id: string, value: string) => void;
+}) {
+  return (
+    <div className="mb-3 last:mb-0">
+      <div className="flex items-center justify-between mb-1">
+        <p className="text-[10px] font-bold uppercase tracking-wider" style={{ color: '#475569' }}>
+          {label}
+        </p>
+        <button
+          type="button"
+          onClick={() => onCopy(id, value)}
+          className="flex items-center gap-1 text-[10.5px] font-semibold px-2 py-0.5 rounded transition-colors"
+          style={{
+            background: copied === id ? '#dcfce7' : '#ede9fe',
+            color: copied === id ? '#166534' : '#6d28d9',
+            border: '1px solid ' + (copied === id ? '#86efac' : '#ddd6fe'),
+          }}
+        >
+          {copied === id ? (
+            <>
+              <Check className="h-3 w-3" />
+              Copied
+            </>
+          ) : (
+            <>
+              <Copy className="h-3 w-3" />
+              Copy
+            </>
+          )}
+        </button>
+      </div>
+      <div
+        className="text-[12.5px] leading-relaxed whitespace-pre-wrap rounded-md px-3 py-2"
+        style={{
+          background: '#ffffff',
+          border: '1px solid #e2e8f0',
+          color: '#1e293b',
+          maxHeight: 260,
+          overflowY: 'auto',
+        }}
+      >
+        {value}
+      </div>
     </div>
   );
 }
