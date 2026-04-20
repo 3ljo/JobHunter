@@ -12,6 +12,59 @@ const TEMPLATES = [
 
 const PHOTO_TEMPLATES = ['european', 'executive', 'swiss'];
 
+// ─── Singleton browser ──────────────────────────────────────────────
+// Launching Chromium is expensive (1-3s). Keep one instance alive for the
+// process lifetime and just open a fresh Page per PDF. This alone takes
+// preview generation from ~3-5s down to ~400-800ms.
+let browserPromise = null;
+let browserDeadSince = 0;
+
+const getBrowser = async () => {
+  if (browserPromise) {
+    try {
+      const b = await browserPromise;
+      if (b && b.connected !== false && b.process() && !b.process().killed) {
+        return b;
+      }
+    } catch {
+      // fall through to relaunch
+    }
+  }
+
+  browserDeadSince = 0;
+  browserPromise = puppeteer
+    .launch({
+      headless: true,
+      executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
+      args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-gpu', '--disable-dev-shm-usage'],
+    })
+    .then((b) => {
+      b.on('disconnected', () => {
+        browserDeadSince = Date.now();
+        browserPromise = null;
+      });
+      return b;
+    })
+    .catch((err) => {
+      browserPromise = null;
+      throw err;
+    });
+
+  return browserPromise;
+};
+
+// Close on shutdown so no orphan Chromium processes linger.
+['SIGINT', 'SIGTERM', 'beforeExit'].forEach((sig) => {
+  process.once(sig, async () => {
+    try {
+      if (browserPromise) {
+        const b = await browserPromise;
+        if (b) await b.close();
+      }
+    } catch { /* noop */ }
+  });
+});
+
 const generateCVPdfBuffer = async (finalCV, options = {}) => {
   const templateId = TEMPLATES.includes(options.template) ? options.template : DEFAULT_TEMPLATE;
   const photo = PHOTO_TEMPLATES.includes(templateId)
@@ -22,15 +75,14 @@ const generateCVPdfBuffer = async (finalCV, options = {}) => {
 
   const html = buildCVHtml(finalCV, templateId, photo);
 
-  const browser = await puppeteer.launch({
-    headless: true,
-    executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
-    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-gpu', '--disable-dev-shm-usage'],
-  });
+  const browser = await getBrowser();
+  const page = await browser.newPage();
 
   try {
-    const page = await browser.newPage();
-    await page.setContent(html, { waitUntil: 'networkidle0' });
+    // HTML is self-contained (inline CSS, optional base64 photo). No remote
+    // network calls, so domcontentloaded fires immediately — no need to
+    // wait for networkidle0, which used to add ~500ms of dead time.
+    await page.setContent(html, { waitUntil: 'domcontentloaded' });
 
     const pdfBuffer = await page.pdf({
       format: 'A4',
@@ -40,7 +92,8 @@ const generateCVPdfBuffer = async (finalCV, options = {}) => {
 
     return Buffer.from(pdfBuffer);
   } finally {
-    await browser.close();
+    // Close the page, not the browser — keeps the chromium warm for the next call.
+    try { await page.close(); } catch { /* noop */ }
   }
 };
 

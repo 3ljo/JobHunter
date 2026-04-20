@@ -27,23 +27,31 @@ export default function CVPreview({
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [fetching, setFetching] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const lastUrlRef = useRef<string | null>(null);
 
-  // Fetch a server-rendered PDF for non-"original" templates.
-  // Refetch whenever template, photo, or the finalCV changes (e.g. after Quick Edit).
+  // Cache blob URLs by render key so switching templates you already saw is instant.
+  const cacheRef = useRef<Map<string, string>>(new Map());
+
+  // Cheap "has the structured CV actually changed?" signal. We don't want to
+  // re-render the PDF on every React state blip — only when the real content
+  // shifts. `cv_version_key` is updated server-side on every refineCV, so the
+  // full JSON stringify is the authoritative content hash.
+  const cvKey = cv ? JSON.stringify(cv) : '';
+  const photoKey = photo ? `p:${photo.length}` : 'p:none';
+  const renderKey = `${active}|${photoKey}|${cvKey.length}:${cvKey.slice(0, 64)}`;
+
   useEffect(() => {
-    if (active === 'original') {
-      // Clean up any lingering template blob so switching back/forth is instant.
-      if (lastUrlRef.current) {
-        URL.revokeObjectURL(lastUrlRef.current);
-        lastUrlRef.current = null;
-      }
+    if (active === 'original' || !cvRecordId) {
       setPdfUrl(null);
       setError(null);
       return;
     }
-    if (!cvRecordId) {
-      setPdfUrl(null);
+
+    // Already cached? Show instantly, no server roundtrip.
+    const cached = cacheRef.current.get(renderKey);
+    if (cached) {
+      setPdfUrl(cached);
+      setError(null);
+      setFetching(false);
       return;
     }
 
@@ -51,37 +59,49 @@ export default function CVPreview({
     setFetching(true);
     setError(null);
 
-    previewCVPdf(cvRecordId, { template: active, photo: photo ?? null })
-      .then((url) => {
-        if (cancelled) {
-          URL.revokeObjectURL(url);
-          return;
-        }
-        if (lastUrlRef.current) URL.revokeObjectURL(lastUrlRef.current);
-        lastUrlRef.current = url;
-        setPdfUrl(url);
-      })
-      .catch(() => {
-        if (!cancelled) setError('Could not render the PDF preview. Try again.');
-      })
-      .finally(() => {
-        if (!cancelled) setFetching(false);
-      });
+    // Small debounce so rapid template switches / Quick Edit keystrokes don't
+    // pile up requests — only the last one actually fires.
+    const timer = window.setTimeout(() => {
+      previewCVPdf(cvRecordId, { template: active, photo: photo ?? null })
+        .then((url) => {
+          if (cancelled) {
+            URL.revokeObjectURL(url);
+            return;
+          }
+          cacheRef.current.set(renderKey, url);
+          setPdfUrl(url);
+        })
+        .catch(() => {
+          if (!cancelled) setError('Could not render the PDF preview. Try again.');
+        })
+        .finally(() => {
+          if (!cancelled) setFetching(false);
+        });
+    }, 150);
 
     return () => {
       cancelled = true;
+      window.clearTimeout(timer);
     };
-    // Re-run when any of these change. `cv` is a proxy for "the structured data
-    // was refined" — we rely on refineCV having already persisted it server-side.
-  }, [active, cvRecordId, photo, cv]);
+  }, [active, cvRecordId, photo, renderKey]);
 
-  // Revoke on unmount
+  // When the CV content changes (Quick Edit), invalidate stale cache entries
+  // for *other* templates so they re-render next time they're opened.
+  const prevCvKeyRef = useRef(cvKey);
   useEffect(() => {
+    if (prevCvKeyRef.current && prevCvKeyRef.current !== cvKey) {
+      for (const url of cacheRef.current.values()) URL.revokeObjectURL(url);
+      cacheRef.current.clear();
+    }
+    prevCvKeyRef.current = cvKey;
+  }, [cvKey]);
+
+  // Revoke all cached blob URLs on unmount.
+  useEffect(() => {
+    const cache = cacheRef.current;
     return () => {
-      if (lastUrlRef.current) {
-        URL.revokeObjectURL(lastUrlRef.current);
-        lastUrlRef.current = null;
-      }
+      for (const url of cache.values()) URL.revokeObjectURL(url);
+      cache.clear();
     };
   }, []);
 
