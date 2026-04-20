@@ -45,6 +45,13 @@ export default function CVPreview({ cv, template, photo }: CVPreviewProps) {
     el.scrollBy({ left: page, behavior: 'smooth' });
   };
 
+  // A4 portrait ratio is 210 × 297 mm → 1 : 1.414
+  // We pick a target page width, then height is width × 1.414.
+  // On mobile, width clamps to ~90vw; on desktop, tops out around 595px (A4 at 72dpi).
+  const A4_RATIO = 1.4143;
+  const pageWidth = 'min(90vw, 595px)';
+  const pageHeight = `calc(min(90vw, 595px) * ${A4_RATIO})`;
+
   return (
     <div style={{ position: 'relative' }}>
       <div
@@ -53,23 +60,37 @@ export default function CVPreview({ cv, template, photo }: CVPreviewProps) {
           overflowX: 'auto',
           overflowY: 'hidden',
           WebkitOverflowScrolling: 'touch',
-          scrollSnapType: 'x proximity',
-          height: 'min(calc(100vh - 240px), 860px)',
-          minHeight: 460,
-          background: '#ffffff',
+          scrollSnapType: 'x mandatory',
+          height: pageHeight,
+          maxHeight: 'calc(100vh - 180px)',
+          background: 'transparent',
           borderRadius: 12,
+          // Gutter around the scroll track so a "single A4 page" visually sits centered
+          padding: '0 12px',
         }}
       >
         <div
           style={{
             height: '100%',
-            columnWidth: 'min(88vw, 620px)',
+            columnWidth: pageWidth,
             columnGap: 24,
             columnFill: 'auto',
-            columnRule: '1px dashed #e5e7eb',
+            // Each column gets its own page-like frame via inner ::first-line? not reliable.
+            // Instead we style the Template's root with paper look; the column container
+            // stays transparent so multi-page CVs flow cleanly.
           }}
         >
-          <Template cv={cv} photo={photo ?? null} />
+          <div
+            style={{
+              // Make the single Template render like a paper page with subtle shadow.
+              background: '#ffffff',
+              boxShadow: '0 4px 24px rgba(0,0,0,0.18)',
+              borderRadius: 4,
+              scrollSnapAlign: 'start',
+            }}
+          >
+            <Template cv={cv} photo={photo ?? null} />
+          </div>
         </div>
       </div>
 

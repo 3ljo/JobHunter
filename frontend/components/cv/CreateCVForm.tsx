@@ -4,12 +4,13 @@ import { useState } from 'react';
 import {
   User, Mail, Phone, MapPin, Link2, Briefcase, GraduationCap, Wrench,
   Award, Sparkles, Plus, Trash2, Download, ArrowLeft, Palette, Globe,
+  ChevronDown, ChevronUp, Check,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useRouter } from 'next/navigation';
 import { createCV, downloadCVPdf, type CreateCVData } from '@/lib/api';
 import { useSubscriptionStore } from '@/store/subscriptionStore';
-import TemplatePicker from './TemplatePicker';
+import TemplatePicker, { TemplateThumbnail } from './TemplatePicker';
 import PhotoUpload from './PhotoUpload';
 import CVPreview from './CVPreview';
 import QuickEditBox from './QuickEditBox';
@@ -72,6 +73,7 @@ export default function CreateCVForm({ onSubmittingChange }: CreateCVFormProps =
   const [downloading, setDownloading] = useState(false);
   const [cvRecordId, setCvRecordId] = useState<string | null>(null);
   const [generatedCV, setGeneratedCV] = useState<any>(null);
+  const [templatesExpanded, setTemplatesExpanded] = useState(false);
 
   /* ─── Experience handlers ─── */
   const addExperience = () => setExperience((xs) => [...xs, emptyExperience()]);
@@ -224,24 +226,87 @@ export default function CreateCVForm({ onSubmittingChange }: CreateCVFormProps =
           <CVPreview cv={generatedCV} template={template} photo={template === 'european' ? photo : null} />
         </div>
 
-        {/* Template picker */}
+        {/* Template picker — collapsible to save screen room */}
         <div className="rounded-2xl p-4 sm:p-5 mt-4" style={glass}>
-          <div className="flex items-center gap-2 mb-3">
-            <Palette className="h-4 w-4" style={{ color: '#a78bfa' }} />
-            <p className="text-xs font-bold uppercase tracking-widest text-white/50">
-              Template — {TEMPLATES[template].name}
-            </p>
-          </div>
-          <TemplatePicker
-            value={template}
-            onChange={setTemplate}
-            isPro={isPro}
-            onUpgrade={() => router.push('/pricing')}
-          />
-          {template === 'european' && (
+          <button
+            type="button"
+            onClick={() => setTemplatesExpanded((v) => !v)}
+            className="w-full flex items-center justify-between gap-3 text-left"
+            aria-expanded={templatesExpanded}
+          >
+            <div className="flex items-center gap-2 min-w-0">
+              <Palette className="h-4 w-4 shrink-0" style={{ color: '#a78bfa' }} />
+              <p className="text-xs font-bold uppercase tracking-widest text-white/50 truncate">
+                Template — {TEMPLATES[template].name}
+              </p>
+            </div>
+            {templatesExpanded
+              ? <ChevronUp className="h-4 w-4 shrink-0 text-white/55" />
+              : <ChevronDown className="h-4 w-4 shrink-0 text-white/55" />}
+          </button>
+
+          {templatesExpanded ? (
+            <div className="mt-4">
+              <TemplatePicker
+                value={template}
+                onChange={setTemplate}
+                isPro={isPro}
+                onUpgrade={() => router.push('/pricing')}
+              />
+            </div>
+          ) : (
+            /* Collapsed state — just the one currently-selected template card */
+            <div className="mt-3 grid grid-cols-2 md:grid-cols-4 gap-2.5">
+              <div
+                className="relative rounded-lg p-2 sm:p-2.5"
+                style={{
+                  background: 'rgba(118,77,240,0.14)',
+                  border: '1px solid rgba(118,77,240,0.55)',
+                  boxShadow: '0 0 0 3px rgba(118,77,240,0.10)',
+                }}
+              >
+                <div className="relative">
+                  <TemplateThumbnail id={template} />
+                  <span
+                    className="absolute top-1 right-1 flex h-4 w-4 items-center justify-center rounded-full"
+                    style={{ background: '#764df0' }}
+                  >
+                    <Check className="h-2.5 w-2.5 text-white" />
+                  </span>
+                </div>
+                <div className="mt-2 min-w-0">
+                  <p className="text-[11px] sm:text-[12px] font-semibold text-white truncate">
+                    {TEMPLATES[template].name}
+                  </p>
+                  <div className="flex items-center gap-1.5 mt-0.5">
+                    <span className="text-[9px] font-bold" style={{ color: '#34d399' }}>
+                      ATS {TEMPLATES[template].atsScore}%
+                    </span>
+                    <span className="text-[9px] text-white/35 truncate">· {TEMPLATES[template].region}</span>
+                  </div>
+                </div>
+              </div>
+              {/* "Change" CTA fills the rest of the strip on desktop */}
+              <button
+                type="button"
+                onClick={() => setTemplatesExpanded(true)}
+                className="md:col-span-3 rounded-lg flex items-center justify-center gap-2 text-xs font-bold text-white/70 hover:text-white"
+                style={{
+                  background: 'rgba(255,255,255,0.03)',
+                  border: '1px dashed rgba(255,255,255,0.12)',
+                  minHeight: 56,
+                }}
+              >
+                <ChevronDown className="h-3.5 w-3.5" />
+                Show all 10 templates
+              </button>
+            </div>
+          )}
+
+          {TEMPLATES[template].supportsPhoto && (
             <div className="mt-4">
               <p className="text-[10px] font-bold uppercase tracking-widest text-white/40 mb-2">
-                Photo (optional — European CV only)
+                Photo (optional — {TEMPLATES[template].name})
               </p>
               <PhotoUpload value={photo} onChange={setPhoto} />
             </div>

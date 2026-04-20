@@ -74,7 +74,7 @@ export default function TemplatePicker({ value, onChange, isPro = false, onUpgra
 }
 
 /* Compact SVG thumbnails — small, tight aspect for a horizontal strip */
-function TemplateThumbnail({ id }: { id: TemplateId }) {
+export function TemplateThumbnail({ id }: { id: TemplateId }) {
   const common = 'w-full aspect-[4/5] rounded-md overflow-hidden';
   const paperStyle = { background: '#ffffff' };
 
