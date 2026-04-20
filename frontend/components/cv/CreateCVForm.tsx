@@ -255,10 +255,10 @@ export default function CreateCVForm({ onSubmittingChange }: CreateCVFormProps =
               />
             </div>
           ) : (
-            /* Collapsed state — just the one currently-selected template card */
-            <div className="mt-3 grid grid-cols-2 md:grid-cols-4 gap-2.5">
+            /* Collapsed state — stacks on mobile, horizontal strip on md+ */
+            <div className="mt-3 grid grid-cols-1 md:grid-cols-4 gap-2.5">
               <div
-                className="relative rounded-lg p-2 sm:p-2.5"
+                className="relative rounded-lg p-2 sm:p-2.5 max-w-[220px] md:max-w-none"
                 style={{
                   background: 'rgba(118,77,240,0.14)',
                   border: '1px solid rgba(118,77,240,0.55)',
@@ -587,7 +587,10 @@ export default function CreateCVForm({ onSubmittingChange }: CreateCVFormProps =
           <AddButton onClick={addLanguage} label="Add language" />
         </div>
         {languages.map((l, i) => (
-          <div key={i} className="flex items-center gap-2 mb-2 last:mb-0">
+          <div
+            key={i}
+            className="flex flex-col sm:flex-row sm:items-center gap-2 mb-2 last:mb-0"
+          >
             <input
               type="text"
               value={l.name}
@@ -596,19 +599,21 @@ export default function CreateCVForm({ onSubmittingChange }: CreateCVFormProps =
               className={`${inputClass} flex-1`}
               style={inputStyle}
             />
-            <select
-              value={l.level}
-              onChange={(e) => updateLanguage(i, { level: e.target.value })}
-              className="rounded-xl px-3 py-2.5 text-sm outline-none shrink-0"
-              style={{ ...inputStyle, minWidth: 140 }}
-            >
-              {LANGUAGE_LEVELS.map((lvl) => (
-                <option key={lvl} value={lvl} style={{ background: '#12163a' }}>{lvl}</option>
-              ))}
-            </select>
-            {languages.length > 1 && (
-              <IconButton onClick={() => removeLanguage(i)} icon={<Trash2 className="h-3.5 w-3.5" />} />
-            )}
+            <div className="flex items-center gap-2">
+              <select
+                value={l.level}
+                onChange={(e) => updateLanguage(i, { level: e.target.value })}
+                className="rounded-xl px-3 py-2.5 text-sm outline-none flex-1 sm:flex-none"
+                style={{ ...inputStyle, minWidth: 120 }}
+              >
+                {LANGUAGE_LEVELS.map((lvl) => (
+                  <option key={lvl} value={lvl} style={{ background: '#12163a' }}>{lvl}</option>
+                ))}
+              </select>
+              {languages.length > 1 && (
+                <IconButton onClick={() => removeLanguage(i)} icon={<Trash2 className="h-3.5 w-3.5" />} />
+              )}
+            </div>
           </div>
         ))}
         <p className="text-[11px] text-white/35 mt-2">Standard levels: Native, Fluent, Advanced, Intermediate, Basic.</p>

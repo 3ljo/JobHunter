@@ -547,9 +547,9 @@ export default function CVPage() {
                 </div>
               ) : (
                 /* Collapsed — only the selected template card + a "show all" CTA */
-                <div className="mt-3 grid grid-cols-2 md:grid-cols-4 gap-2.5">
+                <div className="mt-3 grid grid-cols-1 md:grid-cols-4 gap-2.5">
                   <div
-                    className="relative rounded-lg p-2 sm:p-2.5"
+                    className="relative rounded-lg p-2 sm:p-2.5 max-w-[220px] md:max-w-none"
                     style={{
                       background: 'rgba(118,77,240,0.14)',
                       border: '1px solid rgba(118,77,240,0.55)',
