@@ -20,6 +20,7 @@ import toast from 'react-hot-toast';
 import {
   Download, RotateCcw, ArrowRight, TrendingUp, FileSignature,
   Sparkles, Copy, Check, X, Send, Palette, ChevronDown, ChevronUp,
+  FileText, Wand2,
 } from 'lucide-react';
 
 const tones = [
@@ -41,6 +42,7 @@ export default function CVPage() {
     result, setResult, reset: resetAnalysis,
     loading: analysisLoading, step: analysisStep, steps: analysisSteps,
     template, photo, setTemplate, setPhoto,
+    suggestionsOnly, setSuggestionsOnly,
   } = useCVAnalysisStore();
 
   const { subscription, usage, fetchSubscription } = useSubscriptionStore();
@@ -345,17 +347,19 @@ export default function CVPage() {
 
               {/* actions */}
               <div className="flex flex-wrap items-center justify-center gap-2 w-full sm:w-auto">
-                <button
-                  onClick={handleDownload}
-                  disabled={downloading}
-                  className="flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition-all duration-200"
-                  style={{ background: 'rgba(118,77,240,0.18)', border: '1px solid rgba(118,77,240,0.32)', color: '#c4b5fd' }}
-                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(118,77,240,0.28)'; }}
-                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(118,77,240,0.18)'; }}
-                >
-                  <Download className="h-4 w-4" />
-                  {downloading ? 'Downloading…' : 'PDF'}
-                </button>
+                {!suggestionsOnly && (
+                  <button
+                    onClick={handleDownload}
+                    disabled={downloading}
+                    className="flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition-all duration-200"
+                    style={{ background: 'rgba(118,77,240,0.18)', border: '1px solid rgba(118,77,240,0.32)', color: '#c4b5fd' }}
+                    onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(118,77,240,0.28)'; }}
+                    onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(118,77,240,0.18)'; }}
+                  >
+                    <Download className="h-4 w-4" />
+                    {downloading ? 'Downloading…' : 'PDF'}
+                  </button>
+                )}
                 <button
                   onClick={() => setShowCL(true)}
                   className="flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition-all duration-200"
@@ -384,6 +388,52 @@ export default function CVPage() {
 
       {/* ── CONTENT ───────────────────────────────────────────────── */}
       <div className="mx-auto max-w-7xl px-4 sm:px-6 space-y-6" style={{ position: 'relative', zIndex: 1 }}>
+
+        {/* mode switch — keep own CV vs. use template */}
+        <div
+          className="rounded-2xl p-1 flex items-center gap-1"
+          style={{ ...glass, alignSelf: 'start' }}
+        >
+          <button
+            type="button"
+            onClick={() => setSuggestionsOnly(false)}
+            className="flex items-center gap-2 rounded-xl px-3 sm:px-4 py-2 text-xs sm:text-sm font-semibold transition-all duration-150 flex-1 sm:flex-initial justify-center"
+            style={
+              !suggestionsOnly
+                ? { background: 'rgba(118,77,240,0.22)', color: '#ddd6fe', border: '1px solid rgba(118,77,240,0.4)' }
+                : { background: 'transparent', color: 'rgba(255,255,255,0.5)', border: '1px solid transparent' }
+            }
+          >
+            <FileText className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">Apply ATS template</span>
+            <span className="sm:hidden">Template</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setSuggestionsOnly(true)}
+            className="flex items-center gap-2 rounded-xl px-3 sm:px-4 py-2 text-xs sm:text-sm font-semibold transition-all duration-150 flex-1 sm:flex-initial justify-center"
+            style={
+              suggestionsOnly
+                ? { background: 'rgba(118,77,240,0.22)', color: '#ddd6fe', border: '1px solid rgba(118,77,240,0.4)' }
+                : { background: 'transparent', color: 'rgba(255,255,255,0.5)', border: '1px solid transparent' }
+            }
+          >
+            <Wand2 className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">Keep my CV — suggestions only</span>
+            <span className="sm:hidden">Suggestions only</span>
+          </button>
+        </div>
+
+        {suggestionsOnly && (
+          <div
+            className="rounded-xl px-4 py-3 text-xs sm:text-[13px] leading-relaxed"
+            style={{ background: 'rgba(118,77,240,0.08)', border: '1px solid rgba(118,77,240,0.2)', color: 'rgba(221,214,254,0.95)' }}
+          >
+            You're keeping your own CV layout. The PDF export and template picker are hidden —
+            use the improvements on the right (keyword gaps, rewritten bullets, quick wins) to
+            edit your own file directly.
+          </div>
+        )}
 
         {/* cover letter panel */}
         {(showCL || clLoading) && (
@@ -495,9 +545,16 @@ export default function CVPage() {
           </div>
         )}
 
-        {/* two-column grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_400px] gap-4 sm:gap-5 lg:gap-6">
-          {/* CV column */}
+        {/* two-column grid — collapses to one column in suggestions-only mode */}
+        <div
+          className={
+            suggestionsOnly
+              ? 'grid grid-cols-1 gap-4 sm:gap-5 lg:gap-6'
+              : 'grid grid-cols-1 lg:grid-cols-[1fr_400px] gap-4 sm:gap-5 lg:gap-6'
+          }
+        >
+          {/* CV column — hidden in suggestions-only mode */}
+          {!suggestionsOnly && (
           <div className="min-w-0 space-y-3 sm:space-y-4">
 
             {/* Template strip — collapsible to save vertical room */}
@@ -609,6 +666,7 @@ export default function CVPage() {
               <CVPreview cv={finalCV} template={template} photo={showPhotoSlot ? photo : null} />
             </div>
           </div>
+          )}
 
           {/* Analysis + Quick Edit */}
           <div className="space-y-4 sm:space-y-5 min-w-0">

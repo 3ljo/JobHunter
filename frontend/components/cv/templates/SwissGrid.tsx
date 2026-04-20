@@ -2,6 +2,7 @@
 
 import type { TemplateProps } from './types';
 import { certText, cleanCerts, cleanEducation, cleanLanguages, langText } from './types';
+import { EduExtras, CertExtras } from './TemplateExtras';
 
 export default function SwissGrid({ cv, photo }: TemplateProps) {
   if (!cv) return null;
@@ -112,6 +113,7 @@ export default function SwissGrid({ cv, photo }: TemplateProps) {
                 <p className="text-[13px] sm:text-sm text-gray-800">
                   {[e.degree, e.institution].filter(Boolean).join(' — ')}
                 </p>
+                <EduExtras e={e} subSize={12} subColor="gray-600" />
               </div>
             </div>
           ))}
@@ -135,7 +137,10 @@ export default function SwissGrid({ cv, photo }: TemplateProps) {
       {certs.length > 0 && (
         <Section title="06 / Certifications" last>
           {certs.map((cert, i) => (
-            <p key={i} className="text-[13px] sm:text-sm text-gray-800">{certText(cert)}</p>
+            <div key={i} className="mb-1.5">
+              <p className="text-[13px] sm:text-sm text-gray-800">{certText(cert)}</p>
+              <CertExtras cert={cert} subSize={12} subColor="gray-600" />
+            </div>
           ))}
         </Section>
       )}

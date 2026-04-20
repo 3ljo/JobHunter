@@ -3,6 +3,22 @@ export interface CVLanguage {
   level?: string;
 }
 
+export interface CVEducation {
+  degree?: string;
+  institution?: string;
+  year?: string;
+  city?: string;
+  country?: string;
+  url?: string;
+}
+
+export interface CVCertification {
+  name?: string;
+  issuer?: string;
+  year?: string;
+  url?: string;
+}
+
 export interface CVData {
   full_name?: string;
   email?: string;
@@ -17,12 +33,8 @@ export interface CVData {
     bullets?: string[];
   }>;
   skills?: string[];
-  education?: Array<{
-    degree?: string;
-    institution?: string;
-    year?: string;
-  }>;
-  certifications?: Array<string | { name?: string }>;
+  education?: Array<CVEducation>;
+  certifications?: Array<string | CVCertification>;
   languages?: Array<string | CVLanguage>;
 }
 
@@ -150,13 +162,28 @@ export const DEFAULT_TEMPLATE: TemplateId = 'harvard';
 
 /* ─── Helpers used by every template to hide truly-empty sections ─── */
 
-export function certText(cert: string | { name?: string } | undefined | null): string {
+export function certText(cert: string | CVCertification | undefined | null): string {
   if (!cert) return '';
   if (typeof cert === 'string') return cert.trim();
   return (cert.name || '').trim();
 }
 
-export function cleanCerts(list: Array<string | { name?: string }> | undefined | null): Array<string | { name?: string }> {
+export function certUrl(cert: string | CVCertification | undefined | null): string {
+  if (!cert || typeof cert === 'string') return '';
+  return (cert.url || '').trim();
+}
+
+export function certIssuer(cert: string | CVCertification | undefined | null): string {
+  if (!cert || typeof cert === 'string') return '';
+  return (cert.issuer || '').trim();
+}
+
+export function certYear(cert: string | CVCertification | undefined | null): string {
+  if (!cert || typeof cert === 'string') return '';
+  return (cert.year || '').trim();
+}
+
+export function cleanCerts(list: Array<string | CVCertification> | undefined | null): Array<string | CVCertification> {
   if (!Array.isArray(list)) return [];
   return list.filter((c) => certText(c).length > 0);
 }
@@ -170,14 +197,20 @@ export function hasNonEmpty(list: unknown[] | undefined | null): boolean {
   });
 }
 
-export function eduText(e: { degree?: string; institution?: string; year?: string } | undefined | null): string {
+export function eduText(e: CVEducation | undefined | null): string {
   if (!e) return '';
-  return [e.degree, e.institution, e.year].filter(Boolean).map((s) => String(s).trim()).join(' ');
+  return [e.degree, e.institution, e.year, e.city, e.country, e.url]
+    .filter(Boolean)
+    .map((s) => String(s).trim())
+    .join(' ');
 }
 
-export function cleanEducation<T extends { degree?: string; institution?: string; year?: string }>(
-  list: T[] | undefined | null
-): T[] {
+export function eduLocation(e: CVEducation | undefined | null): string {
+  if (!e) return '';
+  return [e.city, e.country].filter((s) => s && String(s).trim().length > 0).join(', ');
+}
+
+export function cleanEducation<T extends CVEducation>(list: T[] | undefined | null): T[] {
   if (!Array.isArray(list)) return [];
   return list.filter((e) => eduText(e).length > 0);
 }

@@ -2,6 +2,7 @@
 
 import type { TemplateProps } from './types';
 import { certText, cleanCerts, cleanEducation, cleanLanguages, langText } from './types';
+import { EduExtras, CertExtras } from './TemplateExtras';
 
 export default function MinimalistExecutive({ cv }: TemplateProps) {
   if (!cv) return null;
@@ -76,9 +77,12 @@ export default function MinimalistExecutive({ cv }: TemplateProps) {
       {edu.length > 0 && (
         <Section title="Education">
           {edu.map((e, i) => (
-            <p key={i} className="text-[13px] sm:text-[15px] text-gray-800">
-              {[e.degree, e.institution, e.year].filter(Boolean).join(' — ')}
-            </p>
+            <div key={i} className="mb-2">
+              <p className="text-[13px] sm:text-[15px] text-gray-800">
+                {[e.degree, e.institution, e.year].filter(Boolean).join(' — ')}
+              </p>
+              <EduExtras e={e} subSize={13} subColor="gray-600" />
+            </div>
           ))}
         </Section>
       )}
@@ -94,7 +98,10 @@ export default function MinimalistExecutive({ cv }: TemplateProps) {
       {certs.length > 0 && (
         <Section title="Certifications" last>
           {certs.map((cert, i) => (
-            <p key={i} className="text-[13px] sm:text-[15px] text-gray-800">{certText(cert)}</p>
+            <div key={i} className="mb-2">
+              <p className="text-[13px] sm:text-[15px] text-gray-800">{certText(cert)}</p>
+              <CertExtras cert={cert} subSize={13} subColor="gray-600" />
+            </div>
           ))}
         </Section>
       )}

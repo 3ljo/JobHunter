@@ -141,7 +141,10 @@ JOB DESCRIPTION:
 ${jobDescription}
 
 Return ONLY this JSON structure, nothing else. Preserve ALL certifications and education
-entries from the CV — never drop a factual credential.
+entries from the CV — never drop a factual credential. If an entry has a URL (certificate
+link, institution website, course page), you MUST capture it in the "url" field. Also
+capture city and country if present next to the institution. Dropping URLs or locations
+is a critical failure.
 
 {
   "cv_parsed": {
@@ -155,10 +158,12 @@ entries from the CV — never drop a factual credential.
       { "title": "", "company": "", "duration": "", "bullets": [] }
     ],
     "education": [
-      { "degree": "", "institution": "", "year": "" }
+      { "degree": "", "institution": "", "year": "", "city": "", "country": "", "url": "" }
     ],
     "skills": [],
-    "certifications": [],
+    "certifications": [
+      { "name": "", "issuer": "", "year": "", "url": "" }
+    ],
     "languages": []
   },
   "jd_fingerprint": {
@@ -249,6 +254,9 @@ Pass 1 — Voice preservation & intelligent rewrite:
    NEVER drop or empty them. If the parsed CV lists certifications, the final_cv.certifications
    array MUST contain them (rewritten/normalized in wording is fine, but the items themselves
    must survive). Same for education entries. Dropping factual credentials is a critical failure.
+7. PRESERVE every URL exactly as given (certificate links, institution websites). Do NOT
+   shorten, rewrite, or drop URLs. Copy them character-for-character into the "url" field.
+   Same for city, country, and year fields — carry them through verbatim.
 
 Pass 2 — Heavy humanization (applied in the SAME output):
 - Vary sentence length drastically — mix short punchy bullets with longer descriptive ones.
@@ -313,9 +321,11 @@ Produce ONE final, humanized CV in this exact JSON structure:
     ],
     "skills": [],
     "education": [
-      { "degree": "", "institution": "", "year": "" }
+      { "degree": "", "institution": "", "year": "", "city": "", "country": "", "url": "" }
     ],
-    "certifications": [],
+    "certifications": [
+      { "name": "", "issuer": "", "year": "", "url": "" }
+    ],
     "languages": []
   },
   "changes_made": [
@@ -435,10 +445,15 @@ Apply the changes and return the COMPLETE updated CV in this exact JSON structur
       {
         "degree": "",
         "institution": "",
-        "year": ""
+        "year": "",
+        "city": "",
+        "country": "",
+        "url": ""
       }
     ],
-    "certifications": [],
+    "certifications": [
+      { "name": "", "issuer": "", "year": "", "url": "" }
+    ],
     "languages": []
   },
   "changes_applied": []

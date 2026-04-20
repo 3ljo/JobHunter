@@ -100,9 +100,29 @@ function renderSkills(cv, separator = ', ', heading = 'SKILLS') {
   `;
 }
 
+function eduLocationText(edu) {
+  if (!edu) return '';
+  return [edu.city, edu.country]
+    .map((s) => (s ? String(s).trim() : ''))
+    .filter(Boolean)
+    .join(', ');
+}
+
+function eduExtrasHtml(edu) {
+  if (!edu) return '';
+  const loc = eduLocationText(edu);
+  const url = edu.url ? String(edu.url).trim() : '';
+  let out = '';
+  if (loc) out += `<p class="entry-meta">${escapeHtml(loc)}</p>`;
+  if (url) {
+    out += `<p class="entry-link"><a href="${escapeHtml(url)}">${escapeHtml(url)}</a></p>`;
+  }
+  return out;
+}
+
 function renderEducation(cv) {
   const entries = (cv.education || []).filter((edu) =>
-    [edu && edu.degree, edu && edu.institution, edu && edu.year].filter(Boolean).join(' ').trim().length > 0
+    [edu && edu.degree, edu && edu.institution, edu && edu.year, edu && edu.url].filter(Boolean).join(' ').trim().length > 0
   );
   if (entries.length === 0) return '';
   return `
@@ -110,7 +130,7 @@ function renderEducation(cv) {
       <h2>EDUCATION</h2>
       ${entries.map((edu) => {
         const parts = [edu.degree, edu.institution, edu.year].filter(Boolean);
-        return `<p>${escapeHtml(parts.join(' — '))}</p>`;
+        return `<div class="entry"><p>${escapeHtml(parts.join(' — '))}</p>${eduExtrasHtml(edu)}</div>`;
       }).join('')}
     </div>
   `;
@@ -122,13 +142,28 @@ function certText(cert) {
   return String(cert.name || '').trim();
 }
 
+function certExtrasHtml(cert) {
+  if (!cert || typeof cert === 'string') return '';
+  const meta = [cert.issuer, cert.year]
+    .map((s) => (s ? String(s).trim() : ''))
+    .filter(Boolean)
+    .join(' · ');
+  const url = cert.url ? String(cert.url).trim() : '';
+  let out = '';
+  if (meta) out += `<p class="entry-meta">${escapeHtml(meta)}</p>`;
+  if (url) {
+    out += `<p class="entry-link"><a href="${escapeHtml(url)}">${escapeHtml(url)}</a></p>`;
+  }
+  return out;
+}
+
 function renderCertifications(cv) {
   const entries = (cv.certifications || []).filter((c) => certText(c).length > 0);
   if (entries.length === 0) return '';
   return `
     <div class="section">
       <h2>CERTIFICATIONS</h2>
-      ${entries.map((cert) => `<p>${escapeHtml(certText(cert))}</p>`).join('')}
+      ${entries.map((cert) => `<div class="entry"><p>${escapeHtml(certText(cert))}</p>${certExtrasHtml(cert)}</div>`).join('')}
     </div>
   `;
 }
@@ -159,6 +194,10 @@ function baseStyles() {
     body { color: #1a1a1a; }
     ul { padding-left: 20px; margin-top: 4px; }
     li { margin-bottom: 3px; }
+    .entry { margin-bottom: 4pt; }
+    .entry-meta { font-size: 9.5pt; color: #555; margin-top: 1pt; margin-bottom: 1pt; }
+    .entry-link { font-size: 9pt; margin-top: 1pt; margin-bottom: 1pt; word-break: break-all; }
+    .entry-link a { color: #1d4ed8; text-decoration: underline; }
   `;
 }
 
@@ -508,11 +547,14 @@ function academicTemplate(cv) {
     <div class="section">
       <h2>Education</h2>
       ${cv.education
-        .filter((e) => [e.degree, e.institution, e.year].filter(Boolean).length > 0)
+        .filter((e) => [e.degree, e.institution, e.year, e.url].filter(Boolean).length > 0)
         .map((e) => `
-          <div class="edu-row">
-            <span class="edu-main"><strong>${escapeHtml(e.degree || 'Degree')}</strong>${e.institution ? `, <em>${escapeHtml(e.institution)}</em>` : ''}</span>
-            ${e.year ? `<span class="edu-year">${escapeHtml(e.year)}</span>` : ''}
+          <div class="entry">
+            <div class="edu-row">
+              <span class="edu-main"><strong>${escapeHtml(e.degree || 'Degree')}</strong>${e.institution ? `, <em>${escapeHtml(e.institution)}</em>` : ''}</span>
+              ${e.year ? `<span class="edu-year">${escapeHtml(e.year)}</span>` : ''}
+            </div>
+            ${eduExtrasHtml(e)}
           </div>
         `).join('')}
     </div>
@@ -540,7 +582,7 @@ function academicTemplate(cv) {
   const publicationsHtml = pubs.length === 0 ? '' : `
     <div class="section">
       <h2>Publications &amp; Honors</h2>
-      ${pubs.map((p) => `<p class="pub">${escapeHtml(certText(p))}</p>`).join('')}
+      ${pubs.map((p) => `<div class="entry"><p class="pub">${escapeHtml(certText(p))}</p>${certExtrasHtml(p)}</div>`).join('')}
     </div>
   `;
 
@@ -671,11 +713,14 @@ function swissTemplate(cv, photo) {
     <div class="section">
       <h2>03 / Education</h2>
       ${cv.education
-        .filter((e) => [e.degree, e.institution, e.year].filter(Boolean).length > 0)
+        .filter((e) => [e.degree, e.institution, e.year, e.url].filter(Boolean).length > 0)
         .map((e) => `
           <div class="grid-row">
             ${e.year ? `<div class="grid-left">${escapeHtml(e.year)}</div>` : '<div class="grid-left"></div>'}
-            <div class="grid-right"><p>${escapeHtml([e.degree, e.institution].filter(Boolean).join(' — '))}</p></div>
+            <div class="grid-right">
+              <p>${escapeHtml([e.degree, e.institution].filter(Boolean).join(' — '))}</p>
+              ${eduExtrasHtml(e)}
+            </div>
           </div>
         `).join('')}
     </div>

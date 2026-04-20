@@ -8,6 +8,7 @@ import { useSubscriptionStore } from '@/store/subscriptionStore';
 const STEPS = ['Parsing & auditing...', 'Rewriting & humanizing...', 'Done'];
 const TEMPLATE_KEY = 'cv_template_id';
 const PHOTO_KEY = 'cv_photo_data';
+const SUGGESTIONS_ONLY_KEY = 'cv_suggestions_only';
 
 interface CVAnalysisState {
   loading: boolean;
@@ -17,10 +18,12 @@ interface CVAnalysisState {
   result: CVAnalysisResult | null;
   template: TemplateId;
   photo: string | null;
+  suggestionsOnly: boolean;
   startAnalysis: (file: File, jobDescription: string) => void;
   setResult: (result: CVAnalysisResult | null) => void;
   setTemplate: (t: TemplateId) => void;
   setPhoto: (photo: string | null) => void;
+  setSuggestionsOnly: (v: boolean) => void;
   reset: () => void;
 }
 
@@ -46,6 +49,10 @@ export const useCVAnalysisStore = create<CVAnalysisState>((set, get) => ({
   photo: (() => {
     if (typeof window === 'undefined') return null;
     try { return localStorage.getItem(PHOTO_KEY); } catch { return null; }
+  })(),
+  suggestionsOnly: (() => {
+    if (typeof window === 'undefined') return false;
+    try { return localStorage.getItem(SUGGESTIONS_ONLY_KEY) === '1'; } catch { return false; }
   })(),
 
   startAnalysis: async (file: File, jobDescription: string) => {
@@ -118,6 +125,11 @@ export const useCVAnalysisStore = create<CVAnalysisState>((set, get) => ({
       else localStorage.removeItem(PHOTO_KEY);
     } catch {}
     set({ photo });
+  },
+
+  setSuggestionsOnly: (v) => {
+    try { localStorage.setItem(SUGGESTIONS_ONLY_KEY, v ? '1' : '0'); } catch {}
+    set({ suggestionsOnly: v });
   },
 
   reset: () => {

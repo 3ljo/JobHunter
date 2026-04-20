@@ -1,7 +1,8 @@
 'use client';
 
 import type { TemplateProps } from './types';
-import { certText, cleanCerts, cleanEducation, cleanLanguages, langText } from './types';
+import { certText, certUrl, cleanCerts, cleanEducation, cleanLanguages, langText } from './types';
+import { EduExtras } from './TemplateExtras';
 
 export default function CompactOnePage({ cv }: TemplateProps) {
   if (!cv) return null;
@@ -74,9 +75,12 @@ export default function CompactOnePage({ cv }: TemplateProps) {
       {edu.length > 0 && (
         <Section title="Education">
           {edu.map((e, i) => (
-            <p key={i} className="text-[12px] text-gray-800" style={{ marginBottom: 0 }}>
-              {[e.degree, e.institution, e.year].filter(Boolean).join(' — ')}
-            </p>
+            <div key={i}>
+              <p className="text-[12px] text-gray-800" style={{ marginBottom: 0 }}>
+                {[e.degree, e.institution, e.year].filter(Boolean).join(' — ')}
+              </p>
+              <EduExtras e={e} subSize={10.5} subColor="gray-600" />
+            </div>
           ))}
         </Section>
       )}
@@ -91,9 +95,36 @@ export default function CompactOnePage({ cv }: TemplateProps) {
 
       {certs.length > 0 && (
         <Section title="Certifications" last>
-          <p className="text-[12px] text-gray-800">
-            {certs.map((c) => certText(c)).filter(Boolean).join(' · ')}
-          </p>
+          {certs.some((c) => certUrl(c)) ? (
+            <div className="space-y-0.5">
+              {certs.map((c, i) => {
+                const url = certUrl(c);
+                return (
+                  <p key={i} className="text-[12px] text-gray-800" style={{ marginBottom: 0 }}>
+                    {certText(c)}
+                    {url && (
+                      <>
+                        {' — '}
+                        <a
+                          href={url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="underline break-all"
+                          style={{ color: '#1d4ed8', fontSize: 10.5, wordBreak: 'break-all' }}
+                        >
+                          {url}
+                        </a>
+                      </>
+                    )}
+                  </p>
+                );
+              })}
+            </div>
+          ) : (
+            <p className="text-[12px] text-gray-800">
+              {certs.map((c) => certText(c)).filter(Boolean).join(' · ')}
+            </p>
+          )}
         </Section>
       )}
     </div>
