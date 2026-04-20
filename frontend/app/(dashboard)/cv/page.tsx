@@ -277,16 +277,31 @@ export default function CVPage() {
         overflowX: 'hidden',
       }}
     >
-      {/* ── RESULTS HEADER — background/2.webp (different!) ────────── */}
+      {/* ── RESULTS HEADER — starfield bg, lighter overlay, decorative glow ── */}
       <section
         className="relative overflow-hidden pt-8 pb-10 sm:pt-14 sm:pb-20"
         style={{
-          backgroundImage: 'url(/aivent/background/2.webp)',
+          backgroundImage: 'url(/aivent/background/3.webp)',
           backgroundSize: 'cover',
           backgroundPosition: 'center',
         }}
       >
-        <div className="absolute inset-0" style={{ background: 'rgba(8,11,35,0.85)' }} />
+        {/* tinted overlay — kept lighter so the background image is actually visible */}
+        <div className="absolute inset-0" style={{ background: 'rgba(8,11,35,0.55)' }} />
+        {/* soft violet spotlight in the top-right so the robot area reads as a focal point */}
+        <div
+          className="absolute pointer-events-none hidden sm:block"
+          style={{
+            right: '-10%',
+            top: '-20%',
+            width: '55%',
+            height: '140%',
+            background:
+              'radial-gradient(circle at 60% 40%, rgba(118,77,240,0.38) 0%, rgba(118,77,240,0.12) 35%, transparent 65%)',
+            filter: 'blur(6px)',
+          }}
+        />
+        {/* bottom fade into page background */}
         <div className="absolute bottom-0 left-0 right-0"
           style={{ height: '50%', background: 'linear-gradient(0deg,#0d1130 0%,transparent 100%)' }} />
 
@@ -308,21 +323,40 @@ export default function CVPage() {
               className="hidden lg:block pointer-events-none select-none"
               style={{
                 position: 'absolute',
-                right: -120,
-                bottom: -4,
-                width: 140,
-                height: 180,
-                filter: 'drop-shadow(0 10px 24px rgba(118,77,240,0.45))',
+                right: -230,
+                bottom: -40,
+                width: 280,
+                height: 340,
+                zIndex: 3,
               }}
             >
-              <Image
-                src="/aivent/misc/robot-idle.png"
-                alt=""
-                fill
-                sizes="140px"
-                priority={false}
-                style={{ objectFit: 'contain', objectPosition: 'bottom right' }}
+              {/* soft glow disk behind the robot */}
+              <div
+                className="absolute"
+                style={{
+                  left: '10%',
+                  bottom: '10%',
+                  width: '80%',
+                  height: '70%',
+                  borderRadius: '50%',
+                  background:
+                    'radial-gradient(circle, rgba(167,139,250,0.38) 0%, rgba(118,77,240,0.22) 40%, transparent 70%)',
+                  filter: 'blur(8px)',
+                }}
               />
+              <div
+                className="relative w-full h-full"
+                style={{ filter: 'drop-shadow(0 18px 32px rgba(118,77,240,0.55))' }}
+              >
+                <Image
+                  src="/aivent/misc/robot-idle.png"
+                  alt=""
+                  fill
+                  sizes="280px"
+                  priority={false}
+                  style={{ objectFit: 'contain', objectPosition: 'bottom right' }}
+                />
+              </div>
             </div>
 
           <div className="rounded-2xl overflow-hidden" style={glass}>
