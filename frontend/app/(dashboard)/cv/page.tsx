@@ -7,7 +7,7 @@ import CVPreview from '@/components/cv/CVPreview';
 import QuickEditBox from '@/components/cv/QuickEditBox';
 import ScoreRing from '@/components/cv/ScoreRing';
 import AnalysisSidebar from '@/components/cv/AnalysisSidebar';
-import TemplatePicker from '@/components/cv/TemplatePicker';
+import TemplatePicker, { TemplateThumbnail } from '@/components/cv/TemplatePicker';
 import PhotoUpload from '@/components/cv/PhotoUpload';
 import { TEMPLATES } from '@/components/cv/templates';
 import UsageMeter from '@/components/usage/UsageMeter';
@@ -19,7 +19,7 @@ import { useSubscriptionStore } from '@/store/subscriptionStore';
 import toast from 'react-hot-toast';
 import {
   Download, RotateCcw, ArrowRight, TrendingUp, FileSignature,
-  Sparkles, Copy, Check, X, Send, Palette,
+  Sparkles, Copy, Check, X, Send, Palette, ChevronDown, ChevronUp,
 } from 'lucide-react';
 
 const tones = [
@@ -52,6 +52,7 @@ export default function CVPage() {
   useEffect(() => { if (!subscription) fetchSubscription(); }, [subscription, fetchSubscription]);
 
   const [downloading, setDownloading] = useState(false);
+  const [templatesExpanded, setTemplatesExpanded] = useState(false);
 
   const activeTemplateMeta = TEMPLATES[template];
   const showPhotoSlot = activeTemplateMeta?.supportsPhoto;
@@ -499,33 +500,93 @@ export default function CVPage() {
           {/* CV column */}
           <div className="min-w-0 space-y-3 sm:space-y-4">
 
-            {/* Template strip — always visible, compact */}
+            {/* Template strip — collapsible to save vertical room */}
             <div className="rounded-2xl overflow-hidden p-3 sm:p-4" style={glass}>
-              <div className="flex items-center gap-2 mb-2.5 sm:mb-3">
-                <Palette className="h-3.5 w-3.5 shrink-0" style={{ color: '#a78bfa' }} />
-                <p className="text-[10px] sm:text-[11px] font-bold uppercase tracking-widest text-white/55">
-                  Choose Template
-                </p>
-                <span
-                  className="text-[9px] font-bold px-1.5 py-0.5 rounded"
-                  style={{ background: 'rgba(52,211,153,0.12)', color: '#34d399', border: '1px solid rgba(52,211,153,0.22)' }}
-                >
-                  ATS-OPTIMIZED
-                </span>
-              </div>
+              <button
+                type="button"
+                onClick={() => setTemplatesExpanded((v) => !v)}
+                className="w-full flex items-center justify-between gap-2 text-left"
+                aria-expanded={templatesExpanded}
+              >
+                <div className="flex items-center gap-2 min-w-0">
+                  <Palette className="h-3.5 w-3.5 shrink-0" style={{ color: '#a78bfa' }} />
+                  <p className="text-[10px] sm:text-[11px] font-bold uppercase tracking-widest text-white/55 truncate">
+                    Template — {TEMPLATES[template].name}
+                  </p>
+                  <span
+                    className="text-[9px] font-bold px-1.5 py-0.5 rounded shrink-0"
+                    style={{ background: 'rgba(52,211,153,0.12)', color: '#34d399', border: '1px solid rgba(52,211,153,0.22)' }}
+                  >
+                    ATS-OPTIMIZED
+                  </span>
+                </div>
+                {templatesExpanded
+                  ? <ChevronUp className="h-4 w-4 shrink-0 text-white/55" />
+                  : <ChevronDown className="h-4 w-4 shrink-0 text-white/55" />}
+              </button>
 
-              <TemplatePicker
-                value={template}
-                onChange={(id) => {
-                  setTemplate(id);
-                  toast.success(`${TEMPLATES[id].name} applied`);
-                }}
-                isPro={isPro}
-                onUpgrade={() => {
-                  toast('Upgrade to Pro to unlock this template', { icon: '👑' });
-                  router.push('/pricing');
-                }}
-              />
+              {templatesExpanded ? (
+                <div className="mt-3">
+                  <TemplatePicker
+                    value={template}
+                    onChange={(id) => {
+                      setTemplate(id);
+                      toast.success(`${TEMPLATES[id].name} applied`);
+                    }}
+                    isPro={isPro}
+                    onUpgrade={() => {
+                      toast('Upgrade to Pro to unlock this template', { icon: '👑' });
+                      router.push('/pricing');
+                    }}
+                  />
+                </div>
+              ) : (
+                /* Collapsed — only the selected template card + a "show all" CTA */
+                <div className="mt-3 grid grid-cols-2 md:grid-cols-4 gap-2.5">
+                  <div
+                    className="relative rounded-lg p-2 sm:p-2.5"
+                    style={{
+                      background: 'rgba(118,77,240,0.14)',
+                      border: '1px solid rgba(118,77,240,0.55)',
+                      boxShadow: '0 0 0 3px rgba(118,77,240,0.10)',
+                    }}
+                  >
+                    <div className="relative">
+                      <TemplateThumbnail id={template} />
+                      <span
+                        className="absolute top-1 right-1 flex h-4 w-4 items-center justify-center rounded-full"
+                        style={{ background: '#764df0' }}
+                      >
+                        <Check className="h-2.5 w-2.5 text-white" />
+                      </span>
+                    </div>
+                    <div className="mt-2 min-w-0">
+                      <p className="text-[11px] sm:text-[12px] font-semibold text-white truncate">
+                        {TEMPLATES[template].name}
+                      </p>
+                      <div className="flex items-center gap-1.5 mt-0.5">
+                        <span className="text-[9px] font-bold" style={{ color: '#34d399' }}>
+                          ATS {TEMPLATES[template].atsScore}%
+                        </span>
+                        <span className="text-[9px] text-white/35 truncate">· {TEMPLATES[template].region}</span>
+                      </div>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setTemplatesExpanded(true)}
+                    className="md:col-span-3 rounded-lg flex items-center justify-center gap-2 text-xs font-bold text-white/70 hover:text-white"
+                    style={{
+                      background: 'rgba(255,255,255,0.03)',
+                      border: '1px dashed rgba(255,255,255,0.12)',
+                      minHeight: 56,
+                    }}
+                  >
+                    <ChevronDown className="h-3.5 w-3.5" />
+                    Show all 10 templates
+                  </button>
+                </div>
+              )}
 
               {showPhotoSlot && (
                 <div className="mt-3 pt-3 border-t" style={{ borderColor: 'rgba(255,255,255,0.06)' }}>
