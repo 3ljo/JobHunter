@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { getCVHistory, deleteCV, downloadCVPdf, previewCVPdf } from '@/lib/api';
 import { CVRecord } from '@/types';
@@ -13,6 +13,8 @@ export default function CVHistory() {
   const [loading, setLoading] = useState(true);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [bulkBusy, setBulkBusy] = useState(false);
 
   const load = async () => {
     try {
@@ -33,22 +35,62 @@ export default function CVHistory() {
     };
   }, [previewUrl]);
 
-  const handleDelete = async (id: string) => {
-    try {
-      await deleteCV(id);
-      setCvs((prev) => prev.filter((cv) => cv.id !== id));
-      toast.success('CV deleted');
-    } catch {
-      toast.error('Failed to delete');
-    }
+  const allSelected = useMemo(
+    () => cvs.length > 0 && selected.size === cvs.length,
+    [cvs.length, selected.size],
+  );
+  const someSelected = selected.size > 0 && !allSelected;
+
+  const toggleOne = (id: string) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
   };
 
-  const handleDownload = async (id: string) => {
-    try {
-      await downloadCVPdf(id);
-    } catch {
-      toast.error('Failed to download PDF');
+  const toggleAll = () => {
+    setSelected((prev) => (prev.size === cvs.length ? new Set() : new Set(cvs.map((c) => c.id))));
+  };
+
+  const clearSelection = () => setSelected(new Set());
+
+  const handleBulkDownload = async () => {
+    if (!selected.size) return;
+    setBulkBusy(true);
+    const ids = Array.from(selected);
+    let failed = 0;
+    for (const id of ids) {
+      try {
+        await downloadCVPdf(id);
+      } catch {
+        failed += 1;
+      }
     }
+    setBulkBusy(false);
+    if (failed === 0) toast.success(`Downloaded ${ids.length} CV${ids.length > 1 ? 's' : ''}`);
+    else if (failed < ids.length) toast.error(`${failed} of ${ids.length} downloads failed`);
+    else toast.error('Failed to download');
+  };
+
+  const handleBulkDelete = async () => {
+    if (!selected.size) return;
+    const count = selected.size;
+    if (!window.confirm(`Delete ${count} CV${count > 1 ? 's' : ''}? This cannot be undone.`)) return;
+    setBulkBusy(true);
+    const ids = Array.from(selected);
+    const results = await Promise.allSettled(ids.map((id) => deleteCV(id)));
+    const deletedIds = new Set(
+      ids.filter((_, i) => results[i].status === 'fulfilled'),
+    );
+    setCvs((prev) => prev.filter((cv) => !deletedIds.has(cv.id)));
+    setSelected(new Set());
+    setBulkBusy(false);
+    const failed = results.length - deletedIds.size;
+    if (failed === 0) toast.success(`Deleted ${deletedIds.size} CV${deletedIds.size > 1 ? 's' : ''}`);
+    else if (deletedIds.size > 0) toast.error(`${failed} of ${ids.length} deletions failed`);
+    else toast.error('Failed to delete');
   };
 
   const handlePreview = async (id: string) => {
@@ -91,118 +133,159 @@ export default function CVHistory() {
 
   return (
     <>
+      {/* Bulk action bar — only visible when something is selected */}
+      {selected.size > 0 && (
+        <div className="sticky top-2 z-30 rounded-2xl border border-violet-500/30 bg-card/95 backdrop-blur shadow-[0_6px_22px_rgba(118,77,240,0.18)] px-3 sm:px-4 py-2.5 flex items-center gap-2 sm:gap-3">
+          <span className="text-xs sm:text-sm font-semibold text-foreground/90 tabular-nums">
+            {selected.size} selected
+          </span>
+          <button
+            type="button"
+            onClick={clearSelection}
+            disabled={bulkBusy}
+            className="text-[11px] sm:text-xs text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
+          >
+            Clear
+          </button>
+          <div className="ml-auto flex items-center gap-1.5 sm:gap-2">
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={handleBulkDownload}
+              disabled={bulkBusy}
+              className="gap-1.5 text-muted-foreground hover:text-foreground rounded-lg text-xs"
+            >
+              <Download className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Download</span>
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={handleBulkDelete}
+              disabled={bulkBusy}
+              className="gap-1.5 text-muted-foreground hover:text-red-400 rounded-lg text-xs"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Delete</span>
+            </Button>
+          </div>
+        </div>
+      )}
+
       {/* Desktop table */}
       <div className="hidden md:block rounded-2xl border border-border bg-card/70 overflow-hidden">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-border">
+              <th className="px-4 py-3.5 w-10">
+                <input
+                  type="checkbox"
+                  aria-label="Select all"
+                  checked={allSelected}
+                  ref={(el) => { if (el) el.indeterminate = someSelected; }}
+                  onChange={toggleAll}
+                  className="h-4 w-4 rounded accent-violet-500 cursor-pointer"
+                />
+              </th>
               <th className="px-6 py-3.5 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Date</th>
               <th className="px-6 py-3.5 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">File</th>
               <th className="px-6 py-3.5 text-right"></th>
             </tr>
           </thead>
           <tbody>
-            {cvs.map((cv, i) => (
-              <tr
-                key={cv.id}
-                className={`transition-colors hover:bg-accent/50 ${i < cvs.length - 1 ? 'border-b border-border/50' : ''}`}
-              >
-                <td className="px-6 py-4 text-muted-foreground tabular-nums">
-                  <div className="flex items-center gap-2">
-                    <Calendar className="h-3.5 w-3.5 text-muted-foreground/60" />
-                    {new Date(cv.created_at).toLocaleDateString()}
-                  </div>
-                </td>
-                <td className="px-6 py-4">
-                  <div className="flex items-center gap-2.5">
-                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-violet-500/10">
-                      <FileText className="h-3.5 w-3.5 text-violet-400" />
+            {cvs.map((cv, i) => {
+              const isSelected = selected.has(cv.id);
+              return (
+                <tr
+                  key={cv.id}
+                  className={`transition-colors ${isSelected ? 'bg-violet-500/10' : 'hover:bg-accent/50'} ${i < cvs.length - 1 ? 'border-b border-border/50' : ''}`}
+                >
+                  <td className="px-4 py-4 w-10">
+                    <input
+                      type="checkbox"
+                      aria-label={`Select ${cv.file_name}`}
+                      checked={isSelected}
+                      onChange={() => toggleOne(cv.id)}
+                      className="h-4 w-4 rounded accent-violet-500 cursor-pointer"
+                    />
+                  </td>
+                  <td className="px-6 py-4 text-muted-foreground tabular-nums">
+                    <div className="flex items-center gap-2">
+                      <Calendar className="h-3.5 w-3.5 text-muted-foreground/60" />
+                      {new Date(cv.created_at).toLocaleDateString()}
                     </div>
-                    <span className="font-medium text-foreground/90">{cv.file_name}</span>
-                  </div>
-                </td>
-                <td className="px-6 py-4">
-                  <div className="flex items-center justify-end gap-1.5">
-                    <Button
-                      size="icon-sm"
-                      variant="ghost"
-                      onClick={() => handlePreview(cv.id)}
-                      title="Preview CV"
-                      className="text-muted-foreground hover:text-foreground"
-                    >
-                      <Eye className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      size="icon-sm"
-                      variant="ghost"
-                      onClick={() => handleDownload(cv.id)}
-                      title="Download PDF"
-                      className="text-muted-foreground hover:text-foreground"
-                    >
-                      <Download className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      size="icon-sm"
-                      variant="ghost"
-                      onClick={() => handleDelete(cv.id)}
-                      title="Delete"
-                      className="text-muted-foreground hover:text-red-400"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </td>
-              </tr>
-            ))}
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="flex items-center gap-2.5">
+                      <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-violet-500/10">
+                        <FileText className="h-3.5 w-3.5 text-violet-400" />
+                      </div>
+                      <span className="font-medium text-foreground/90">{cv.file_name}</span>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="flex items-center justify-end gap-1.5">
+                      <Button
+                        size="icon-sm"
+                        variant="ghost"
+                        onClick={() => handlePreview(cv.id)}
+                        title="Preview CV"
+                        className="text-muted-foreground hover:text-foreground"
+                      >
+                        <Eye className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
 
       {/* Mobile cards */}
       <div className="md:hidden space-y-3">
-        {cvs.map((cv) => (
-          <div key={cv.id} className="rounded-2xl border border-border bg-card/70 p-4 space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2.5 min-w-0">
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-violet-500/10">
-                  <FileText className="h-4 w-4 text-violet-400" />
+        {cvs.map((cv) => {
+          const isSelected = selected.has(cv.id);
+          return (
+            <div
+              key={cv.id}
+              className={`rounded-2xl border p-4 space-y-4 transition-colors ${
+                isSelected ? 'border-violet-500/50 bg-violet-500/10' : 'border-border bg-card/70'
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <input
+                  type="checkbox"
+                  aria-label={`Select ${cv.file_name}`}
+                  checked={isSelected}
+                  onChange={() => toggleOne(cv.id)}
+                  className="h-4 w-4 rounded accent-violet-500 cursor-pointer shrink-0"
+                />
+                <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-violet-500/10">
+                    <FileText className="h-4 w-4 text-violet-400" />
+                  </div>
+                  <p className="text-sm font-medium text-foreground/90 truncate">{cv.file_name}</p>
                 </div>
-                <p className="text-sm font-medium text-foreground/90 truncate">{cv.file_name}</p>
+                <span className="text-[11px] text-muted-foreground/60 shrink-0 ml-1 tabular-nums">
+                  {new Date(cv.created_at).toLocaleDateString()}
+                </span>
               </div>
-              <span className="text-[11px] text-muted-foreground/60 shrink-0 ml-2 tabular-nums">
-                {new Date(cv.created_at).toLocaleDateString()}
-              </span>
+              <div className="flex gap-2 pt-1 border-t border-border/50">
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => handlePreview(cv.id)}
+                  className="flex-1 gap-1.5 text-muted-foreground hover:text-foreground rounded-lg text-xs"
+                >
+                  <Eye className="h-3.5 w-3.5" />
+                  Preview
+                </Button>
+              </div>
             </div>
-            <div className="flex gap-2 pt-1 border-t border-border/50">
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() => handlePreview(cv.id)}
-                className="flex-1 gap-1.5 text-muted-foreground hover:text-foreground rounded-lg text-xs"
-              >
-                <Eye className="h-3.5 w-3.5" />
-                Preview
-              </Button>
-              <Button
-                size="sm"
-                variant="ghost"
-                className="flex-1 gap-1.5 text-muted-foreground hover:text-foreground rounded-lg text-xs"
-                onClick={() => handleDownload(cv.id)}
-              >
-                <Download className="h-3.5 w-3.5" />
-                Download
-              </Button>
-              <Button
-                size="sm"
-                variant="ghost"
-                className="gap-1.5 text-muted-foreground hover:text-red-400 rounded-lg text-xs"
-                onClick={() => handleDelete(cv.id)}
-              >
-                <Trash2 className="h-3.5 w-3.5" />
-              </Button>
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {/* Preview Modal */}
