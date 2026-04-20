@@ -10,7 +10,7 @@ const manrope = Manrope({
 });
 
 export const metadata: Metadata = {
-  title: "CvClimber — AI-Powered Job Search",
+  title: "CvClimber",
   description: "Land your dream job with AI-powered CV analysis, cover letter generation, and smart job tracking.",
   icons: {
     icon: '/icon.png',
