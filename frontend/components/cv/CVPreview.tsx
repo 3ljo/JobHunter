@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { previewCVPdf } from '@/lib/api';
+import { ChevronLeft, ChevronRight, ExternalLink } from 'lucide-react';
 import { TEMPLATE_COMPONENTS, DEFAULT_TEMPLATE, type TemplateId } from './templates';
 
 interface CVPreviewProps {
@@ -10,179 +10,213 @@ interface CVPreviewProps {
   photo?: string | null;
   /** Data URL of the originally uploaded PDF — used when template === 'original'. */
   originalPdfDataUrl?: string | null;
-  /** The cv_record_id on the server — used to fetch a rendered PDF preview per template. */
+  /** Kept for API compat; unused now that template previews render client-side. */
   cvRecordId?: string | null;
 }
 
-export default function CVPreview({
-  cv,
-  template,
-  photo,
-  originalPdfDataUrl,
-  cvRecordId,
-}: CVPreviewProps) {
+/** iOS Safari can't render PDF in <iframe>. Detect and show a fallback button. */
+function useIsIOS() {
+  const [ios, setIos] = useState(false);
+  useEffect(() => {
+    const ua = navigator.userAgent || '';
+    const isIOS =
+      /iPad|iPhone|iPod/.test(ua) ||
+      // iPad on iPadOS 13+ reports as Mac with touch events
+      (/^Mac/.test(navigator.platform) && navigator.maxTouchPoints > 1);
+    setIos(isIOS);
+  }, []);
+  return ios;
+}
+
+export default function CVPreview({ cv, template, photo, originalPdfDataUrl }: CVPreviewProps) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [canPrev, setCanPrev] = useState(false);
+  const [canNext, setCanNext] = useState(false);
+  const isIOS = useIsIOS();
+
   const active: TemplateId =
     template && TEMPLATE_COMPONENTS[template] ? template : DEFAULT_TEMPLATE;
-
-  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
-  const [fetching, setFetching] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  // Cache blob URLs by render key so switching templates you already saw is instant.
-  const cacheRef = useRef<Map<string, string>>(new Map());
-
-  // Cheap "has the structured CV actually changed?" signal. We don't want to
-  // re-render the PDF on every React state blip — only when the real content
-  // shifts. `cv_version_key` is updated server-side on every refineCV, so the
-  // full JSON stringify is the authoritative content hash.
-  const cvKey = cv ? JSON.stringify(cv) : '';
-  const photoKey = photo ? `p:${photo.length}` : 'p:none';
-  const renderKey = `${active}|${photoKey}|${cvKey.length}:${cvKey.slice(0, 64)}`;
+  const Template = TEMPLATE_COMPONENTS[active];
 
   useEffect(() => {
-    if (active === 'original' || !cvRecordId) {
-      setPdfUrl(null);
-      setError(null);
-      return;
-    }
-
-    // Already cached? Show instantly, no server roundtrip.
-    const cached = cacheRef.current.get(renderKey);
-    if (cached) {
-      setPdfUrl(cached);
-      setError(null);
-      setFetching(false);
-      return;
-    }
-
-    let cancelled = false;
-    setFetching(true);
-    setError(null);
-
-    // Small debounce so rapid template switches / Quick Edit keystrokes don't
-    // pile up requests — only the last one actually fires.
-    const timer = window.setTimeout(() => {
-      previewCVPdf(cvRecordId, { template: active, photo: photo ?? null })
-        .then((url) => {
-          if (cancelled) {
-            URL.revokeObjectURL(url);
-            return;
-          }
-          cacheRef.current.set(renderKey, url);
-          setPdfUrl(url);
-        })
-        .catch(() => {
-          if (!cancelled) setError('Could not render the PDF preview. Try again.');
-        })
-        .finally(() => {
-          if (!cancelled) setFetching(false);
-        });
-    }, 150);
-
-    return () => {
-      cancelled = true;
-      window.clearTimeout(timer);
+    const el = scrollRef.current;
+    if (!el) return;
+    const update = () => {
+      const max = el.scrollWidth - el.clientWidth;
+      setCanPrev(el.scrollLeft > 4);
+      setCanNext(el.scrollLeft < max - 4);
     };
-  }, [active, cvRecordId, photo, renderKey]);
-
-  // When the CV content changes (Quick Edit), invalidate stale cache entries
-  // for *other* templates so they re-render next time they're opened.
-  const prevCvKeyRef = useRef(cvKey);
-  useEffect(() => {
-    if (prevCvKeyRef.current && prevCvKeyRef.current !== cvKey) {
-      for (const url of cacheRef.current.values()) URL.revokeObjectURL(url);
-      cacheRef.current.clear();
-    }
-    prevCvKeyRef.current = cvKey;
-  }, [cvKey]);
-
-  // Revoke all cached blob URLs on unmount.
-  useEffect(() => {
-    const cache = cacheRef.current;
+    update();
+    el.addEventListener('scroll', update, { passive: true });
+    window.addEventListener('resize', update);
     return () => {
-      for (const url of cache.values()) URL.revokeObjectURL(url);
-      cache.clear();
+      el.removeEventListener('scroll', update);
+      window.removeEventListener('resize', update);
     };
-  }, []);
+  }, [cv, template]);
 
   if (!cv) return null;
 
   const iframeHeight = 'min(calc(100vh - 180px), 900px)';
 
-  // "original" template: show the user's uploaded PDF directly in an iframe.
+  // "original" template: show the user's uploaded PDF directly.
+  // iOS can't render PDF in an iframe, so offer a button to open in a new tab.
   if (active === 'original') {
-    if (originalPdfDataUrl) {
+    if (!originalPdfDataUrl) {
       return (
-        <div style={{ background: '#ffffff' }}>
-          <iframe
-            src={originalPdfDataUrl}
-            title="Your original CV"
-            className="w-full block bg-white"
-            style={{ height: iframeHeight, border: 'none' }}
-          />
+        <div
+          className="px-5 py-12 text-center text-sm"
+          style={{ color: 'rgba(15,23,42,0.6)', background: '#ffffff' }}
+        >
+          Your original PDF isn&apos;t cached in this session. Re-upload your CV to see it here,
+          or pick another template to view the AI-rewritten version.
         </div>
       );
     }
+
+    if (isIOS) {
+      return (
+        <div
+          className="flex flex-col items-center justify-center gap-4 px-6 py-10 text-center"
+          style={{ background: '#f8fafc', minHeight: 320 }}
+        >
+          <p className="text-sm" style={{ color: '#0f172a', fontWeight: 600 }}>
+            iOS doesn&apos;t preview PDFs inline.
+          </p>
+          <p className="text-xs" style={{ color: '#475569', maxWidth: 280 }}>
+            Tap below to open your original CV in a new tab — or switch to an ATS template to
+            view the AI-rewritten version here.
+          </p>
+          <a
+            href={originalPdfDataUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold"
+            style={{
+              background: 'linear-gradient(135deg, #764DF0, #5b21b6)',
+              color: '#f5f3ff',
+              boxShadow: '0 4px 14px rgba(118,77,240,0.35)',
+            }}
+          >
+            <ExternalLink className="h-4 w-4" />
+            Open my CV
+          </a>
+        </div>
+      );
+    }
+
     return (
-      <div
-        className="px-5 py-12 text-center text-sm"
-        style={{ color: 'rgba(15,23,42,0.6)', background: '#ffffff' }}
-      >
-        Your original PDF isn&apos;t cached in this session. Re-upload your CV to see it here,
-        or pick another template to view the AI-rewritten version.
+      <div style={{ background: '#ffffff' }}>
+        <iframe
+          src={originalPdfDataUrl}
+          title="Your original CV"
+          className="w-full block bg-white"
+          style={{ height: iframeHeight, border: 'none' }}
+        />
       </div>
     );
   }
 
-  // Non-"original" templates: server-rendered PDF in an iframe, same UX as Keep My Own.
-  return (
-    <div style={{ background: '#ffffff', position: 'relative' }}>
-      {pdfUrl ? (
-        <iframe
-          src={pdfUrl}
-          title="CV preview"
-          className="w-full block bg-white"
-          style={{ height: iframeHeight, border: 'none' }}
-        />
-      ) : (
-        <div
-          className="flex flex-col items-center justify-center gap-3"
-          style={{ height: iframeHeight, background: '#f8fafc' }}
-        >
-          {error ? (
-            <p className="text-sm" style={{ color: '#b91c1c' }}>
-              {error}
-            </p>
-          ) : (
-            <>
-              <span className="lds-roller-sm" style={{ color: '#7c3aed' }}>
-                <span /><span /><span /><span /><span /><span /><span /><span />
-              </span>
-              <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: '#64748b' }}>
-                Rendering {active}…
-              </p>
-            </>
-          )}
-        </div>
-      )}
+  const scrollByPage = (dir: 1 | -1) => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const page = el.clientWidth * 0.9 * dir;
+    el.scrollBy({ left: page, behavior: 'smooth' });
+  };
 
-      {/* Subtle overlay spinner while refetching over an existing preview (template switch) */}
-      {fetching && pdfUrl && (
+  // A4 portrait — 210 × 297 mm → 1 : 1.414.
+  const A4_RATIO = 1.4143;
+  const pageWidth = 'min(90vw, 595px)';
+  const pageHeight = `calc(min(90vw, 595px) * ${A4_RATIO})`;
+
+  return (
+    <div style={{ position: 'relative' }}>
+      <div
+        ref={scrollRef}
+        style={{
+          overflowX: 'auto',
+          overflowY: 'hidden',
+          WebkitOverflowScrolling: 'touch',
+          scrollSnapType: 'x mandatory',
+          height: pageHeight,
+          maxHeight: 'calc(100vh - 180px)',
+          background: 'transparent',
+          borderRadius: 12,
+          padding: '0 12px',
+        }}
+      >
         <div
-          className="absolute top-3 right-3 flex items-center gap-2 px-3 py-1.5 rounded-lg pointer-events-none"
           style={{
-            background: 'rgba(15,10,40,0.85)',
-            backdropFilter: 'blur(6px)',
-            border: '1px solid rgba(255,255,255,0.1)',
+            height: '100%',
+            columnWidth: pageWidth,
+            columnGap: 24,
+            columnFill: 'auto',
           }}
         >
-          <span className="lds-roller-sm" style={{ color: '#c4b5fd' }}>
-            <span /><span /><span /><span /><span /><span /><span /><span />
-          </span>
-          <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: '#e9d5ff' }}>
-            Rendering
-          </span>
+          <div
+            style={{
+              background: '#ffffff',
+              boxShadow: '0 4px 24px rgba(0,0,0,0.18)',
+              borderRadius: 4,
+              scrollSnapAlign: 'start',
+            }}
+          >
+            <Template cv={cv} photo={photo ?? null} />
+          </div>
         </div>
+      </div>
+
+      {canPrev && (
+        <button
+          type="button"
+          onClick={() => scrollByPage(-1)}
+          aria-label="Previous page"
+          className="hidden sm:flex"
+          style={{
+            position: 'absolute',
+            left: 6,
+            top: '50%',
+            transform: 'translateY(-50%)',
+            width: 36,
+            height: 36,
+            borderRadius: 999,
+            background: 'rgba(15,10,40,0.75)',
+            backdropFilter: 'blur(6px)',
+            border: '1px solid rgba(255,255,255,0.12)',
+            color: 'white',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: 'pointer',
+          }}
+        >
+          <ChevronLeft style={{ width: 18, height: 18 }} />
+        </button>
+      )}
+      {canNext && (
+        <button
+          type="button"
+          onClick={() => scrollByPage(1)}
+          aria-label="Next page"
+          className="hidden sm:flex"
+          style={{
+            position: 'absolute',
+            right: 6,
+            top: '50%',
+            transform: 'translateY(-50%)',
+            width: 36,
+            height: 36,
+            borderRadius: 999,
+            background: 'rgba(15,10,40,0.75)',
+            backdropFilter: 'blur(6px)',
+            border: '1px solid rgba(255,255,255,0.12)',
+            color: 'white',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: 'pointer',
+          }}
+        >
+          <ChevronRight style={{ width: 18, height: 18 }} />
+        </button>
       )}
     </div>
   );

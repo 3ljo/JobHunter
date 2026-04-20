@@ -80,6 +80,14 @@ export default function CVPage() {
   const handleRefine = (updatedFinalCV: any) => {
     if (!result) return;
     setResult({ ...result, final: { ...result.final, final_cv: updatedFinalCV } });
+    // On "Keep My Own" the preview is a static PDF and can't show the edits,
+    // so nudge the user to a template view where the changes are visible.
+    if (template === 'original') {
+      toast(
+        'Your original PDF can\'t be re-rendered. Switch to an ATS template to see the edits applied.',
+        { icon: '💡', duration: 5500 },
+      );
+    }
   };
 
   const handleDownload = async () => {
@@ -669,7 +677,7 @@ export default function CVPage() {
               <div className="flex items-center justify-between px-3 sm:px-4 py-2 text-[10px] font-bold uppercase tracking-widest text-white/35">
                 <span>{isOriginal ? 'Your Original CV' : 'Preview'}</span>
                 <span className="hidden sm:inline">
-                  {isOriginal ? 'Your uploaded file' : `${TEMPLATES[template].name} · Live PDF`}
+                  {isOriginal ? 'Your uploaded file' : `${TEMPLATES[template].name}`}
                 </span>
               </div>
               <CVPreview
@@ -677,7 +685,6 @@ export default function CVPage() {
                 template={template}
                 photo={showPhotoSlot ? photo : null}
                 originalPdfDataUrl={originalPdfDataUrl}
-                cvRecordId={result.cv_record_id}
               />
             </div>
           </div>
