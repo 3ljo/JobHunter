@@ -429,9 +429,9 @@ export default function CVPage() {
             className="rounded-xl px-4 py-3 text-xs sm:text-[13px] leading-relaxed"
             style={{ background: 'rgba(118,77,240,0.08)', border: '1px solid rgba(118,77,240,0.2)', color: 'rgba(221,214,254,0.95)' }}
           >
-            You're keeping your own CV layout. The PDF export and template picker are hidden —
-            use the improvements on the right (keyword gaps, rewritten bullets, quick wins) to
-            edit your own file directly.
+            You're keeping your own CV layout. Template picker and PDF export are hidden — use
+            the preview below as reference and apply the improvements on the right (keyword
+            gaps, rewritten bullets, quick wins) to your own file directly.
           </div>
         )}
 
@@ -553,11 +553,11 @@ export default function CVPage() {
               : 'grid grid-cols-1 lg:grid-cols-[1fr_400px] gap-4 sm:gap-5 lg:gap-6'
           }
         >
-          {/* CV column — hidden in suggestions-only mode */}
-          {!suggestionsOnly && (
+          {/* CV column — preview always visible; template picker hidden in suggestions-only */}
           <div className="min-w-0 space-y-3 sm:space-y-4">
 
             {/* Template strip — collapsible to save vertical room */}
+            {!suggestionsOnly && (
             <div className="rounded-2xl overflow-hidden p-3 sm:p-4" style={glass}>
               <button
                 type="button"
@@ -651,6 +651,7 @@ export default function CVPage() {
                 </div>
               )}
             </div>
+            )}
 
             {/* CV Preview — horizontal pages, sticky on large screens */}
             <div
@@ -666,7 +667,6 @@ export default function CVPage() {
               <CVPreview cv={finalCV} template={template} photo={showPhotoSlot ? photo : null} />
             </div>
           </div>
-          )}
 
           {/* Analysis + Quick Edit */}
           <div className="space-y-4 sm:space-y-5 min-w-0">

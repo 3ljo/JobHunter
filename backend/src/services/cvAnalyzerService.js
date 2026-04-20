@@ -146,6 +146,11 @@ link, institution website, course page), you MUST capture it in the "url" field.
 capture city and country if present next to the institution. Dropping URLs or locations
 is a critical failure.
 
+Languages: every language entry MUST have BOTH a "name" (e.g., "English", "Italian",
+"German") AND a "level" (e.g., "B2", "Native", "Fluent"). NEVER output just a level with
+no name. If the CV lists "English B2" and "Italian B1", output
+[{"name":"English","level":"B2"},{"name":"Italian","level":"B1"}] — not ["B2","B1"].
+
 {
   "cv_parsed": {
     "full_name": "",
@@ -164,7 +169,9 @@ is a critical failure.
     "certifications": [
       { "name": "", "issuer": "", "year": "", "url": "" }
     ],
-    "languages": []
+    "languages": [
+      { "name": "", "level": "" }
+    ]
   },
   "jd_fingerprint": {
     "target_job_title": "",
@@ -257,6 +264,8 @@ Pass 1 — Voice preservation & intelligent rewrite:
 7. PRESERVE every URL exactly as given (certificate links, institution websites). Do NOT
    shorten, rewrite, or drop URLs. Copy them character-for-character into the "url" field.
    Same for city, country, and year fields — carry them through verbatim.
+8. LANGUAGES must always include BOTH "name" and "level" for every entry. Never output
+   a language with just a level and no name. Example: [{"name":"English","level":"B2"}].
 
 Pass 2 — Heavy humanization (applied in the SAME output):
 - Vary sentence length drastically — mix short punchy bullets with longer descriptive ones.
@@ -326,7 +335,9 @@ Produce ONE final, humanized CV in this exact JSON structure:
     "certifications": [
       { "name": "", "issuer": "", "year": "", "url": "" }
     ],
-    "languages": []
+    "languages": [
+      { "name": "", "level": "" }
+    ]
   },
   "changes_made": [
     { "section": "", "original": "", "rewritten": "", "reason": "" }
@@ -454,7 +465,9 @@ Apply the changes and return the COMPLETE updated CV in this exact JSON structur
     "certifications": [
       { "name": "", "issuer": "", "year": "", "url": "" }
     ],
-    "languages": []
+    "languages": [
+      { "name": "", "level": "" }
+    ]
   },
   "changes_applied": []
 }`,
