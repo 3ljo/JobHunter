@@ -13,9 +13,11 @@ interface QuickEditBoxProps {
 
 const SUGGESTIONS = [
   'Add a 2-sentence summary',
-  'Make bullets start with action verbs',
-  'Add AWS and Docker to my skills',
-  'Quantify my achievements',
+  'Start bullets with action verbs',
+  'Add AWS and Docker to skills',
+  'Quantify achievements with numbers',
+  'Add relevant certifications',
+  'Make tone sound more senior',
 ];
 
 export default function QuickEditBox({ cvRecordId, onRefine }: QuickEditBoxProps) {
@@ -47,109 +49,107 @@ export default function QuickEditBox({ cvRecordId, onRefine }: QuickEditBoxProps
 
   return (
     <div
-      className="rounded-2xl overflow-hidden"
+      className="rounded-2xl overflow-hidden relative"
       style={{
         background:
-          'linear-gradient(165deg, rgba(118,77,240,0.12) 0%, rgba(91,33,182,0.06) 55%, rgba(0,0,0,0.32) 100%)',
+          'linear-gradient(165deg, rgba(118,77,240,0.14) 0%, rgba(91,33,182,0.05) 55%, rgba(0,0,0,0.32) 100%)',
         backdropFilter: 'blur(18px)',
         WebkitBackdropFilter: 'blur(18px)',
-        border: refining ? '1px solid rgba(118,77,240,0.45)' : '1px solid rgba(255,255,255,0.08)',
+        border: refining ? '1px solid rgba(118,77,240,0.5)' : '1px solid rgba(255,255,255,0.08)',
         transition: 'border-color 0.3s',
       }}
     >
-      {/* hairline */}
+      {/* top hairline */}
       <div
         style={{
           height: '1px',
-          background: 'linear-gradient(90deg, transparent, rgba(118,77,240,0.55), transparent)',
+          background: 'linear-gradient(90deg, transparent, rgba(118,77,240,0.6), transparent)',
         }}
       />
 
-      {/* Header row: robot avatar + title */}
-      <div className="flex items-center gap-3 px-5 pt-4 pb-3">
-        <div
-          className="relative shrink-0"
-          style={{
-            width: 44,
-            height: 44,
-            borderRadius: '50%',
-            background:
-              'radial-gradient(circle at 30% 30%, rgba(167,139,250,0.35), rgba(118,77,240,0.18) 60%, rgba(24,10,56,0.9) 100%)',
-            border: '1px solid rgba(167,139,250,0.35)',
-            boxShadow: refining
-              ? '0 0 0 4px rgba(118,77,240,0.18), 0 0 22px rgba(118,77,240,0.45)'
-              : '0 0 0 3px rgba(118,77,240,0.10)',
-            overflow: 'hidden',
-          }}
-        >
-          <Image
-            src="/aivent/misc/robot-idle.png"
-            alt=""
-            fill
-            sizes="44px"
-            priority={false}
-            style={{ objectFit: 'contain', objectPosition: 'center 60%', transform: 'scale(1.4)' }}
-          />
-          {/* live dot when working */}
-          <span
-            className="absolute"
-            style={{
-              right: 1,
-              bottom: 1,
-              width: 10,
-              height: 10,
-              borderRadius: '50%',
-              background: refining ? '#34d399' : '#64748b',
-              border: '2px solid #0f0a28',
-              transition: 'background 0.3s',
-            }}
-          />
-        </div>
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2">
-            <p className="text-[13px] font-black" style={{ color: 'rgba(245,243,255,0.96)' }}>
-              AI Editor
-            </p>
-            <span
-              className="text-[9px] font-black px-1.5 py-0.5 rounded"
-              style={{
-                background: 'rgba(192,132,252,0.18)',
-                color: '#e9d5ff',
-                border: '1px solid rgba(192,132,252,0.35)',
-              }}
-            >
-              PRO
-            </span>
-          </div>
-          <p className="text-[11px] mt-0.5" style={{ color: 'rgba(255,255,255,0.45)' }}>
-            {refining ? 'Thinking…' : 'Tell me what to change in your CV.'}
-          </p>
-        </div>
-      </div>
-
-      {/* Thinking bar */}
+      {/* thinking shimmer bar when AI is working */}
       {refining && (
         <div
           className="h-[2px]"
           style={{
             background:
-              'linear-gradient(90deg, transparent 0%, rgba(118,77,240,0.9) 50%, transparent 100%)',
+              'linear-gradient(90deg, transparent 0%, rgba(167,139,250,0.95) 50%, transparent 100%)',
             backgroundSize: '200% 100%',
             animation: 'quickedit-shimmer 1.3s linear infinite',
           }}
         />
       )}
 
-      {/* Input */}
-      <div className="px-5 pb-4 pt-1">
-        <div className="flex gap-2 items-end">
+      <div className="px-4 sm:px-5 pt-4 pb-4">
+        {/* HEADER — compact row: robot (free, no circle), title, pro badge */}
+        <div className="flex items-center gap-3">
+          {/* robot: shown whole, proper aspect, subtle purple glow, no circle mask */}
+          <div
+            className="relative shrink-0"
+            style={{
+              width: 36,
+              height: 44,
+              filter: refining
+                ? 'drop-shadow(0 0 10px rgba(167,139,250,0.7))'
+                : 'drop-shadow(0 4px 8px rgba(118,77,240,0.35))',
+              transition: 'filter 0.3s',
+            }}
+          >
+            <Image
+              src="/aivent/misc/robot-idle.png"
+              alt=""
+              fill
+              sizes="36px"
+              priority={false}
+              style={{ objectFit: 'contain', objectPosition: 'center bottom' }}
+            />
+          </div>
+
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2">
+              <p className="text-[13px] sm:text-[14px] font-black leading-none" style={{ color: '#f5f3ff' }}>
+                AI Editor
+              </p>
+              <span
+                className="text-[9px] font-black px-1.5 py-[2px] rounded leading-none"
+                style={{
+                  background: 'rgba(192,132,252,0.18)',
+                  color: '#e9d5ff',
+                  border: '1px solid rgba(192,132,252,0.35)',
+                }}
+              >
+                PRO
+              </span>
+              {refining && (
+                <span className="flex items-center gap-1 text-[10px] font-bold" style={{ color: '#a78bfa' }}>
+                  <span
+                    className="inline-block rounded-full"
+                    style={{
+                      width: 5,
+                      height: 5,
+                      background: '#34d399',
+                      boxShadow: '0 0 6px rgba(52,211,153,0.75)',
+                    }}
+                  />
+                  thinking…
+                </span>
+              )}
+            </div>
+            <p className="text-[11px] mt-1" style={{ color: 'rgba(255,255,255,0.48)' }}>
+              Tell me what to change in your CV.
+            </p>
+          </div>
+        </div>
+
+        {/* INPUT row */}
+        <div className="mt-3 flex gap-2 items-stretch">
           <textarea
-            placeholder="e.g. Add a 2-sentence summary highlighting my Python experience…"
+            placeholder="e.g. Add a short summary highlighting my Python experience…"
             value={text}
             onChange={(e) => {
               setText(e.target.value);
               e.currentTarget.style.height = 'auto';
-              e.currentTarget.style.height = Math.min(e.currentTarget.scrollHeight, 160) + 'px';
+              e.currentTarget.style.height = Math.min(e.currentTarget.scrollHeight, 140) + 'px';
             }}
             onKeyDown={(e) => {
               if (e.key === 'Enter' && !e.shiftKey && !refining) {
@@ -157,15 +157,15 @@ export default function QuickEditBox({ cvRecordId, onRefine }: QuickEditBoxProps
                 handleRefine();
               }
             }}
-            rows={2}
+            rows={1}
             disabled={refining}
-            className="flex-1 rounded-xl px-4 py-3 text-sm outline-none resize-none transition-all"
+            className="flex-1 rounded-xl px-4 py-2.5 text-[13px] outline-none resize-none transition-all"
             style={{
               background: 'rgba(255,255,255,0.04)',
               border: '1px solid rgba(255,255,255,0.1)',
-              color: 'rgba(255,255,255,0.9)',
-              minHeight: 52,
-              maxHeight: 160,
+              color: 'rgba(255,255,255,0.92)',
+              minHeight: 44,
+              maxHeight: 140,
               overflowY: 'auto',
               opacity: refining ? 0.55 : 1,
               lineHeight: 1.5,
@@ -183,25 +183,24 @@ export default function QuickEditBox({ cvRecordId, onRefine }: QuickEditBoxProps
             type="button"
             onClick={handleRefine}
             disabled={refining}
-            className="flex h-[52px] w-[52px] shrink-0 items-center justify-center rounded-xl transition-all disabled:opacity-60"
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl transition-all disabled:opacity-60"
             style={{
               background: 'linear-gradient(135deg, #764DF0 0%, #5b21b6 100%)',
               border: '1px solid rgba(167,139,250,0.5)',
               color: '#f5f3ff',
-              boxShadow: refining
-                ? '0 0 0 3px rgba(118,77,240,0.22), 0 6px 16px rgba(118,77,240,0.35)'
-                : '0 6px 16px rgba(118,77,240,0.3)',
+              boxShadow: '0 4px 12px rgba(118,77,240,0.3)',
               cursor: refining ? 'progress' : 'pointer',
+              alignSelf: 'flex-end',
             }}
             onMouseEnter={(e) => {
               if (!refining) {
                 (e.currentTarget as HTMLElement).style.transform = 'translateY(-1px)';
-                (e.currentTarget as HTMLElement).style.boxShadow = '0 8px 20px rgba(118,77,240,0.42)';
+                (e.currentTarget as HTMLElement).style.boxShadow = '0 6px 18px rgba(118,77,240,0.45)';
               }
             }}
             onMouseLeave={(e) => {
               (e.currentTarget as HTMLElement).style.transform = 'translateY(0)';
-              (e.currentTarget as HTMLElement).style.boxShadow = '0 6px 16px rgba(118,77,240,0.3)';
+              (e.currentTarget as HTMLElement).style.boxShadow = '0 4px 12px rgba(118,77,240,0.3)';
             }}
             aria-label="Apply edit"
           >
@@ -215,39 +214,33 @@ export default function QuickEditBox({ cvRecordId, onRefine }: QuickEditBoxProps
           </button>
         </div>
 
-        {/* Suggestion chips — horizontal scroll so they never wrap awkwardly */}
-        <div
-          className="mt-2.5 flex gap-1.5 overflow-x-auto"
-          style={{
-            scrollbarWidth: 'none',
-            msOverflowStyle: 'none',
-            WebkitOverflowScrolling: 'touch',
-          }}
-        >
+        {/* SUGGESTION CHIPS — 2 rows × 3 cols grid so nothing wraps weird */}
+        <div className="mt-3 grid grid-cols-2 sm:grid-cols-3 gap-1.5">
           {SUGGESTIONS.map((s) => (
             <button
               key={s}
               type="button"
               onClick={() => setText(s)}
               disabled={refining}
-              className="shrink-0 text-[10.5px] px-2.5 py-1 rounded-md whitespace-nowrap transition-colors disabled:opacity-40"
+              className="text-[10.5px] px-2 py-1.5 rounded-md transition-all disabled:opacity-40 text-left truncate"
               style={{
-                background: 'rgba(255,255,255,0.04)',
+                background: 'rgba(255,255,255,0.03)',
                 border: '1px solid rgba(255,255,255,0.08)',
-                color: 'rgba(255,255,255,0.6)',
+                color: 'rgba(255,255,255,0.65)',
               }}
               onMouseEnter={(e) => {
                 if (!refining) {
                   (e.currentTarget as HTMLElement).style.background = 'rgba(118,77,240,0.18)';
-                  (e.currentTarget as HTMLElement).style.borderColor = 'rgba(118,77,240,0.35)';
+                  (e.currentTarget as HTMLElement).style.borderColor = 'rgba(118,77,240,0.38)';
                   (e.currentTarget as HTMLElement).style.color = '#ddd6fe';
                 }
               }}
               onMouseLeave={(e) => {
-                (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.04)';
+                (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.03)';
                 (e.currentTarget as HTMLElement).style.borderColor = 'rgba(255,255,255,0.08)';
-                (e.currentTarget as HTMLElement).style.color = 'rgba(255,255,255,0.6)';
+                (e.currentTarget as HTMLElement).style.color = 'rgba(255,255,255,0.65)';
               }}
+              title={s}
             >
               {s}
             </button>
@@ -260,7 +253,6 @@ export default function QuickEditBox({ cvRecordId, onRefine }: QuickEditBoxProps
           0% { background-position: 100% 0; }
           100% { background-position: -100% 0; }
         }
-        div::-webkit-scrollbar { display: none; }
       `}</style>
     </div>
   );
