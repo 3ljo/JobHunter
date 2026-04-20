@@ -634,18 +634,16 @@ export default function CVPage() {
               <div style={{ height: '1px', background: 'linear-gradient(90deg,transparent,rgba(118,77,240,0.5),transparent)' }} />
               <div className="flex items-center justify-between px-3 sm:px-4 py-2 text-[10px] font-bold uppercase tracking-widest text-white/35">
                 <span>{isOriginal ? 'Your Original CV' : 'Preview'}</span>
-                {!isOriginal && (
-                  <>
-                    <span className="hidden sm:inline">Swipe pages →</span>
-                    <span className="sm:hidden">← Swipe →</span>
-                  </>
-                )}
+                <span className="hidden sm:inline">
+                  {isOriginal ? 'Your uploaded file' : `${TEMPLATES[template].name} · Live PDF`}
+                </span>
               </div>
               <CVPreview
                 cv={finalCV}
                 template={template}
                 photo={showPhotoSlot ? photo : null}
                 originalPdfDataUrl={originalPdfDataUrl}
+                cvRecordId={result.cv_record_id}
               />
             </div>
           </div>
