@@ -43,6 +43,7 @@ export default function CVPage() {
     loading: analysisLoading, step: analysisStep, steps: analysisSteps,
     template, photo, setTemplate, setPhoto,
     suggestionsOnly, setSuggestionsOnly,
+    originalPdfDataUrl,
   } = useCVAnalysisStore();
 
   const { subscription, usage, fetchSubscription } = useSubscriptionStore();
@@ -653,18 +654,44 @@ export default function CVPage() {
             </div>
             )}
 
-            {/* CV Preview — horizontal pages, sticky on large screens */}
+            {/* CV Preview — horizontal pages, sticky on large screens.
+                In suggestions-only mode, show the ORIGINAL uploaded PDF
+                (if we stashed it on upload) instead of the templated version. */}
             <div
               className="rounded-2xl overflow-hidden lg:sticky lg:top-20"
               style={glass}
             >
               <div style={{ height: '1px', background: 'linear-gradient(90deg,transparent,rgba(118,77,240,0.5),transparent)' }} />
               <div className="flex items-center justify-between px-3 sm:px-4 py-2 text-[10px] font-bold uppercase tracking-widest text-white/35">
-                <span>Preview</span>
-                <span className="hidden sm:inline">Swipe pages →</span>
-                <span className="sm:hidden">← Swipe →</span>
+                <span>{suggestionsOnly ? 'Your Original CV' : 'Preview'}</span>
+                {!suggestionsOnly && (
+                  <>
+                    <span className="hidden sm:inline">Swipe pages →</span>
+                    <span className="sm:hidden">← Swipe →</span>
+                  </>
+                )}
               </div>
-              <CVPreview cv={finalCV} template={template} photo={showPhotoSlot ? photo : null} />
+              {suggestionsOnly ? (
+                originalPdfDataUrl ? (
+                  <iframe
+                    src={originalPdfDataUrl}
+                    title="Your original CV"
+                    className="w-full block bg-white"
+                    style={{ height: '85vh', border: 'none' }}
+                  />
+                ) : (
+                  <div
+                    className="px-5 py-10 text-center text-sm"
+                    style={{ color: 'rgba(255,255,255,0.55)' }}
+                  >
+                    Your original PDF isn't available in this session. Re-upload your CV to see
+                    it here, or switch to &ldquo;Apply ATS template&rdquo; to view the rewritten
+                    version.
+                  </div>
+                )
+              ) : (
+                <CVPreview cv={finalCV} template={template} photo={showPhotoSlot ? photo : null} />
+              )}
             </div>
           </div>
 

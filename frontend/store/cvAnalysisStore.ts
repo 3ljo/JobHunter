@@ -9,6 +9,7 @@ const STEPS = ['Parsing & auditing...', 'Rewriting & humanizing...', 'Done'];
 const TEMPLATE_KEY = 'cv_template_id';
 const PHOTO_KEY = 'cv_photo_data';
 const SUGGESTIONS_ONLY_KEY = 'cv_suggestions_only';
+const ORIGINAL_PDF_KEY = 'cv_original_pdf_data_url';
 
 interface CVAnalysisState {
   loading: boolean;
@@ -19,6 +20,7 @@ interface CVAnalysisState {
   template: TemplateId;
   photo: string | null;
   suggestionsOnly: boolean;
+  originalPdfDataUrl: string | null;
   startAnalysis: (file: File, jobDescription: string) => void;
   setResult: (result: CVAnalysisResult | null) => void;
   setTemplate: (t: TemplateId) => void;
@@ -26,6 +28,14 @@ interface CVAnalysisState {
   setSuggestionsOnly: (v: boolean) => void;
   reset: () => void;
 }
+
+const fileToDataUrl = (file: File): Promise<string> =>
+  new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ''));
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(file);
+  });
 
 export const useCVAnalysisStore = create<CVAnalysisState>((set, get) => ({
   loading: false,
@@ -54,11 +64,31 @@ export const useCVAnalysisStore = create<CVAnalysisState>((set, get) => ({
     if (typeof window === 'undefined') return false;
     try { return localStorage.getItem(SUGGESTIONS_ONLY_KEY) === '1'; } catch { return false; }
   })(),
+  originalPdfDataUrl: (() => {
+    if (typeof window === 'undefined') return null;
+    try { return sessionStorage.getItem(ORIGINAL_PDF_KEY); } catch { return null; }
+  })(),
 
   startAnalysis: async (file: File, jobDescription: string) => {
     if (get().loading) return;
 
     set({ loading: true, step: 0, error: null });
+
+    // Stash the original PDF as a data URL so "Keep my CV" mode can show it.
+    // Skip if the file is too large to fit in sessionStorage (~5MB after base64).
+    try {
+      if (file.size <= 3 * 1024 * 1024) {
+        const dataUrl = await fileToDataUrl(file);
+        sessionStorage.setItem(ORIGINAL_PDF_KEY, dataUrl);
+        set({ originalPdfDataUrl: dataUrl });
+      } else {
+        sessionStorage.removeItem(ORIGINAL_PDF_KEY);
+        set({ originalPdfDataUrl: null });
+      }
+    } catch {
+      sessionStorage.removeItem(ORIGINAL_PDF_KEY);
+      set({ originalPdfDataUrl: null });
+    }
 
     const interval = setInterval(() => {
       const { step } = get();
@@ -134,6 +164,7 @@ export const useCVAnalysisStore = create<CVAnalysisState>((set, get) => ({
 
   reset: () => {
     sessionStorage.removeItem('cv_analysis_result');
-    set({ loading: false, step: 0, error: null, result: null });
+    sessionStorage.removeItem(ORIGINAL_PDF_KEY);
+    set({ loading: false, step: 0, error: null, result: null, originalPdfDataUrl: null });
   },
 }));
