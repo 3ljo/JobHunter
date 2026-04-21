@@ -161,7 +161,7 @@ function CheckoutForm() {
     setPromoError('');
   };
 
-  const [stripeNotReady, setStripeNotReady] = useState(false);
+  const [stripeNotReady] = useState(false); // legacy gate — kept false; real errors now surface as toasts
 
   const [showUsdtPayment, setShowUsdtPayment] = useState(false);
 
@@ -172,17 +172,12 @@ function CheckoutForm() {
     }
     setShowUsdtPayment(false);
     setLoading(true);
-    setStripeNotReady(false);
     try {
       const res = await createCheckoutSession(planKey, interval, paymentMethod);
       window.location.href = res.data.url;
     } catch (err: any) {
-      const msg = err.response?.data?.error || '';
-      if (msg.includes('not configured') || msg.includes('REPLACE_ME')) {
-        setStripeNotReady(true);
-      } else {
-        toast.error(msg || 'Failed to start checkout');
-      }
+      const msg = err.response?.data?.error || 'Failed to start checkout';
+      toast.error(msg);
       setLoading(false);
     }
   };
@@ -304,7 +299,7 @@ function CheckoutForm() {
             <div className="flex items-center gap-3 mt-3 px-1">
               <Smartphone className="h-4 w-4 shrink-0" style={{ color: 'rgba(255,255,255,0.25)' }} />
               <p className="text-[11px] text-white/30" style={{ fontWeight: 400 }}>
-                Apple Pay and Google Pay are available automatically when you select Card — Stripe detects your device at checkout.
+                Apple Pay, Google Pay, PayPal, and other regional methods appear on the secure Lemon Squeezy checkout page after you click Buy Now.
               </p>
             </div>
           </div>
@@ -538,20 +533,8 @@ function CheckoutForm() {
             </div>
           )}
 
-          {/* Stripe not configured notice */}
-          {stripeNotReady && (
-            <div
-              className="mt-4 rounded-lg p-4 text-center"
-              style={{ background: 'rgba(251,191,36,0.08)', border: '1px solid rgba(251,191,36,0.2)' }}
-            >
-              <p className="text-sm font-semibold mb-1" style={{ color: '#fbbf24' }}>
-                Payment system is being set up
-              </p>
-              <p className="text-xs text-white/40" style={{ fontWeight: 400 }}>
-                Stripe payments will be available soon. Your plan selection has been saved.
-              </p>
-            </div>
-          )}
+          {/* Legacy "payment system being set up" gate removed — real backend
+              errors are now surfaced as toasts in handleBuyNow above. */}
 
           {/* Back link */}
           <div className="text-center mt-4">
@@ -566,7 +549,7 @@ function CheckoutForm() {
           {/* Security note */}
           <div className="mt-6 text-center">
             <p className="text-white op-5" style={{ fontSize: '0.75rem' }}>
-              Secure payment powered by Stripe. Cancel anytime.
+              Secure payment powered by Lemon Squeezy. Cancel anytime.
             </p>
           </div>
         </div>

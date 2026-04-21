@@ -245,7 +245,7 @@ function PricingContent() {
 
       {/* Footer note */}
       <p className="text-center text-white/30 text-sm mt-10" style={{ fontWeight: 400 }}>
-        Cancel anytime. No hidden fees. Secure payments powered by Stripe.
+        Cancel anytime. No hidden fees. Secure payments powered by Lemon Squeezy.
       </p>
     </div>
   );
