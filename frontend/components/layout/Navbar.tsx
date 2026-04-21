@@ -20,7 +20,7 @@ const navItems = [
   { href: '/cv',           label: 'CV Analyzer'  },
   { href: '/create-cv',    label: 'Create CV'    },
   { href: '/cover-letter', label: 'Cover Letter' },
-  { href: '/interview',    label: 'Interview', badge: 'PRO+' },
+  // { href: '/interview',    label: 'Interview', badge: 'PRO+' }, // disabled
   { href: '/tracker',      label: 'Tracker'      },
   { href: '/cv-history',   label: 'History'      },
 ];
@@ -100,14 +100,6 @@ export default function Navbar() {
                   }}
                 >
                   {item.label}
-                  {item.badge && (
-                    <span
-                      className="text-[9px] font-black px-1.5 py-0.5 rounded"
-                      style={{ background: 'rgba(192,132,252,0.15)', color: '#c084fc', border: '1px solid rgba(192,132,252,0.3)' }}
-                    >
-                      {item.badge}
-                    </span>
-                  )}
                   {/* violet underline — same scaleX transition as landing page */}
                   <span
                     className="absolute left-4 right-4 transition-all duration-300"
@@ -252,14 +244,6 @@ export default function Navbar() {
                   }}
                 >
                   {item.label}
-                  {item.badge && (
-                    <span
-                      className="text-[9px] font-black px-1.5 py-0.5 rounded"
-                      style={{ background: 'rgba(192,132,252,0.15)', color: '#c084fc', border: '1px solid rgba(192,132,252,0.3)' }}
-                    >
-                      {item.badge}
-                    </span>
-                  )}
                 </Link>
               );
             })}
