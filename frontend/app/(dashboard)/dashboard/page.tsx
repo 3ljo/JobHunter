@@ -29,11 +29,12 @@ const STATUS_MAP: Record<string, { label: string; color: string; bg: string }> =
 /* ─── page ────────────────────────────────────────────────────────── */
 export default function DashboardPage() {
   const { user } = useAuthStore();
-  const { stats, jobs: allJobs, cvCount, loaded, load } = useDashboardStore();
+  const { stats, jobs: allJobs, cvs, loaded, load } = useDashboardStore();
 
   useEffect(() => { load(); }, [load]);
 
   const jobs = useMemo(() => allJobs.slice(0, 5), [allJobs]);
+  const cvCount = cvs.length;
 
   if (!loaded) return <LoadingSpinner className="mt-32" />;
 

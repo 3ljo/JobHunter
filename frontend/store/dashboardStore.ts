@@ -1,16 +1,15 @@
 import { create } from 'zustand';
-import { TrackerJob, TrackerStats } from '@/types';
+import { TrackerJob, TrackerStats, CVRecord } from '@/types';
 import { getAllTrackerJobs, getTrackerStats, getCVHistory } from '@/lib/api';
 
-// Shared cache for data that drives the dashboard home and tracker pages.
-// Both surfaces need `stats` and `jobs`; only the dashboard needs `cvCount`.
-// Keeping them in one store lets a mutation on either page invalidate once
-// and have both pages reflect the change on next mount.
+// Shared cache for the dashboard home, tracker, and CV history pages. All three
+// consume pieces of the same three endpoints, so one cached fetch serves them all —
+// visiting any two in sequence no longer triggers duplicate network calls.
 
 interface DashboardState {
   stats: TrackerStats | null;
   jobs: TrackerJob[];
-  cvCount: number;
+  cvs: CVRecord[];
   loaded: boolean;
   isLoading: boolean;
 
@@ -20,6 +19,8 @@ interface DashboardState {
   load: () => Promise<void>;
   refresh: () => Promise<void>;
   invalidate: () => void;
+  // Apply a local mutation without refetching (e.g. after a CV delete)
+  setCvs: (cvs: CVRecord[]) => void;
   clear: () => void;
 }
 
@@ -36,7 +37,7 @@ async function runFetch(set: (partial: Partial<DashboardState>) => void): Promis
     set({
       jobs: jobsRes.data.jobs,
       stats: statsRes.data.stats,
-      cvCount: cvRes.data.cvs.length,
+      cvs: cvRes.data.cvs,
       loaded: true,
       isLoading: false,
       _lastFetchedAt: Date.now(),
@@ -49,7 +50,7 @@ async function runFetch(set: (partial: Partial<DashboardState>) => void): Promis
 export const useDashboardStore = create<DashboardState>((set, get) => ({
   stats: null,
   jobs: [],
-  cvCount: 0,
+  cvs: [],
   loaded: false,
   isLoading: false,
   _lastFetchedAt: null,
@@ -75,10 +76,12 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
 
   invalidate: () => set({ _lastFetchedAt: null }),
 
+  setCvs: (cvs) => set({ cvs }),
+
   clear: () => set({
     stats: null,
     jobs: [],
-    cvCount: 0,
+    cvs: [],
     loaded: false,
     isLoading: false,
     _lastFetchedAt: null,

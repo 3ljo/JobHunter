@@ -2,15 +2,14 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { getCVHistory, deleteCV, downloadCVPdf, previewCVPdf } from '@/lib/api';
-import { CVRecord } from '@/types';
+import { deleteCV, downloadCVPdf, previewCVPdf } from '@/lib/api';
+import { useDashboardStore } from '@/store/dashboardStore';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import toast from 'react-hot-toast';
 import { Eye, X, Download, Trash2, FileText, Calendar, AlertTriangle } from 'lucide-react';
 
 export default function CVHistory() {
-  const [cvs, setCvs] = useState<CVRecord[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { cvs, loaded, load, setCvs } = useDashboardStore();
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -29,18 +28,7 @@ export default function CVHistory() {
     };
   }, [confirmDeleteOpen]);
 
-  const load = async () => {
-    try {
-      const res = await getCVHistory();
-      setCvs(res.data.cvs);
-    } catch {
-      // silent
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); }, [load]);
 
   useEffect(() => {
     return () => {
@@ -101,7 +89,7 @@ export default function CVHistory() {
     const deletedIds = new Set(
       ids.filter((_, i) => results[i].status === 'fulfilled'),
     );
-    setCvs((prev) => prev.filter((cv) => !deletedIds.has(cv.id)));
+    setCvs(cvs.filter((cv) => !deletedIds.has(cv.id)));
     setSelected(new Set());
     setBulkBusy(false);
     const failed = results.length - deletedIds.size;
@@ -134,7 +122,7 @@ export default function CVHistory() {
     return 'text-red-400';
   }
 
-  if (loading) return <LoadingSpinner className="mt-12" />;
+  if (!loaded) return <LoadingSpinner className="mt-12" />;
 
   if (cvs.length === 0) {
     return (
