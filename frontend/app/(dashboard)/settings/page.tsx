@@ -5,22 +5,14 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useAuthStore } from '@/store/authStore';
-import { changePassword, getMyUsage } from '@/lib/api';
+import { changePassword } from '@/lib/api';
 import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
 import { Settings, Lock, LogOut, Mail, Shield, Eye, EyeOff, BarChart3, FileText, FileSignature, Zap, Crown, ExternalLink, Gift, Copy, Check, Users } from 'lucide-react';
 import { useSubscriptionStore } from '@/store/subscriptionStore';
-import { createPortalSession, getMyReferralCode, getMyReferrals } from '@/lib/api';
+import { useAccountStore } from '@/store/accountStore';
+import { createPortalSession } from '@/lib/api';
 import Link from 'next/link';
-
-interface UsageData {
-  cv_today: number;
-  cv_limit: number;
-  cl_today: number;
-  cl_limit: number;
-  month_total: number;
-  total_cvs: number;
-}
 
 export default function SettingsPage() {
   const { user, logout } = useAuthStore();
@@ -30,25 +22,18 @@ export default function SettingsPage() {
   const [loading, setLoading] = useState(false);
   const [showNew, setShowNew] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
-  const [usage, setUsage] = useState<UsageData | null>(null);
   const { subscription, fetchSubscription } = useSubscriptionStore();
+  const { referralCode: referralCodeData, myUsage: usage, load: loadAccount } = useAccountStore();
   const [portalLoading, setPortalLoading] = useState(false);
-  const [referralCode, setReferralCode] = useState<string | null>(null);
-  const [referralCount, setReferralCount] = useState(0);
   const [referralCopied, setReferralCopied] = useState(false);
 
+  const referralCode = referralCodeData?.code ?? null;
+  const referralCount = referralCodeData?.times_used ?? 0;
+
   useEffect(() => {
-    getMyUsage()
-      .then((res) => setUsage(res.data.usage))
-      .catch(() => {});
     fetchSubscription();
-    getMyReferralCode()
-      .then((res) => {
-        setReferralCode(res.data.referral_code.code);
-        setReferralCount(res.data.referral_code.times_used || 0);
-      })
-      .catch(() => {});
-  }, [fetchSubscription]);
+    loadAccount();
+  }, [fetchSubscription, loadAccount]);
 
   const referralLink = referralCode
     ? `${typeof window !== 'undefined' ? window.location.origin : ''}/register?ref=${referralCode}`

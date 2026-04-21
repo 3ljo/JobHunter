@@ -3,8 +3,8 @@
 import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useSubscriptionStore } from '@/store/subscriptionStore';
-import { createCheckoutSession, validatePromoCode, checkReferralDiscount } from '@/lib/api';
-import axios from 'axios';
+import { useCheckoutConfigStore } from '@/store/checkoutConfigStore';
+import { createCheckoutSession, validatePromoCode } from '@/lib/api';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
 import { Tag, Check, X, CreditCard, Smartphone } from 'lucide-react';
@@ -72,6 +72,11 @@ function CheckoutForm() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const { fetchSubscription } = useSubscriptionStore();
+  const {
+    usdtConfig,
+    referralDiscount: storedReferralDiscount,
+    load: loadCheckoutConfig,
+  } = useCheckoutConfigStore();
 
   const planKey = searchParams.get('plan') || 'pro';
   const intervalParam = searchParams.get('interval') as 'month' | 'year' || 'month';
@@ -79,41 +84,26 @@ function CheckoutForm() {
   const [interval, setInterval] = useState<'month' | 'year'>(intervalParam);
   const [loading, setLoading] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<'card' | 'paypal' | 'crypto'>('card');
-
-  // USDT config
-  const [usdtWallet, setUsdtWallet] = useState('');
-  const [usdtNetwork, setUsdtNetwork] = useState('TRC-20');
   const [usdtCopied, setUsdtCopied] = useState(false);
 
-  // Discount state
+  // Discount state — promo is user-entered (not cached); referral comes from the store.
   const [promoInput, setPromoInput] = useState('');
   const [promoLoading, setPromoLoading] = useState(false);
   const [promoError, setPromoError] = useState('');
   const [discount, setDiscount] = useState<Discount | null>(null);
-  const [referralDiscount, setReferralDiscount] = useState<Discount | null>(null);
+
+  const referralDiscount: Discount | null = storedReferralDiscount
+    ? { source: 'referral', ...storedReferralDiscount }
+    : null;
+  const usdtWallet = usdtConfig?.wallet ?? '';
+  const usdtNetwork = usdtConfig?.network ?? 'TRC-20';
 
   const plan = PLANS[planKey];
 
   useEffect(() => {
     fetchSubscription();
-    // Fetch USDT wallet config
-    axios.get(`${process.env.NEXT_PUBLIC_API_URL}/api/subscription/usdt-config`)
-      .then((res) => { setUsdtWallet(res.data.wallet_address); setUsdtNetwork(res.data.network); })
-      .catch(() => {});
-    // Check if user has a referral discount
-    checkReferralDiscount()
-      .then((res) => {
-        if (res.data.has_discount) {
-          setReferralDiscount({
-            source: 'referral',
-            type: res.data.discount_type as 'percent' | 'fixed',
-            amount: res.data.discount_amount!,
-            label: res.data.label!,
-          });
-        }
-      })
-      .catch(() => {});
-  }, [fetchSubscription]);
+    loadCheckoutConfig();
+  }, [fetchSubscription, loadCheckoutConfig]);
 
   if (!plan) {
     router.push('/pricing');

@@ -1,37 +1,19 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { getMyReferralCode, getMyReferrals } from '@/lib/api';
+import { useAccountStore } from '@/store/accountStore';
 import toast from 'react-hot-toast';
 import { Gift, Copy, Check, Users, Share2, Link2 } from 'lucide-react';
 
-interface Referral {
-  id: string;
-  referred_email: string;
-  referrer_reward_applied: boolean;
-  referred_reward_applied: boolean;
-  created_at: string;
-}
-
 export default function ReferralsPage() {
-  const [code, setCode] = useState<string | null>(null);
-  const [timesUsed, setTimesUsed] = useState(0);
-  const [referrals, setReferrals] = useState<Referral[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { referralCode, referrals, loaded, load } = useAccountStore();
   const [copied, setCopied] = useState<'code' | 'link' | null>(null);
 
-  useEffect(() => {
-    Promise.all([getMyReferralCode(), getMyReferrals()])
-      .then(([codeRes, refRes]) => {
-        setCode(codeRes.data.referral_code.code);
-        setTimesUsed(codeRes.data.referral_code.times_used || 0);
-        setReferrals(refRes.data.referrals || []);
-      })
-      .catch((err) => {
-        console.error('Referral fetch error:', err?.response?.data || err.message);
-      })
-      .finally(() => setLoading(false));
-  }, []);
+  useEffect(() => { load(); }, [load]);
+
+  const code = referralCode?.code ?? null;
+  const timesUsed = referralCode?.times_used ?? 0;
+  const loading = !loaded;
 
   const referralLink = code
     ? `${typeof window !== 'undefined' ? window.location.origin : ''}/register?ref=${code}`
