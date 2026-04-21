@@ -1,5 +1,12 @@
 // Stripe Service
-// Initializes the Stripe client and exports plan/price configuration
+// Initializes the Stripe client and exports plan/price configuration.
+//
+// NOTE: The app currently uses Lemon Squeezy as the payment provider.
+// Stripe is kept commented/dormant so it can be re-enabled later without
+// rewriting the plan config. The PLANS constant below is still the
+// single source of truth for quota limits (cv_limit, cl_limit, mi_limit)
+// and is consumed by the rate limiter, profile controller, and
+// subscription controller regardless of payment provider.
 
 const Stripe = require('stripe');
 
@@ -7,7 +14,8 @@ const stripe = process.env.STRIPE_SECRET_KEY
   ? new Stripe(process.env.STRIPE_SECRET_KEY)
   : null;
 
-// Plan configuration — maps internal plan names to Stripe Price IDs and rate limits
+// Plan configuration — maps internal plan names to Stripe Price IDs,
+// Lemon Squeezy variant IDs, and daily rate limits.
 const PLANS = {
   free: {
     name: 'Free',
@@ -26,6 +34,10 @@ const PLANS = {
       month: process.env.STRIPE_PRICE_PRO_MONTHLY,
       year: process.env.STRIPE_PRICE_PRO_YEARLY,
     },
+    ls_variants: {
+      month: process.env.LEMONSQUEEZY_VARIANT_PRO_MONTHLY,
+      year: process.env.LEMONSQUEEZY_VARIANT_PRO_YEARLY,
+    },
   },
   pro_plus: {
     name: 'Pro+',
@@ -36,6 +48,10 @@ const PLANS = {
     prices: {
       month: process.env.STRIPE_PRICE_PRO_PLUS_MONTHLY,
       year: process.env.STRIPE_PRICE_PRO_PLUS_YEARLY,
+    },
+    ls_variants: {
+      month: process.env.LEMONSQUEEZY_VARIANT_PRO_PLUS_MONTHLY,
+      year: process.env.LEMONSQUEEZY_VARIANT_PRO_PLUS_YEARLY,
     },
   },
 };

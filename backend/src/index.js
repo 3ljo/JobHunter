@@ -29,7 +29,10 @@ app.use(cors({
   credentials: true,
 }));
 
-// Stripe webhook needs raw body — must be before express.json()
+// Payment webhook (Lemon Squeezy) — needs raw body for HMAC signature
+// verification, so it MUST be mounted before express.json(). If you switch
+// back to Stripe, keep this same route path and raw-body middleware — only
+// the handler logic inside subscriptionController changes.
 app.post('/api/subscription/webhook', express.raw({ type: 'application/json' }), handleWebhook);
 
 // Parse JSON request bodies (2MB limit to accommodate base64 profile photos for CV templates)

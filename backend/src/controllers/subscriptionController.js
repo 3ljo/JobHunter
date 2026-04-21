@@ -1,9 +1,18 @@
 // Subscription Controller
-// Handles Stripe checkout, portal, webhook, and subscription status
+// Handles checkout, customer portal, webhook, and subscription status.
+//
+// ────────────────────────────────────────────────────────────────────────────
+// Payment provider: LEMON SQUEEZY (active)
+// Stripe integration is preserved below as commented-out blocks so it can be
+// re-enabled by (a) uncommenting the Stripe blocks, (b) swapping the route
+// wiring in backend/src/index.js back to the Stripe webhook, and (c) pointing
+// createCheckout/createPortal/handleWebhook at the Stripe versions.
+// ────────────────────────────────────────────────────────────────────────────
 
 const supabase = require('../services/supabaseClient');
-const { stripe, PLANS, getPlanLimits } = require('../services/stripeService');
+const { /* stripe, */ PLANS, getPlanLimits } = require('../services/stripeService');
 const { getTodayCount } = require('../services/usageService');
+const ls = require('../services/lemonSqueezyService');
 
 // GET /api/subscription — Get the user's current subscription
 const buildUsage = async (userId, plan) => {
@@ -55,10 +64,187 @@ const getSubscription = async (req, res) => {
   }
 };
 
-// POST /api/subscription/checkout — Create a Stripe Checkout session
+// POST /api/subscription/checkout — Create a Lemon Squeezy hosted checkout URL
 const createCheckout = async (req, res) => {
   try {
-    const { plan, interval, payment_method } = req.body; // plan: 'pro' | 'pro_plus', interval: 'month' | 'year', payment_method: 'card' | 'paypal' | 'bank_transfer'
+    const { plan, interval } = req.body; // payment_method is ignored — LS handles method selection on its hosted page
+
+    if (!plan || !PLANS[plan] || plan === 'free') {
+      return res.status(400).json({ error: 'Invalid plan' });
+    }
+    if (!interval || !['month', 'year'].includes(interval)) {
+      return res.status(400).json({ error: 'Invalid billing interval' });
+    }
+
+    const variantId = ls.getVariantId(plan, interval);
+    if (!variantId) {
+      return res.status(400).json({
+        error: `Lemon Squeezy variant not configured for ${plan}/${interval}. Set LEMONSQUEEZY_VARIANT_* env vars.`,
+      });
+    }
+
+    const successUrl = `${process.env.FRONTEND_URL}/checkout/success`;
+    const checkoutUrl = await ls.createCheckout({
+      variantId,
+      userId: req.user.id,
+      email: req.user.email,
+      plan,
+      interval,
+      successUrl,
+    });
+
+    return res.json({ url: checkoutUrl });
+  } catch (err) {
+    console.error('LS checkout error:', err.message);
+    return res.status(500).json({ error: err.message });
+  }
+};
+
+// POST /api/subscription/portal — Return the user's Lemon Squeezy customer portal URL.
+// LS doesn't have an API to *create* a portal session on demand; each subscription
+// comes with a pre-generated portal URL, which the webhook stored on the row.
+const createPortal = async (req, res) => {
+  try {
+    const { data } = await supabase
+      .from('subscriptions')
+      .select('lemonsqueezy_portal_url')
+      .eq('user_id', req.user.id)
+      .single();
+
+    if (!data?.lemonsqueezy_portal_url) {
+      return res.status(400).json({ error: 'No active subscription found' });
+    }
+
+    return res.json({ url: data.lemonsqueezy_portal_url });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+};
+
+// POST /api/subscription/webhook — Lemon Squeezy webhook handler (no auth middleware)
+// Requires raw body access — route must be registered BEFORE express.json().
+const handleWebhook = async (req, res) => {
+  const signature = req.headers['x-signature'];
+  const rawBody = req.body; // Buffer, because express.raw({type: 'application/json'}) runs on this route
+
+  if (!ls.verifyWebhook(rawBody, signature)) {
+    console.error('LS webhook signature verification failed');
+    return res.status(401).json({ error: 'Invalid signature' });
+  }
+
+  let payload;
+  try {
+    payload = JSON.parse(rawBody.toString('utf8'));
+  } catch (err) {
+    return res.status(400).json({ error: 'Malformed JSON' });
+  }
+
+  const eventName = payload?.meta?.event_name;
+  const custom = payload?.meta?.custom_data || {};
+  const attrs = payload?.data?.attributes || {};
+  const subId = payload?.data?.id;
+
+  // Find the user tied to this subscription — prefer the custom_data we injected
+  // at checkout, fall back to looking up by LS subscription ID (for renewals / updates).
+  const lookupUser = async () => {
+    if (custom.user_id) return custom.user_id;
+    if (subId) {
+      const { data } = await supabase
+        .from('subscriptions')
+        .select('user_id')
+        .eq('lemonsqueezy_subscription_id', subId)
+        .single();
+      return data?.user_id || null;
+    }
+    return null;
+  };
+
+  try {
+    switch (eventName) {
+      case 'subscription_created':
+      case 'subscription_updated':
+      case 'subscription_resumed': {
+        const userId = await lookupUser();
+        if (!userId) {
+          console.warn(`LS ${eventName} with no user_id match — sub ${subId}`);
+          break;
+        }
+
+        // Prefer custom_data when present (fresh checkouts), else resolve from variant.
+        const plan = custom.plan || ls.resolvePlanFromVariantId(attrs.variant_id);
+        const interval = custom.interval || ls.resolveIntervalFromVariantId(attrs.variant_id);
+
+        await supabase.from('subscriptions').upsert({
+          user_id: userId,
+          lemonsqueezy_customer_id: attrs.customer_id ? String(attrs.customer_id) : null,
+          lemonsqueezy_subscription_id: subId,
+          lemonsqueezy_portal_url: attrs?.urls?.customer_portal || null,
+          plan,
+          billing_interval: interval,
+          status: ls.mapStatus(attrs.status),
+          current_period_start: attrs.created_at || null,
+          current_period_end: attrs.renews_at || attrs.ends_at || null,
+          cancel_at_period_end: attrs.cancelled === true,
+        }, { onConflict: 'user_id' });
+        break;
+      }
+
+      case 'subscription_cancelled': {
+        const userId = await lookupUser();
+        if (!userId) break;
+        await supabase.from('subscriptions').update({
+          status: ls.mapStatus(attrs.status),
+          cancel_at_period_end: true,
+          current_period_end: attrs.ends_at || attrs.renews_at || null,
+        }).eq('user_id', userId);
+        break;
+      }
+
+      case 'subscription_expired': {
+        const userId = await lookupUser();
+        if (!userId) break;
+        await supabase.from('subscriptions').update({
+          plan: 'free',
+          status: 'canceled',
+          lemonsqueezy_subscription_id: null,
+          cancel_at_period_end: false,
+        }).eq('user_id', userId);
+        break;
+      }
+
+      case 'subscription_payment_failed': {
+        const userId = await lookupUser();
+        if (!userId) break;
+        await supabase.from('subscriptions').update({
+          status: 'past_due',
+        }).eq('user_id', userId);
+        break;
+      }
+
+      case 'subscription_payment_success':
+      case 'order_created':
+      default:
+        // Not all events require DB writes — log and move on.
+        break;
+    }
+  } catch (err) {
+    console.error('LS webhook processing error:', err.message);
+  }
+
+  // Always 200 so LS doesn't retry on an internal bug.
+  res.json({ received: true });
+};
+
+/* ════════════════════════════════════════════════════════════════════════════
+   STRIPE HANDLERS — preserved for rollback. Not wired into any route.
+   To re-enable: uncomment this block, swap the named exports below, and
+   re-mount /api/subscription/webhook with the Stripe raw-body middleware.
+   ════════════════════════════════════════════════════════════════════════════
+
+// POST /api/subscription/checkout — Create a Stripe Checkout session
+const createCheckoutStripe = async (req, res) => {
+  try {
+    const { plan, interval, payment_method } = req.body;
 
     if (!plan || !PLANS[plan] || plan === 'free') {
       return res.status(400).json({ error: 'Invalid plan' });
@@ -72,7 +258,6 @@ const createCheckout = async (req, res) => {
       return res.status(400).json({ error: 'Stripe price not configured for this plan. Add your Stripe Price IDs to .env' });
     }
 
-    // Find or create Stripe customer
     let customerId;
     const { data: existing } = await supabase
       .from('subscriptions')
@@ -89,7 +274,6 @@ const createCheckout = async (req, res) => {
       });
       customerId = customer.id;
 
-      // Upsert subscription record with customer ID
       await supabase.from('subscriptions').upsert({
         user_id: req.user.id,
         stripe_customer_id: customerId,
@@ -98,14 +282,9 @@ const createCheckout = async (req, res) => {
       }, { onConflict: 'user_id' });
     }
 
-    // Map payment method to Stripe payment_method_types
-    const methodMap = {
-      card: ['card'],
-      paypal: ['paypal'],
-    };
+    const methodMap = { card: ['card'], paypal: ['paypal'] };
     const paymentMethodTypes = methodMap[payment_method] || ['card'];
 
-    // Create Checkout Session
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
       mode: 'subscription',
@@ -123,7 +302,7 @@ const createCheckout = async (req, res) => {
 };
 
 // POST /api/subscription/portal — Create a Stripe Customer Portal session
-const createPortal = async (req, res) => {
+const createPortalStripe = async (req, res) => {
   try {
     const { data } = await supabase
       .from('subscriptions')
@@ -146,8 +325,8 @@ const createPortal = async (req, res) => {
   }
 };
 
-// POST /api/subscription/webhook — Stripe webhook handler (no auth middleware)
-const handleWebhook = async (req, res) => {
+// POST /api/subscription/webhook — Stripe webhook handler
+const handleWebhookStripe = async (req, res) => {
   const sig = req.headers['stripe-signature'];
   let event;
 
@@ -166,10 +345,7 @@ const handleWebhook = async (req, res) => {
         const plan = session.metadata.plan;
         const interval = session.metadata.interval;
         const subscriptionId = session.subscription;
-
-        // Fetch the subscription to get period dates
         const sub = await stripe.subscriptions.retrieve(subscriptionId);
-
         await supabase.from('subscriptions').upsert({
           user_id: userId,
           stripe_customer_id: session.customer,
@@ -181,27 +357,20 @@ const handleWebhook = async (req, res) => {
           current_period_end: new Date(sub.current_period_end * 1000).toISOString(),
           cancel_at_period_end: sub.cancel_at_period_end,
         }, { onConflict: 'user_id' });
-
         break;
       }
-
       case 'customer.subscription.updated': {
         const sub = event.data.object;
         const customerId = sub.customer;
-
-        // Look up user by Stripe customer ID
         const { data: record } = await supabase
           .from('subscriptions')
           .select('user_id')
           .eq('stripe_customer_id', customerId)
           .single();
-
         if (record) {
-          // Determine plan from the price ID
           const priceId = sub.items.data[0]?.price?.id;
-          const plan = resolvePlanFromPriceId(priceId);
+          const plan = resolvePlanFromStripePriceId(priceId);
           const interval = sub.items.data[0]?.price?.recurring?.interval || 'month';
-
           await supabase.from('subscriptions').update({
             stripe_subscription_id: sub.id,
             plan,
@@ -214,17 +383,14 @@ const handleWebhook = async (req, res) => {
         }
         break;
       }
-
       case 'customer.subscription.deleted': {
         const sub = event.data.object;
         const customerId = sub.customer;
-
         const { data: record } = await supabase
           .from('subscriptions')
           .select('user_id')
           .eq('stripe_customer_id', customerId)
           .single();
-
         if (record) {
           await supabase.from('subscriptions').update({
             plan: 'free',
@@ -235,17 +401,14 @@ const handleWebhook = async (req, res) => {
         }
         break;
       }
-
       case 'invoice.payment_failed': {
         const invoice = event.data.object;
         const customerId = invoice.customer;
-
         const { data: record } = await supabase
           .from('subscriptions')
           .select('user_id')
           .eq('stripe_customer_id', customerId)
           .single();
-
         if (record) {
           await supabase.from('subscriptions').update({
             status: 'past_due',
@@ -258,12 +421,10 @@ const handleWebhook = async (req, res) => {
     console.error('Webhook processing error:', err.message);
   }
 
-  // Always return 200 so Stripe doesn't retry
   res.json({ received: true });
 };
 
-// Helper — resolve internal plan name from a Stripe Price ID
-function resolvePlanFromPriceId(priceId) {
+function resolvePlanFromStripePriceId(priceId) {
   if (!priceId) return 'free';
   for (const [planKey, config] of Object.entries(PLANS)) {
     if (config.prices) {
@@ -274,5 +435,7 @@ function resolvePlanFromPriceId(priceId) {
   }
   return 'free';
 }
+
+   ════════════════════════════════════════════════════════════════════════════ */
 
 module.exports = { getSubscription, createCheckout, createPortal, handleWebhook };
