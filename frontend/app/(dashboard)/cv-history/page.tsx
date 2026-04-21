@@ -1,11 +1,13 @@
 'use client';
 
 import { useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import CVHistory from '@/components/cv/CVHistory';
 import { useSubscriptionStore } from '@/store/subscriptionStore';
 import { History } from 'lucide-react';
 
 export default function CVHistoryPage() {
+  const { t } = useTranslation();
   const { subscription, fetchSubscription } = useSubscriptionStore();
   useEffect(() => { if (!subscription) fetchSubscription(); }, [subscription, fetchSubscription]);
 
@@ -17,8 +19,8 @@ export default function CVHistoryPage() {
             <History className="h-4.5 w-4.5 text-violet-400" />
           </div>
           <div>
-            <h1 className="text-xl font-black text-foreground tracking-tight">CV History</h1>
-            <p className="text-muted-foreground/60 text-xs">View your past CV analyses and scores</p>
+            <h1 className="text-xl font-black text-foreground tracking-tight">{t('cvHistory.title')}</h1>
+            <p className="text-muted-foreground/60 text-xs">{t('cvHistory.subtitle')}</p>
           </div>
         </div>
       </div>

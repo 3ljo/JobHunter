@@ -1,0 +1,55 @@
+{
+  "nav": {
+    "dashboard": "Kontrol paneli",
+    "cvAnalyzer": "CV Analizi",
+    "createCv": "CV Oluştur",
+    "coverLetter": "Ön Yazı",
+    "interview": "Mülakat",
+    "tracker": "Takip",
+    "history": "Geçmiş",
+    "referrals": "Davetler",
+    "pricing": "Fiyatlandırma",
+    "settings": "Ayarlar",
+    "signOut": "Çıkış yap",
+    "account": "Hesap"
+  },
+  "common": {
+    "cancel": "İptal",
+    "delete": "Sil",
+    "download": "İndir",
+    "preview": "Önizleme",
+    "close": "Kapat",
+    "save": "Kaydet",
+    "loading": "Yükleniyor…",
+    "clear": "Temizle",
+    "selectedCount": "{{count}} seçildi",
+    "deleted_one": "{{count}} CV silindi",
+    "deleted_other": "{{count}} CV silindi",
+    "downloaded_one": "{{count}} CV indirildi",
+    "downloaded_other": "{{count}} CV indirildi",
+    "failedPartial": "{{failed}}/{{total}} başarısız",
+    "copied": "Panoya kopyalandı",
+    "new": "Yeni"
+  },
+  "cvHistory": {
+    "title": "CV Geçmişi",
+    "subtitle": "Önceki analizlerini ve puanlarını görüntüle",
+    "empty": "Henüz analiz yok",
+    "emptyHint": "İlk CV’ni yükle ve analiz et; burada görünsün.",
+    "colDate": "Tarih",
+    "colFile": "Dosya",
+    "previewModalTitle": "CV Önizleme",
+    "previewFailed": "Önizleme yüklenemedi",
+    "deleteFailed": "Silme başarısız",
+    "downloadFailed": "İndirme başarısız",
+    "deletedSingle": "CV silindi",
+    "confirmTitle_one": "{{count}} CV silinsin mi?",
+    "confirmTitle_other": "{{count}} CV silinsin mi?",
+    "confirmBody_one": "Bu işlem kalıcıdır. Seçilen CV ve analiz verileri geçmişinden kaldırılacaktır.",
+    "confirmBody_other": "Bu işlem kalıcıdır. Seçilen CV’ler ve analiz verileri geçmişinden kaldırılacaktır."
+  },
+  "languageSwitcher": {
+    "label": "Dil",
+    "search": "Dil ara…"
+  }
+}

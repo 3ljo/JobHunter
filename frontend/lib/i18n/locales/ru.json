@@ -1,0 +1,63 @@
+{
+  "nav": {
+    "dashboard": "Панель",
+    "cvAnalyzer": "Анализ резюме",
+    "createCv": "Создать резюме",
+    "coverLetter": "Сопроводительное письмо",
+    "interview": "Собеседование",
+    "tracker": "Трекер",
+    "history": "История",
+    "referrals": "Приглашения",
+    "pricing": "Тарифы",
+    "settings": "Настройки",
+    "signOut": "Выйти",
+    "account": "Аккаунт"
+  },
+  "common": {
+    "cancel": "Отмена",
+    "delete": "Удалить",
+    "download": "Скачать",
+    "preview": "Просмотр",
+    "close": "Закрыть",
+    "save": "Сохранить",
+    "loading": "Загрузка…",
+    "clear": "Очистить",
+    "selectedCount": "Выбрано: {{count}}",
+    "deleted_one": "Удалено {{count}} резюме",
+    "deleted_few": "Удалено {{count}} резюме",
+    "deleted_many": "Удалено {{count}} резюме",
+    "deleted_other": "Удалено {{count}} резюме",
+    "downloaded_one": "Скачано {{count}} резюме",
+    "downloaded_few": "Скачано {{count}} резюме",
+    "downloaded_many": "Скачано {{count}} резюме",
+    "downloaded_other": "Скачано {{count}} резюме",
+    "failedPartial": "Не удалось: {{failed}} из {{total}}",
+    "copied": "Скопировано в буфер",
+    "new": "Новое"
+  },
+  "cvHistory": {
+    "title": "История резюме",
+    "subtitle": "Просматривай прошлые анализы и оценки",
+    "empty": "Анализов пока нет",
+    "emptyHint": "Загрузи и проанализируй первое резюме, чтобы увидеть его здесь.",
+    "colDate": "Дата",
+    "colFile": "Файл",
+    "previewModalTitle": "Предпросмотр резюме",
+    "previewFailed": "Не удалось загрузить предпросмотр",
+    "deleteFailed": "Не удалось удалить",
+    "downloadFailed": "Не удалось скачать",
+    "deletedSingle": "Резюме удалено",
+    "confirmTitle_one": "Удалить {{count}} резюме?",
+    "confirmTitle_few": "Удалить {{count}} резюме?",
+    "confirmTitle_many": "Удалить {{count}} резюме?",
+    "confirmTitle_other": "Удалить {{count}} резюме?",
+    "confirmBody_one": "Это действие необратимо. Выбранное резюме и данные его анализа будут удалены из истории.",
+    "confirmBody_few": "Это действие необратимо. Выбранные резюме и данные их анализа будут удалены из истории.",
+    "confirmBody_many": "Это действие необратимо. Выбранные резюме и данные их анализа будут удалены из истории.",
+    "confirmBody_other": "Это действие необратимо. Выбранные резюме и данные их анализа будут удалены из истории."
+  },
+  "languageSwitcher": {
+    "label": "Язык",
+    "search": "Поиск языка…"
+  }
+}

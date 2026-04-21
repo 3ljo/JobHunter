@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Manrope } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "react-hot-toast";
+import I18nProvider from "@/lib/i18n/I18nProvider";
 
 const manrope = Manrope({
   variable: "--font-manrope",
@@ -36,7 +37,7 @@ export default function RootLayout({
       className={`${manrope.variable} dark h-full antialiased`}
     >
       <body className="min-h-full flex flex-col" suppressHydrationWarning>
-        {children}
+        <I18nProvider>{children}</I18nProvider>
         <Toaster
           position="top-center"
           toastOptions={{

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { getCVHistory, deleteCV, downloadCVPdf, previewCVPdf } from '@/lib/api';
 import { CVRecord } from '@/types';
@@ -9,6 +10,7 @@ import toast from 'react-hot-toast';
 import { Eye, X, Download, Trash2, FileText, Calendar, AlertTriangle } from 'lucide-react';
 
 export default function CVHistory() {
+  const { t, i18n } = useTranslation();
   const [cvs, setCvs] = useState<CVRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -82,9 +84,9 @@ export default function CVHistory() {
       }
     }
     setBulkBusy(false);
-    if (failed === 0) toast.success(`Downloaded ${ids.length} CV${ids.length > 1 ? 's' : ''}`);
-    else if (failed < ids.length) toast.error(`${failed} of ${ids.length} downloads failed`);
-    else toast.error('Failed to download');
+    if (failed === 0) toast.success(t('common.downloaded', { count: ids.length }));
+    else if (failed < ids.length) toast.error(t('common.failedPartial', { failed, total: ids.length }));
+    else toast.error(t('cvHistory.downloadFailed'));
   };
 
   const requestBulkDelete = () => {
@@ -105,9 +107,9 @@ export default function CVHistory() {
     setSelected(new Set());
     setBulkBusy(false);
     const failed = results.length - deletedIds.size;
-    if (failed === 0) toast.success(`Deleted ${deletedIds.size} CV${deletedIds.size > 1 ? 's' : ''}`);
-    else if (deletedIds.size > 0) toast.error(`${failed} of ${ids.length} deletions failed`);
-    else toast.error('Failed to delete');
+    if (failed === 0) toast.success(t('common.deleted', { count: deletedIds.size }));
+    else if (deletedIds.size > 0) toast.error(t('common.failedPartial', { failed, total: ids.length }));
+    else toast.error(t('cvHistory.deleteFailed'));
   };
 
   const handlePreview = async (id: string) => {
@@ -116,7 +118,7 @@ export default function CVHistory() {
       const url = await previewCVPdf(id);
       setPreviewUrl(url);
     } catch {
-      toast.error('Failed to load preview');
+      toast.error(t('cvHistory.previewFailed'));
     } finally {
       setPreviewLoading(false);
     }
@@ -142,8 +144,8 @@ export default function CVHistory() {
         <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-muted/50 mb-4">
           <FileText className="h-6 w-6 text-muted-foreground/60" />
         </div>
-        <p className="text-sm font-medium text-muted-foreground">No CV analyses yet</p>
-        <p className="text-xs text-muted-foreground/60 mt-1">Upload and analyze your first CV to see history here.</p>
+        <p className="text-sm font-medium text-muted-foreground">{t('cvHistory.empty')}</p>
+        <p className="text-xs text-muted-foreground/60 mt-1">{t('cvHistory.emptyHint')}</p>
       </div>
     );
   }
@@ -154,7 +156,7 @@ export default function CVHistory() {
       {selected.size > 0 && (
         <div className="sticky top-2 z-30 rounded-2xl border border-violet-500/30 bg-card/95 backdrop-blur shadow-[0_6px_22px_rgba(118,77,240,0.18)] px-3 sm:px-4 py-2.5 flex items-center gap-2 sm:gap-3">
           <span className="text-xs sm:text-sm font-semibold text-foreground/90 tabular-nums">
-            {selected.size} selected
+            {t('common.selectedCount', { count: selected.size })}
           </span>
           <button
             type="button"
@@ -162,7 +164,7 @@ export default function CVHistory() {
             disabled={bulkBusy}
             className="text-[11px] sm:text-xs text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
           >
-            Clear
+            {t('common.clear')}
           </button>
           <div className="ml-auto flex items-center gap-1.5 sm:gap-2">
             <Button
@@ -173,7 +175,7 @@ export default function CVHistory() {
               className="gap-1.5 text-muted-foreground hover:text-foreground rounded-lg text-xs"
             >
               <Download className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">Download</span>
+              <span className="hidden sm:inline">{t('common.download')}</span>
             </Button>
             <Button
               size="sm"
@@ -183,7 +185,7 @@ export default function CVHistory() {
               className="gap-1.5 text-muted-foreground hover:text-red-400 rounded-lg text-xs"
             >
               <Trash2 className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">Delete</span>
+              <span className="hidden sm:inline">{t('common.delete')}</span>
             </Button>
           </div>
         </div>
@@ -204,8 +206,8 @@ export default function CVHistory() {
                   className="h-4 w-4 rounded accent-violet-500 cursor-pointer"
                 />
               </th>
-              <th className="px-6 py-3.5 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Date</th>
-              <th className="px-6 py-3.5 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">File</th>
+              <th className="px-6 py-3.5 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">{t('cvHistory.colDate')}</th>
+              <th className="px-6 py-3.5 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">{t('cvHistory.colFile')}</th>
               <th className="px-6 py-3.5 text-right"></th>
             </tr>
           </thead>
@@ -229,7 +231,7 @@ export default function CVHistory() {
                   <td className="px-6 py-4 text-muted-foreground tabular-nums">
                     <div className="flex items-center gap-2">
                       <Calendar className="h-3.5 w-3.5 text-muted-foreground/60" />
-                      {new Date(cv.created_at).toLocaleDateString()}
+                      {new Date(cv.created_at).toLocaleDateString(i18n.language)}
                     </div>
                   </td>
                   <td className="px-6 py-4">
@@ -246,7 +248,7 @@ export default function CVHistory() {
                         size="icon-sm"
                         variant="ghost"
                         onClick={() => handlePreview(cv.id)}
-                        title="Preview CV"
+                        title={t('common.preview')}
                         className="text-muted-foreground hover:text-foreground"
                       >
                         <Eye className="h-4 w-4" />
@@ -286,7 +288,7 @@ export default function CVHistory() {
                   <p className="text-sm font-medium text-foreground/90 truncate">{cv.file_name}</p>
                 </div>
                 <span className="text-[11px] text-muted-foreground/60 shrink-0 ml-1 tabular-nums">
-                  {new Date(cv.created_at).toLocaleDateString()}
+                  {new Date(cv.created_at).toLocaleDateString(i18n.language)}
                 </span>
               </div>
               <div className="flex gap-2 pt-1 border-t border-border/50">
@@ -297,7 +299,7 @@ export default function CVHistory() {
                   className="flex-1 gap-1.5 text-muted-foreground hover:text-foreground rounded-lg text-xs"
                 >
                   <Eye className="h-3.5 w-3.5" />
-                  Preview
+                  {t('common.preview')}
                 </Button>
               </div>
             </div>
@@ -328,11 +330,10 @@ export default function CVHistory() {
                     id="bulk-delete-title"
                     className="text-base font-semibold text-foreground tracking-tight"
                   >
-                    Delete {selected.size} CV{selected.size > 1 ? 's' : ''}?
+                    {t('cvHistory.confirmTitle', { count: selected.size })}
                   </h3>
                   <p className="mt-1.5 text-sm text-muted-foreground leading-relaxed">
-                    This action is permanent. The selected CV{selected.size > 1 ? 's' : ''} and
-                    {' '}{selected.size > 1 ? 'their' : 'its'} analysis data will be removed from your history.
+                    {t('cvHistory.confirmBody', { count: selected.size })}
                   </p>
                 </div>
               </div>
@@ -344,7 +345,7 @@ export default function CVHistory() {
                 onClick={() => setConfirmDeleteOpen(false)}
                 className="rounded-lg"
               >
-                Cancel
+                {t('common.cancel')}
               </Button>
               <Button
                 size="sm"
@@ -352,7 +353,7 @@ export default function CVHistory() {
                 className="rounded-lg bg-red-500/90 text-white hover:bg-red-500 shadow-[0_6px_18px_rgba(239,68,68,0.35)] gap-1.5"
               >
                 <Trash2 className="h-3.5 w-3.5" />
-                Delete
+                {t('common.delete')}
               </Button>
             </div>
           </div>
@@ -364,7 +365,7 @@ export default function CVHistory() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
           <div className="relative w-full max-w-4xl h-[85vh] mx-4 rounded-2xl border border-border bg-background shadow-2xl flex flex-col overflow-hidden">
             <div className="flex items-center justify-between px-5 py-3.5 border-b border-border">
-              <h3 className="text-sm font-semibold text-foreground">CV Preview</h3>
+              <h3 className="text-sm font-semibold text-foreground">{t('cvHistory.previewModalTitle')}</h3>
               <button
                 onClick={closePreview}
                 className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-all"

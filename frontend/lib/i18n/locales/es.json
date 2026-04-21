@@ -1,0 +1,55 @@
+{
+  "nav": {
+    "dashboard": "Panel",
+    "cvAnalyzer": "Analizador de CV",
+    "createCv": "Crear CV",
+    "coverLetter": "Carta de presentación",
+    "interview": "Entrevista",
+    "tracker": "Seguimiento",
+    "history": "Historial",
+    "referrals": "Referidos",
+    "pricing": "Precios",
+    "settings": "Ajustes",
+    "signOut": "Cerrar sesión",
+    "account": "Cuenta"
+  },
+  "common": {
+    "cancel": "Cancelar",
+    "delete": "Eliminar",
+    "download": "Descargar",
+    "preview": "Vista previa",
+    "close": "Cerrar",
+    "save": "Guardar",
+    "loading": "Cargando…",
+    "clear": "Limpiar",
+    "selectedCount": "{{count}} seleccionado(s)",
+    "deleted_one": "{{count}} CV eliminado",
+    "deleted_other": "{{count}} CV eliminados",
+    "downloaded_one": "{{count}} CV descargado",
+    "downloaded_other": "{{count}} CV descargados",
+    "failedPartial": "{{failed}} de {{total}} fallaron",
+    "copied": "Copiado al portapapeles",
+    "new": "Nuevo"
+  },
+  "cvHistory": {
+    "title": "Historial de CV",
+    "subtitle": "Consulta tus análisis y puntuaciones anteriores",
+    "empty": "Aún no hay análisis",
+    "emptyHint": "Sube y analiza tu primer CV para verlo aquí.",
+    "colDate": "Fecha",
+    "colFile": "Archivo",
+    "previewModalTitle": "Vista previa del CV",
+    "previewFailed": "No se pudo cargar la vista previa",
+    "deleteFailed": "No se pudo eliminar",
+    "downloadFailed": "No se pudo descargar",
+    "deletedSingle": "CV eliminado",
+    "confirmTitle_one": "¿Eliminar {{count}} CV?",
+    "confirmTitle_other": "¿Eliminar {{count}} CV?",
+    "confirmBody_one": "Esta acción es permanente. El CV seleccionado y sus datos de análisis se eliminarán de tu historial.",
+    "confirmBody_other": "Esta acción es permanente. Los CV seleccionados y sus datos de análisis se eliminarán de tu historial."
+  },
+  "languageSwitcher": {
+    "label": "Idioma",
+    "search": "Buscar idioma…"
+  }
+}

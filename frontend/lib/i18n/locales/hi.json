@@ -1,0 +1,55 @@
+{
+  "nav": {
+    "dashboard": "डैशबोर्ड",
+    "cvAnalyzer": "CV विश्लेषक",
+    "createCv": "CV बनाएं",
+    "coverLetter": "कवर लेटर",
+    "interview": "इंटरव्यू",
+    "tracker": "ट्रैकर",
+    "history": "इतिहास",
+    "referrals": "रेफ़रल",
+    "pricing": "मूल्य",
+    "settings": "सेटिंग्स",
+    "signOut": "साइन आउट",
+    "account": "खाता"
+  },
+  "common": {
+    "cancel": "रद्द करें",
+    "delete": "हटाएं",
+    "download": "डाउनलोड",
+    "preview": "प्रीव्यू",
+    "close": "बंद करें",
+    "save": "सहेजें",
+    "loading": "लोड हो रहा है…",
+    "clear": "साफ़ करें",
+    "selectedCount": "{{count}} चयनित",
+    "deleted_one": "{{count}} CV हटाया गया",
+    "deleted_other": "{{count}} CV हटाए गए",
+    "downloaded_one": "{{count}} CV डाउनलोड हुआ",
+    "downloaded_other": "{{count}} CV डाउनलोड हुए",
+    "failedPartial": "{{total}} में से {{failed}} विफल",
+    "copied": "क्लिपबोर्ड पर कॉपी किया गया",
+    "new": "नया"
+  },
+  "cvHistory": {
+    "title": "CV इतिहास",
+    "subtitle": "अपने पिछले विश्लेषण और स्कोर देखें",
+    "empty": "अभी तक कोई विश्लेषण नहीं",
+    "emptyHint": "यहां देखने के लिए अपना पहला CV अपलोड और विश्लेषण करें।",
+    "colDate": "दिनांक",
+    "colFile": "फ़ाइल",
+    "previewModalTitle": "CV प्रीव्यू",
+    "previewFailed": "प्रीव्यू लोड नहीं हो सका",
+    "deleteFailed": "हटाने में विफल",
+    "downloadFailed": "डाउनलोड विफल",
+    "deletedSingle": "CV हटाया गया",
+    "confirmTitle_one": "{{count}} CV हटाएं?",
+    "confirmTitle_other": "{{count}} CV हटाएं?",
+    "confirmBody_one": "यह क्रिया स्थायी है। चयनित CV और उसका विश्लेषण डेटा आपके इतिहास से हटा दिया जाएगा।",
+    "confirmBody_other": "यह क्रिया स्थायी है। चयनित CV और उनका विश्लेषण डेटा आपके इतिहास से हटा दिया जाएगा।"
+  },
+  "languageSwitcher": {
+    "label": "भाषा",
+    "search": "भाषा खोजें…"
+  }
+}

@@ -1,0 +1,55 @@
+{
+  "nav": {
+    "dashboard": "ダッシュボード",
+    "cvAnalyzer": "履歴書分析",
+    "createCv": "履歴書を作成",
+    "coverLetter": "カバーレター",
+    "interview": "面接",
+    "tracker": "トラッカー",
+    "history": "履歴",
+    "referrals": "紹介",
+    "pricing": "料金",
+    "settings": "設定",
+    "signOut": "サインアウト",
+    "account": "アカウント"
+  },
+  "common": {
+    "cancel": "キャンセル",
+    "delete": "削除",
+    "download": "ダウンロード",
+    "preview": "プレビュー",
+    "close": "閉じる",
+    "save": "保存",
+    "loading": "読み込み中…",
+    "clear": "クリア",
+    "selectedCount": "{{count}} 件選択中",
+    "deleted_one": "{{count}} 件の履歴書を削除しました",
+    "deleted_other": "{{count}} 件の履歴書を削除しました",
+    "downloaded_one": "{{count}} 件の履歴書をダウンロードしました",
+    "downloaded_other": "{{count}} 件の履歴書をダウンロードしました",
+    "failedPartial": "{{total}} 件中 {{failed}} 件が失敗",
+    "copied": "クリップボードにコピーしました",
+    "new": "新規"
+  },
+  "cvHistory": {
+    "title": "履歴書の履歴",
+    "subtitle": "過去の分析結果とスコアを確認できます",
+    "empty": "まだ分析はありません",
+    "emptyHint": "最初の履歴書をアップロードして分析すると、ここに表示されます。",
+    "colDate": "日付",
+    "colFile": "ファイル",
+    "previewModalTitle": "履歴書のプレビュー",
+    "previewFailed": "プレビューを読み込めませんでした",
+    "deleteFailed": "削除に失敗しました",
+    "downloadFailed": "ダウンロードに失敗しました",
+    "deletedSingle": "履歴書を削除しました",
+    "confirmTitle_one": "{{count}} 件の履歴書を削除しますか?",
+    "confirmTitle_other": "{{count}} 件の履歴書を削除しますか?",
+    "confirmBody_one": "この操作は取り消せません。選択した履歴書と分析データが履歴から削除されます。",
+    "confirmBody_other": "この操作は取り消せません。選択した履歴書と分析データが履歴から削除されます。"
+  },
+  "languageSwitcher": {
+    "label": "言語",
+    "search": "言語を検索…"
+  }
+}

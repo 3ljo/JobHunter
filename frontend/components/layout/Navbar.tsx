@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
+import { useTranslation } from 'react-i18next';
 import { useAuthStore } from '@/store/authStore';
 import { useSubscriptionStore } from '@/store/subscriptionStore';
 import {
@@ -17,18 +18,19 @@ import { Menu, X, LogOut, Settings, ChevronDown, Crown, Gift } from 'lucide-reac
 import LanguageSwitcher from './LanguageSwitcher';
 
 const navItems = [
-  { href: '/dashboard',    label: 'Dashboard'    },
-  { href: '/cv',           label: 'CV Analyzer'  },
-  { href: '/create-cv',    label: 'Create CV'    },
-  { href: '/cover-letter', label: 'Cover Letter' },
-  { href: '/interview',    label: 'Interview', badge: 'PRO+' },
-  { href: '/tracker',      label: 'Tracker'      },
-  { href: '/cv-history',   label: 'History'      },
-];
+  { href: '/dashboard',    labelKey: 'nav.dashboard'   },
+  { href: '/cv',           labelKey: 'nav.cvAnalyzer'  },
+  { href: '/create-cv',    labelKey: 'nav.createCv'    },
+  { href: '/cover-letter', labelKey: 'nav.coverLetter' },
+  { href: '/interview',    labelKey: 'nav.interview', badge: 'PRO+' },
+  { href: '/tracker',      labelKey: 'nav.tracker'     },
+  { href: '/cv-history',   labelKey: 'nav.history'     },
+] as const;
 
 export default function Navbar() {
   const pathname   = usePathname();
   const router     = useRouter();
+  const { t }      = useTranslation();
   const { user, logout }      = useAuthStore();
   const { subscription, fetchSubscription } = useSubscriptionStore();
   const [scrolled,    setScrolled]    = useState(false);
@@ -100,8 +102,8 @@ export default function Navbar() {
                     letterSpacing: '0.01em',
                   }}
                 >
-                  {item.label}
-                  {item.badge && (
+                  {t(item.labelKey)}
+                  {'badge' in item && item.badge && (
                     <span
                       className="text-[9px] font-black px-1.5 py-0.5 rounded"
                       style={{ background: 'rgba(192,132,252,0.15)', color: '#c084fc', border: '1px solid rgba(192,132,252,0.3)' }}
@@ -163,7 +165,7 @@ export default function Navbar() {
                   {user?.email?.charAt(0).toUpperCase() ?? 'U'}
                 </div>
                 <span className="hidden lg:block max-w-[100px] truncate">
-                  {user?.email?.split('@')[0] ?? 'Account'}
+                  {user?.email?.split('@')[0] ?? t('nav.account')}
                 </span>
                 <span
                   className="hidden lg:block text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded"
@@ -194,21 +196,21 @@ export default function Navbar() {
                   className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm cursor-pointer mt-1 text-white/70 hover:text-white"
                 >
                   <Gift className="h-4 w-4 opacity-60" />
-                  Referrals
+                  {t('nav.referrals')}
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={() => router.push('/pricing')}
                   className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm cursor-pointer text-white/70 hover:text-white"
                 >
                   <Crown className="h-4 w-4 opacity-60" />
-                  Pricing
+                  {t('nav.pricing')}
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={() => router.push('/settings')}
                   className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm cursor-pointer text-white/70 hover:text-white"
                 >
                   <Settings className="h-4 w-4 opacity-60" />
-                  Settings
+                  {t('nav.settings')}
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={handleLogout}
@@ -216,7 +218,7 @@ export default function Navbar() {
                   style={{ color: '#f87171' }}
                 >
                   <LogOut className="h-4 w-4 opacity-70" />
-                  Sign out
+                  {t('nav.signOut')}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -255,8 +257,8 @@ export default function Navbar() {
                     borderColor: 'rgba(255,255,255,0.06)',
                   }}
                 >
-                  {item.label}
-                  {item.badge && (
+                  {t(item.labelKey)}
+                  {'badge' in item && item.badge && (
                     <span
                       className="text-[9px] font-black px-1.5 py-0.5 rounded"
                       style={{ background: 'rgba(192,132,252,0.15)', color: '#c084fc', border: '1px solid rgba(192,132,252,0.3)' }}
@@ -275,7 +277,7 @@ export default function Navbar() {
                 className="flex items-center gap-3 py-3 text-sm font-semibold text-white/55 hover:text-white transition-colors"
               >
                 <Gift className="h-4 w-4" />
-                Referrals
+                {t('nav.referrals')}
               </Link>
               <Link
                 href="/pricing"
@@ -283,7 +285,7 @@ export default function Navbar() {
                 className="flex items-center gap-3 py-3 text-sm font-semibold text-white/55 hover:text-white transition-colors"
               >
                 <Crown className="h-4 w-4" />
-                Pricing
+                {t('nav.pricing')}
               </Link>
               <Link
                 href="/settings"
@@ -291,7 +293,7 @@ export default function Navbar() {
                 className="flex items-center gap-3 py-3 text-sm font-semibold text-white/55 hover:text-white transition-colors"
               >
                 <Settings className="h-4 w-4" />
-                Settings
+                {t('nav.settings')}
               </Link>
               <button
                 onClick={() => { setMobileOpen(false); handleLogout(); }}
@@ -299,7 +301,7 @@ export default function Navbar() {
                 style={{ color: '#f87171' }}
               >
                 <LogOut className="h-4 w-4" />
-                Sign out
+                {t('nav.signOut')}
               </button>
             </div>
           </div>

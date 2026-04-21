@@ -1,0 +1,55 @@
+{
+  "nav": {
+    "dashboard": "Dashboard",
+    "cvAnalyzer": "CV-analyse",
+    "createCv": "CV maken",
+    "coverLetter": "Sollicitatiebrief",
+    "interview": "Sollicitatiegesprek",
+    "tracker": "Tracker",
+    "history": "Geschiedenis",
+    "referrals": "Uitnodigingen",
+    "pricing": "Prijzen",
+    "settings": "Instellingen",
+    "signOut": "Afmelden",
+    "account": "Account"
+  },
+  "common": {
+    "cancel": "Annuleren",
+    "delete": "Verwijderen",
+    "download": "Downloaden",
+    "preview": "Voorbeeld",
+    "close": "Sluiten",
+    "save": "Opslaan",
+    "loading": "Bezig met laden…",
+    "clear": "Wissen",
+    "selectedCount": "{{count}} geselecteerd",
+    "deleted_one": "{{count}} cv verwijderd",
+    "deleted_other": "{{count}} cv’s verwijderd",
+    "downloaded_one": "{{count}} cv gedownload",
+    "downloaded_other": "{{count}} cv’s gedownload",
+    "failedPartial": "{{failed}} van {{total}} mislukt",
+    "copied": "Naar klembord gekopieerd",
+    "new": "Nieuw"
+  },
+  "cvHistory": {
+    "title": "CV-geschiedenis",
+    "subtitle": "Bekijk eerdere analyses en scores",
+    "empty": "Nog geen analyses",
+    "emptyHint": "Upload en analyseer je eerste cv om hem hier te zien.",
+    "colDate": "Datum",
+    "colFile": "Bestand",
+    "previewModalTitle": "CV-voorbeeld",
+    "previewFailed": "Kan voorbeeld niet laden",
+    "deleteFailed": "Verwijderen mislukt",
+    "downloadFailed": "Downloaden mislukt",
+    "deletedSingle": "CV verwijderd",
+    "confirmTitle_one": "{{count}} cv verwijderen?",
+    "confirmTitle_other": "{{count}} cv’s verwijderen?",
+    "confirmBody_one": "Deze actie is definitief. Het geselecteerde cv en de bijbehorende analyse worden uit je geschiedenis verwijderd.",
+    "confirmBody_other": "Deze actie is definitief. De geselecteerde cv’s en de bijbehorende analyses worden uit je geschiedenis verwijderd."
+  },
+  "languageSwitcher": {
+    "label": "Taal",
+    "search": "Zoek taal…"
+  }
+}
