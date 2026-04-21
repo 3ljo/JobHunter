@@ -1,11 +1,10 @@
 'use client';
 
-import { useEffect, useState, useCallback, useMemo } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import StatsCards from '@/components/tracker/StatsCards';
 import JobTrackerTable from '@/components/tracker/JobTrackerTable';
 import AddJobModal from '@/components/tracker/AddJobModal';
-import { getAllTrackerJobs, getTrackerStats } from '@/lib/api';
-import { TrackerJob, TrackerStats } from '@/types';
+import { useDashboardStore } from '@/store/dashboardStore';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import { Input } from '@/components/ui/input';
 import { Kanban, Search, LayoutGrid, List } from 'lucide-react';
@@ -42,24 +41,10 @@ function loadTrackerUI() {
 }
 
 export default function TrackerPage() {
-  const [jobs, setJobs] = useState<TrackerJob[]>([]);
-  const [stats, setStats] = useState<TrackerStats | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { jobs, stats, loaded, load, refresh } = useDashboardStore();
   const [search, setSearch] = useState(() => loadTrackerUI()?.search ?? '');
   const [statusFilter, setStatusFilter] = useState(() => loadTrackerUI()?.statusFilter ?? 'all');
   const [view, setView] = useState<'table' | 'kanban'>(() => loadTrackerUI()?.view ?? 'table');
-
-  const load = useCallback(async () => {
-    try {
-      const [jobsRes, statsRes] = await Promise.all([getAllTrackerJobs(), getTrackerStats()]);
-      setJobs(jobsRes.data.jobs);
-      setStats(statsRes.data.stats);
-    } catch {
-      // handled silently
-    } finally {
-      setLoading(false);
-    }
-  }, []);
 
   useEffect(() => { load(); }, [load]);
 
@@ -84,7 +69,7 @@ export default function TrackerPage() {
     return result;
   }, [jobs, statusFilter, search]);
 
-  if (loading) return <LoadingSpinner className="mt-32" />;
+  if (!loaded) return <LoadingSpinner className="mt-32" />;
 
   return (
     <div className="space-y-6">
@@ -99,7 +84,7 @@ export default function TrackerPage() {
             <p className="text-muted-foreground/60 text-xs">Track and manage your applications</p>
           </div>
         </div>
-        <AddJobModal onAdded={load} />
+        <AddJobModal onAdded={refresh} />
       </div>
 
       {stats && <StatsCards stats={stats} />}
@@ -172,10 +157,10 @@ export default function TrackerPage() {
       {view === 'table' ? (
         <div className="relative overflow-hidden rounded-2xl border border-white/[0.07] bg-card">
           <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-violet-500/25 to-transparent" />
-          <JobTrackerTable jobs={filteredJobs} onRefresh={load} />
+          <JobTrackerTable jobs={filteredJobs} onRefresh={refresh} />
         </div>
       ) : (
-        <KanbanBoard jobs={jobs} onRefresh={load} />
+        <KanbanBoard jobs={jobs} onRefresh={refresh} />
       )}
     </div>
   );

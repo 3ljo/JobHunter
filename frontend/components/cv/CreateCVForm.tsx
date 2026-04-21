@@ -10,6 +10,7 @@ import toast from 'react-hot-toast';
 import { useRouter } from 'next/navigation';
 import { createCV, downloadCVPdf, type CreateCVData } from '@/lib/api';
 import { useSubscriptionStore } from '@/store/subscriptionStore';
+import { useDashboardStore } from '@/store/dashboardStore';
 import TemplatePicker, { TemplateThumbnail } from './TemplatePicker';
 import PhotoUpload from './PhotoUpload';
 import CVPreview from './CVPreview';
@@ -47,7 +48,7 @@ const LANGUAGE_LEVELS = ['Native', 'Fluent', 'Advanced', 'Intermediate', 'Basic'
 
 export default function CreateCVForm({ onSubmittingChange }: CreateCVFormProps = {}) {
   const router = useRouter();
-  const { subscription, bumpLocalUsage, fetchSubscription } = useSubscriptionStore();
+  const { subscription, bumpLocalUsage, refresh: refreshSubscription } = useSubscriptionStore();
   const isPro = subscription?.plan === 'pro' || subscription?.plan === 'pro_plus';
 
   /* ─── Form fields ─── */
@@ -165,12 +166,13 @@ export default function CreateCVForm({ onSubmittingChange }: CreateCVFormProps =
       setCvRecordId(res.data.cv_record_id);
       setGeneratedCV(res.data.final_cv);
       bumpLocalUsage('cv');
-      fetchSubscription();
+      refreshSubscription();
+      try { useDashboardStore.getState().invalidate(); } catch { /* noop */ }
       setPhase('preview');
       toast.success('CV generated — pick a template and preview below.');
     } catch (err: unknown) {
       const axErr = err as { response?: { status?: number; data?: { error?: string } } };
-      if (axErr.response?.status === 429) fetchSubscription();
+      if (axErr.response?.status === 429) refreshSubscription();
       const msg = axErr.response?.data?.error || 'Failed to create CV';
       toast.error(msg);
     } finally {

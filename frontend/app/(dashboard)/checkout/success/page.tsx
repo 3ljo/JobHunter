@@ -7,15 +7,15 @@ import { CheckCircle, ArrowRight, Sparkles } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
 export default function CheckoutSuccessPage() {
-  const { subscription, fetchSubscription } = useSubscriptionStore();
+  const { subscription, refresh } = useSubscriptionStore();
 
   useEffect(() => {
-    fetchSubscription();
-    // Fire confetti
+    // Force-refresh — user just paid, cached data is guaranteed stale
+    refresh();
     try {
       confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
     } catch {}
-  }, [fetchSubscription]);
+  }, [refresh]);
 
   const planName = subscription?.plan === 'pro_plus' ? 'Pro+' : subscription?.plan === 'pro' ? 'Pro' : 'Free';
 

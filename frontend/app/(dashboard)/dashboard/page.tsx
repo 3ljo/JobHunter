@@ -1,10 +1,9 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { useAuthStore } from '@/store/authStore';
-import { getTrackerStats, getAllTrackerJobs, getCVHistory } from '@/lib/api';
-import { TrackerStats, TrackerJob } from '@/types';
+import { useDashboardStore } from '@/store/dashboardStore';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import UsageSummaryCard from '@/components/usage/UsageSummaryCard';
 import { ArrowRight } from 'lucide-react';
@@ -30,24 +29,13 @@ const STATUS_MAP: Record<string, { label: string; color: string; bg: string }> =
 /* ─── page ────────────────────────────────────────────────────────── */
 export default function DashboardPage() {
   const { user } = useAuthStore();
+  const { stats, jobs: allJobs, cvCount, loaded, load } = useDashboardStore();
 
-  const [stats,  setStats]  = useState<TrackerStats | null>(null);
-  const [jobs,   setJobs]   = useState<TrackerJob[]>([]);
-  const [cvCount, setCvCount] = useState(0);
-  const [loading, setLoading] = useState(true);
+  useEffect(() => { load(); }, [load]);
 
-  useEffect(() => {
-    Promise.all([getTrackerStats(), getAllTrackerJobs(), getCVHistory()])
-      .then(([s, j, c]) => {
-        setStats(s.data.stats);
-        setJobs(j.data.jobs.slice(0, 5));
-        setCvCount(c.data.cvs.length);
-      })
-      .catch(() => {})
-      .finally(() => setLoading(false));
-  }, []);
+  const jobs = useMemo(() => allJobs.slice(0, 5), [allJobs]);
 
-  if (loading) return <LoadingSpinner className="mt-32" />;
+  if (!loaded) return <LoadingSpinner className="mt-32" />;
 
   const firstName = user?.email?.split('@')[0] ?? 'there';
   const hasJobs   = jobs.length > 0;

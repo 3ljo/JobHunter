@@ -4,6 +4,7 @@ import { analyzeCV } from '@/lib/api';
 import toast from 'react-hot-toast';
 import { DEFAULT_TEMPLATE, type TemplateId } from '@/components/cv/templates';
 import { useSubscriptionStore } from '@/store/subscriptionStore';
+import { useDashboardStore } from '@/store/dashboardStore';
 
 const STEPS = ['Parsing & auditing...', 'Rewriting & humanizing...', 'Done'];
 const TEMPLATE_KEY = 'cv_template_id';
@@ -128,6 +129,8 @@ export const useCVAnalysisStore = create<CVAnalysisState>((set, get) => ({
       // Bump local usage so the meter on the CV page reflects this run
       // without needing a full subscription refetch.
       try { useSubscriptionStore.getState().bumpLocalUsage('cv'); } catch { /* noop */ }
+      // Dashboard's CV count is now stale — drop cache so next visit refetches
+      try { useDashboardStore.getState().invalidate(); } catch { /* noop */ }
     } catch (err: any) {
       clearInterval(interval);
       const status = err.response?.status;
@@ -135,8 +138,8 @@ export const useCVAnalysisStore = create<CVAnalysisState>((set, get) => ({
       set({ loading: false, error: message });
 
       if (status === 429) {
-        // Refresh subscription so the lock UI kicks in without a reload
-        try { useSubscriptionStore.getState().fetchSubscription(); } catch { /* noop */ }
+        // Force-refresh subscription so the lock UI kicks in without a reload
+        try { useSubscriptionStore.getState().refresh(); } catch { /* noop */ }
         toast.error(message, { duration: 6000 });
       } else {
         toast.error(message);
