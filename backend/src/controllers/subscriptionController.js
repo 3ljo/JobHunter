@@ -14,6 +14,15 @@ const { /* stripe, */ PLANS, getPlanLimits } = require('../services/stripeServic
 const { getTodayCount } = require('../services/usageService');
 const ls = require('../services/lemonSqueezyService');
 
+// FRONTEND_URL may be a comma-separated list (used by CORS). For redirect URLs
+// we only want the canonical first entry, otherwise we'd redirect users to a
+// malformed "https://foo.com,https://bar.com/checkout/success" URL.
+const canonicalFrontend = () => {
+  const raw = process.env.FRONTEND_URL || '';
+  const first = raw.split(',')[0].trim();
+  return first.replace(/\/$/, '');
+};
+
 // GET /api/subscription — Get the user's current subscription
 const buildUsage = async (userId, plan) => {
   const limits = getPlanLimits(plan);
@@ -83,7 +92,7 @@ const createCheckout = async (req, res) => {
       });
     }
 
-    const successUrl = `${process.env.FRONTEND_URL}/checkout/success`;
+    const successUrl = `${canonicalFrontend()}/checkout/success`;
     const checkoutUrl = await ls.createCheckout({
       variantId,
       userId: req.user.id,
