@@ -31,14 +31,15 @@ const STATUS_MAP: Record<string, { label: string; color: string; bg: string }> =
 export default function DashboardPage() {
   const { user } = useAuthStore();
   const { stats, jobs: allJobs, cvs, loaded, load } = useDashboardStore();
-  const { profile, load: loadAccount } = useAccountStore();
+  const { profile, loaded: accountLoaded, load: loadAccount } = useAccountStore();
 
   useEffect(() => { load(); loadAccount(); }, [load, loadAccount]);
 
   const jobs = useMemo(() => allJobs.slice(0, 5), [allJobs]);
   const cvCount = cvs.length;
 
-  if (!loaded) return <LoadingSpinner className="mt-32" />;
+  // Wait on both stores so the greeting doesn't flicker email → name on reload.
+  if (!loaded || !accountLoaded) return <LoadingSpinner className="mt-32" />;
 
   const firstName =
     profile?.full_name?.trim().split(/\s+/)[0]
