@@ -67,7 +67,7 @@ export default function LoginPage() {
 
           {/* Glassmorphic stats */}
           <div
-            className="grid grid-cols-3 divide-x divide-white/10 rounded-xl px-6 py-5 w-full"
+            className="grid grid-cols-3 divide-x divide-white/10 rounded-xl px-6 py-5 w-full mb-10"
             style={{ background: 'rgba(0,0,0,0.22)', backdropFilter: 'blur(14px)', border: '1px solid rgba(255,255,255,0.08)' }}
           >
             {[
@@ -80,6 +80,11 @@ export default function LoginPage() {
                 <p className="text-white/50 text-xs" style={{ fontWeight: 500 }}>{s.l}</p>
               </div>
             ))}
+          </div>
+
+          {/* Feature image */}
+          <div className="relative rounded-xl overflow-hidden w-full" style={{ maxWidth: '360px' }}>
+            <img src="/aivent/misc/c2.webp" alt="AI Job Search" className="w-full object-contain" />
           </div>
         </div>
       </div>
