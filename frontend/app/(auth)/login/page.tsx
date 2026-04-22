@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { loginUser } from '@/lib/api';
+import { loginUser, resendVerification } from '@/lib/api';
 import { useAuthStore } from '@/store/authStore';
 import toast from 'react-hot-toast';
 import { Mail, Lock, Eye, EyeOff } from 'lucide-react';
@@ -17,10 +17,13 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [unconfirmed, setUnconfirmed] = useState(false);
+  const [resending, setResending] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    setUnconfirmed(false);
     try {
       const res = await loginUser(email, password);
       setToken(res.data.session.access_token);
@@ -28,9 +31,26 @@ export default function LoginPage() {
       toast.success('Signed in successfully');
       router.push('/cv');
     } catch (err: any) {
-      toast.error(err.response?.data?.error || 'Failed to sign in');
+      if (err.response?.data?.code === 'email_not_confirmed') {
+        setUnconfirmed(true);
+        toast.error('Please verify your email first');
+      } else {
+        toast.error(err.response?.data?.error || 'Failed to sign in');
+      }
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleResend = async () => {
+    setResending(true);
+    try {
+      await resendVerification(email);
+      toast.success('Verification email resent');
+    } catch (err: any) {
+      toast.error(err.response?.data?.error || 'Failed to resend');
+    } finally {
+      setResending(false);
     }
   };
 
@@ -183,6 +203,23 @@ export default function LoginPage() {
                 </button>
               </div>
             </div>
+
+            {unconfirmed && (
+              <div
+                className="rounded-xl px-4 py-3 text-sm"
+                style={{ background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.25)', color: '#fbbf24' }}
+              >
+                <p className="mb-2 font-600">Your email isn&apos;t verified yet.</p>
+                <button
+                  type="button"
+                  onClick={handleResend}
+                  disabled={resending || !email}
+                  className="font-700 underline transition-opacity hover:opacity-80 disabled:opacity-50"
+                >
+                  {resending ? 'Sending...' : 'Resend verification email'}
+                </button>
+              </div>
+            )}
 
             <button
               type="submit"

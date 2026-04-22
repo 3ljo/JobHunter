@@ -1,14 +1,13 @@
 'use client';
 
 import { useState, Suspense } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { registerUser, loginUser, validateReferralCode } from '@/lib/api';
-import { useAuthStore } from '@/store/authStore';
+import { registerUser, resendVerification, validateReferralCode } from '@/lib/api';
 import toast from 'react-hot-toast';
-import { Mail, Lock, ShieldCheck, Check, Eye, EyeOff, Gift } from 'lucide-react';
+import { Mail, Lock, ShieldCheck, Check, Eye, EyeOff, Gift, MailCheck } from 'lucide-react';
 
 function getPasswordStrength(password: string): number {
   let score = 0;
@@ -49,12 +48,12 @@ export default function RegisterPage() {
 }
 
 function RegisterForm() {
-  const router = useRouter();
-  const { setToken, setUser } = useAuthStore();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [resending, setResending] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [showReferral, setShowReferral] = useState(false);
@@ -89,15 +88,24 @@ function RegisterForm() {
     setLoading(true);
     try {
       await registerUser(email, password, referralCode || undefined);
-      const loginRes = await loginUser(email, password);
-      setToken(loginRes.data.session.access_token);
-      setUser(loginRes.data.user);
-      toast.success('Account created successfully');
-      router.push('/cv');
+      setSubmitted(true);
+      toast.success('Verification email sent');
     } catch (err: any) {
       toast.error(err.response?.data?.error || 'Failed to create account');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleResend = async () => {
+    setResending(true);
+    try {
+      await resendVerification(email);
+      toast.success('Verification email resent');
+    } catch (err: any) {
+      toast.error(err.response?.data?.error || 'Failed to resend');
+    } finally {
+      setResending(false);
     }
   };
 
@@ -141,6 +149,39 @@ function RegisterForm() {
             <img src="/aivent/logo.png" alt="AIvent" style={{ height: '64px', width: 'auto' }} />
           </div>
 
+          {submitted ? (
+            <div className="text-center">
+              <div
+                className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl"
+                style={{ background: 'rgba(16,185,129,0.10)', border: '1px solid rgba(16,185,129,0.20)' }}
+              >
+                <MailCheck className="h-8 w-8 text-emerald-400" />
+              </div>
+              <h2 className="text-white tracking-tight mb-3" style={{ fontSize: 'clamp(28px, 3vw, 36px)', fontWeight: 800 }}>
+                Check your email
+              </h2>
+              <p className="text-white/50 text-sm mb-8" style={{ fontWeight: 400 }}>
+                We sent a verification link to{' '}
+                <span className="font-600 text-white">{email}</span>. Click it to activate your account.
+              </p>
+              <button
+                onClick={handleResend}
+                disabled={resending}
+                className="btn-aivent btn-line fx-slide"
+                data-hover={resending ? 'SENDING...' : 'RESEND EMAIL'}
+                style={{ borderRadius: '12px' }}
+              >
+                <span>{resending ? 'Sending...' : 'Resend email'}</span>
+              </button>
+              <p className="mt-8 text-center text-sm text-white/40" style={{ fontWeight: 400 }}>
+                Already verified?{' '}
+                <Link href="/login" className="font-600 transition-colors hover:text-white" style={{ color: 'oklch(0.59 0.245 291)' }}>
+                  Sign in
+                </Link>
+              </p>
+            </div>
+          ) : (
+          <>
           <div className="mb-8">
             <span className="aivent-subtitle" style={{ marginBottom: '12px', display: 'block' }}>Get Started</span>
             <h2 className="text-white tracking-tight mb-2" style={{ fontSize: 'clamp(28px, 3vw, 36px)', fontWeight: 800 }}>
@@ -321,6 +362,8 @@ function RegisterForm() {
               Sign in
             </Link>
           </p>
+          </>
+          )}
         </div>
       </div>
 
