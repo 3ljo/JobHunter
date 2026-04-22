@@ -4,11 +4,14 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { CheckCircle2, AlertTriangle, Loader2 } from 'lucide-react';
+import { useAuthStore } from '@/store/authStore';
+import { getMe } from '@/lib/api';
 
 type Status = 'loading' | 'verified' | 'error';
 
 export default function AuthCallbackPage() {
   const router = useRouter();
+  const { setToken, setUser } = useAuthStore();
   const [status, setStatus] = useState<Status>('loading');
   const [errorMessage, setErrorMessage] = useState<string>('');
 
@@ -24,6 +27,7 @@ export default function AuthCallbackPage() {
     }
 
     const type = params.get('type');
+    const accessToken = params.get('access_token');
 
     // Recovery links may also land here if Supabase config only allows one
     // redirect URL — forward to the dedicated reset page with the hash intact.
@@ -32,8 +36,25 @@ export default function AuthCallbackPage() {
       return;
     }
 
+    // OAuth sign-in (e.g. Google) — Supabase returns a session in the hash with
+    // no `type`. provider_token presence is the tell. Log the user straight in.
+    if (accessToken && (params.get('provider_token') || !type)) {
+      (async () => {
+        setToken(accessToken);
+        try {
+          const res = await getMe();
+          setUser(res.data.user);
+          router.replace('/cv');
+        } catch {
+          setErrorMessage('Could not complete sign-in. Try again.');
+          setStatus('error');
+        }
+      })();
+      return;
+    }
+
     // Email-confirmation success (type=signup or type=email).
-    if (params.get('access_token')) {
+    if (accessToken) {
       setStatus('verified');
       window.history.replaceState(null, '', window.location.pathname);
       return;
@@ -41,7 +62,7 @@ export default function AuthCallbackPage() {
 
     setErrorMessage('This verification link is invalid or has expired.');
     setStatus('error');
-  }, [router]);
+  }, [router, setToken, setUser]);
 
   return (
     <div className="relative flex min-h-screen items-center justify-center overflow-hidden px-6" style={{ background: '#101435' }}>

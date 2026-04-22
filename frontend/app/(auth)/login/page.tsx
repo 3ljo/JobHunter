@@ -9,6 +9,7 @@ import { loginUser, resendVerification } from '@/lib/api';
 import { useAuthStore } from '@/store/authStore';
 import toast from 'react-hot-toast';
 import { Mail, Lock, Eye, EyeOff } from 'lucide-react';
+import { GoogleSignInButton } from '@/components/auth/GoogleSignInButton';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -150,6 +151,15 @@ export default function LoginPage() {
             <p className="text-white/50 text-sm" style={{ fontWeight: 400 }}>
               Continue your job search journey
             </p>
+          </div>
+
+          <div className="mb-5">
+            <GoogleSignInButton />
+            <div className="relative my-5 flex items-center">
+              <div className="flex-grow border-t border-white/10" />
+              <span className="mx-4 text-xs font-600 uppercase tracking-widest text-white/35">or</span>
+              <div className="flex-grow border-t border-white/10" />
+            </div>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-5">

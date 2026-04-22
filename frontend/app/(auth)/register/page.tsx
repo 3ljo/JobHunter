@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { registerUser, resendVerification, validateReferralCode } from '@/lib/api';
 import toast from 'react-hot-toast';
 import { Mail, Lock, ShieldCheck, Check, Eye, EyeOff, Gift, MailCheck } from 'lucide-react';
+import { GoogleSignInButton } from '@/components/auth/GoogleSignInButton';
 
 function getPasswordStrength(password: string): number {
   let score = 0;
@@ -190,6 +191,15 @@ function RegisterForm() {
             <p className="text-white/50 text-sm" style={{ fontWeight: 400 }}>
               Start optimizing your job applications today
             </p>
+          </div>
+
+          <div className="mb-5">
+            <GoogleSignInButton label="Sign up with Google" />
+            <div className="relative my-5 flex items-center">
+              <div className="flex-grow border-t border-white/10" />
+              <span className="mx-4 text-xs font-600 uppercase tracking-widest text-white/35">or</span>
+              <div className="flex-grow border-t border-white/10" />
+            </div>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-5">
