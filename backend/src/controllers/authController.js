@@ -32,9 +32,6 @@ const validate = {
     body('access_token').notEmpty().withMessage('Access token is required'),
     body('new_password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters'),
   ],
-  changeEmail: [
-    body('new_email').isEmail().withMessage('Valid email is required'),
-  ],
 };
 
 // Register a new user — sends a Supabase verification email; user must confirm
@@ -220,36 +217,6 @@ const changePassword = async (req, res) => {
   }
 };
 
-// Change the authenticated user's email — Supabase emails the new address with
-// a confirmation link; the change only takes effect after the user clicks it.
-const changeEmail = async (req, res) => {
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) {
-    return res.status(400).json({ error: errors.array()[0].msg });
-  }
-
-  const { new_email } = req.body;
-
-  if (new_email.toLowerCase() === (req.user.email || '').toLowerCase()) {
-    return res.status(400).json({ error: 'New email must be different from current email' });
-  }
-
-  try {
-    const { error } = await supabase.auth.admin.updateUserById(req.user.id, {
-      email: new_email,
-      email_confirm: false,
-    });
-
-    if (error) {
-      return res.status(400).json({ error: error.message });
-    }
-
-    return res.status(200).json({ message: 'Confirmation email sent to new address' });
-  } catch (err) {
-    return res.status(500).json({ error: err.message });
-  }
-};
-
 // Permanently delete the authenticated user's account and all their data.
 const deleteAccount = async (req, res) => {
   try {
@@ -265,4 +232,4 @@ const deleteAccount = async (req, res) => {
   }
 };
 
-module.exports = { register, login, forgotPassword, resendVerification, resetPassword, getMe, changePassword, changeEmail, deleteAccount, validate };
+module.exports = { register, login, forgotPassword, resendVerification, resetPassword, getMe, changePassword, deleteAccount, validate };

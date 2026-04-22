@@ -1,5 +1,6 @@
 import { create } from 'zustand';
-import { getMyReferralCode, getMyReferrals, getMyUsage } from '@/lib/api';
+import { getMyReferralCode, getMyReferrals, getMyUsage, getProfile } from '@/lib/api';
+import { Profile } from '@/types';
 
 // Shared cache for user-scoped account data consumed by Settings and Referrals.
 // Both pages were refetching the same referral code endpoint on every mount —
@@ -27,6 +28,7 @@ interface AccountState {
   referralCode: { code: string; times_used: number } | null;
   referrals: Referral[];
   myUsage: MonthlyUsage | null;
+  profile: Profile | null;
   loaded: boolean;
   isLoading: boolean;
 
@@ -44,10 +46,11 @@ const TTL_MS = 60_000;
 async function runFetch(set: (partial: Partial<AccountState>) => void): Promise<void> {
   set({ isLoading: true });
   // Use allSettled so one failing endpoint doesn't blank out the others.
-  const [codeRes, refRes, usageRes] = await Promise.allSettled([
+  const [codeRes, refRes, usageRes, profileRes] = await Promise.allSettled([
     getMyReferralCode(),
     getMyReferrals(),
     getMyUsage(),
+    getProfile(),
   ]);
   set({
     referralCode: codeRes.status === 'fulfilled'
@@ -55,6 +58,7 @@ async function runFetch(set: (partial: Partial<AccountState>) => void): Promise<
       : null,
     referrals: refRes.status === 'fulfilled' ? (refRes.value.data.referrals || []) : [],
     myUsage: usageRes.status === 'fulfilled' ? usageRes.value.data.usage : null,
+    profile: profileRes.status === 'fulfilled' ? profileRes.value.data.profile : null,
     loaded: true,
     isLoading: false,
     _lastFetchedAt: Date.now(),
@@ -65,6 +69,7 @@ export const useAccountStore = create<AccountState>((set, get) => ({
   referralCode: null,
   referrals: [],
   myUsage: null,
+  profile: null,
   loaded: false,
   isLoading: false,
   _lastFetchedAt: null,
@@ -94,6 +99,7 @@ export const useAccountStore = create<AccountState>((set, get) => ({
     referralCode: null,
     referrals: [],
     myUsage: null,
+    profile: null,
     loaded: false,
     isLoading: false,
     _lastFetchedAt: null,

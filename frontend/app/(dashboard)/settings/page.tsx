@@ -23,8 +23,8 @@ import { useAuthStore } from '@/store/authStore';
 import { useSubscriptionStore } from '@/store/subscriptionStore';
 import { useAccountStore } from '@/store/accountStore';
 import {
-  changePassword, changeEmail, deleteAccount,
-  getProfile, updateProfile, createPortalSession,
+  changePassword, deleteAccount,
+  updateProfile, createPortalSession,
 } from '@/lib/api';
 
 type TabKey = 'account' | 'billing' | 'usage' | 'referrals' | 'danger';
@@ -65,7 +65,7 @@ export default function SettingsPage() {
 
         <TabsContent value="account" className="mt-6 space-y-6">
           <ProfileCard />
-          <EmailCard currentEmail={user?.email ?? ''} />
+          <EmailReadOnlyCard currentEmail={user?.email ?? ''} />
           <PasswordCard />
         </TabsContent>
 
@@ -117,26 +117,24 @@ function Card({
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Profile (full name)
+// Profile (full name) — backed by accountStore so dashboard greeting updates
 // ─────────────────────────────────────────────────────────────────────────────
 function ProfileCard() {
+  const { profile, loaded, refresh } = useAccountStore();
   const [fullName, setFullName] = useState('');
-  const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
 
+  // Hydrate the input once profile arrives from the store.
   useEffect(() => {
-    setLoading(true);
-    getProfile()
-      .then((res) => setFullName(res.data.profile.full_name || ''))
-      .catch(() => {})
-      .finally(() => setLoading(false));
-  }, []);
+    if (profile) setFullName(profile.full_name || '');
+  }, [profile]);
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
     try {
       await updateProfile({ full_name: fullName });
+      await refresh();
       toast.success('Profile updated');
     } catch (err: any) {
       toast.error(err.response?.data?.error || 'Failed to update');
@@ -152,16 +150,19 @@ function ProfileCard() {
           <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Full name</Label>
           <Input
             type="text"
-            placeholder={loading ? 'Loading…' : 'How should we address you?'}
+            placeholder={!loaded ? 'Loading…' : 'How should we address you?'}
             value={fullName}
             onChange={(e) => setFullName(e.target.value)}
-            disabled={loading}
+            disabled={!loaded}
             className="h-10 rounded-xl border-border bg-card/80 text-sm text-foreground placeholder:text-muted-foreground/50 focus:border-violet-500/40 focus:ring-1 focus:ring-violet-500/20"
           />
+          <p className="text-[11px] text-muted-foreground/60">
+            Used to greet you on the dashboard and printed on every CV you generate.
+          </p>
         </div>
         <Button
           type="submit"
-          disabled={saving || loading}
+          disabled={saving || !loaded}
           className="h-10 rounded-xl bg-gradient-to-b from-violet-500 to-violet-700 text-sm font-semibold text-white transition-all shadow-[0_2px_20px_rgba(118,77,240,0.3)] hover:shadow-[0_4px_28px_rgba(118,77,240,0.45)] hover:from-violet-400 hover:to-violet-600 active:scale-[0.97]"
         >
           {saving ? 'Saving…' : 'Save profile'}
@@ -172,79 +173,14 @@ function ProfileCard() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Email change (Supabase sends confirmation to new address)
+// Email — read-only (account email is fixed; tied to login provider)
 // ─────────────────────────────────────────────────────────────────────────────
-function EmailCard({ currentEmail }: { currentEmail: string }) {
-  const [newEmail, setNewEmail] = useState('');
-  const [editing, setEditing] = useState(false);
-  const [loading, setLoading] = useState(false);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    try {
-      await changeEmail(newEmail);
-      toast.success('Confirmation link sent to your new email');
-      setEditing(false);
-      setNewEmail('');
-    } catch (err: any) {
-      toast.error(err.response?.data?.error || 'Failed to update email');
-    } finally {
-      setLoading(false);
-    }
-  };
-
+function EmailReadOnlyCard({ currentEmail }: { currentEmail: string }) {
   return (
     <Card title="Email" icon={Mail}>
-      {!editing ? (
-        <div className="flex items-center justify-between gap-4">
-          <div className="flex h-10 flex-1 items-center rounded-xl border border-border bg-card/80 px-3 text-sm text-muted-foreground">
-            {currentEmail || '—'}
-          </div>
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => setEditing(true)}
-            className="h-10 rounded-xl border-white/10 text-sm hover:bg-white/5"
-          >
-            Change email
-          </Button>
-        </div>
-      ) : (
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-1.5">
-            <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">New email</Label>
-            <Input
-              type="email"
-              placeholder="you@newdomain.com"
-              value={newEmail}
-              onChange={(e) => setNewEmail(e.target.value)}
-              required
-              className="h-10 rounded-xl border-border bg-card/80 text-sm text-foreground placeholder:text-muted-foreground/50 focus:border-violet-500/40 focus:ring-1 focus:ring-violet-500/20"
-            />
-            <p className="text-[11px] text-muted-foreground/60">
-              We&apos;ll send a confirmation link to the new address. The change takes effect after you click it.
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button
-              type="submit"
-              disabled={loading}
-              className="h-10 rounded-xl bg-gradient-to-b from-violet-500 to-violet-700 text-sm font-semibold text-white shadow-[0_2px_20px_rgba(118,77,240,0.3)] hover:from-violet-400 hover:to-violet-600 active:scale-[0.97]"
-            >
-              {loading ? 'Sending…' : 'Send confirmation'}
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => { setEditing(false); setNewEmail(''); }}
-              className="h-10 rounded-xl border-white/10 text-sm hover:bg-white/5"
-            >
-              Cancel
-            </Button>
-          </div>
-        </form>
-      )}
+      <div className="flex h-10 items-center rounded-xl border border-border bg-card/80 px-3 text-sm text-muted-foreground">
+        {currentEmail || '—'}
+      </div>
     </Card>
   );
 }

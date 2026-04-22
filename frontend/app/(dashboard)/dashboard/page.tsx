@@ -3,6 +3,7 @@
 import { useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { useAuthStore } from '@/store/authStore';
+import { useAccountStore } from '@/store/accountStore';
 import { useDashboardStore } from '@/store/dashboardStore';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import UsageSummaryCard from '@/components/usage/UsageSummaryCard';
@@ -30,15 +31,19 @@ const STATUS_MAP: Record<string, { label: string; color: string; bg: string }> =
 export default function DashboardPage() {
   const { user } = useAuthStore();
   const { stats, jobs: allJobs, cvs, loaded, load } = useDashboardStore();
+  const { profile, load: loadAccount } = useAccountStore();
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { load(); loadAccount(); }, [load, loadAccount]);
 
   const jobs = useMemo(() => allJobs.slice(0, 5), [allJobs]);
   const cvCount = cvs.length;
 
   if (!loaded) return <LoadingSpinner className="mt-32" />;
 
-  const firstName = user?.email?.split('@')[0] ?? 'there';
+  const firstName =
+    profile?.full_name?.trim().split(/\s+/)[0]
+    || user?.email?.split('@')[0]
+    || 'there';
   const hasJobs   = jobs.length > 0;
 
   const statBoxes = [

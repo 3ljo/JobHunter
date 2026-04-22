@@ -3,7 +3,7 @@
 
 const express = require('express');
 const router = express.Router();
-const { register, login, forgotPassword, resendVerification, resetPassword, getMe, changePassword, changeEmail, deleteAccount, validate } = require('../controllers/authController');
+const { register, login, forgotPassword, resendVerification, resetPassword, getMe, changePassword, deleteAccount, validate } = require('../controllers/authController');
 const requireAuth = require('../middleware/requireAuth');
 
 // Public routes
@@ -16,7 +16,6 @@ router.post('/reset-password', validate.resetPassword, resetPassword);
 // Protected routes
 router.get('/me', requireAuth, getMe);
 router.post('/change-password', requireAuth, changePassword);
-router.post('/change-email', requireAuth, validate.changeEmail, changeEmail);
 router.delete('/account', requireAuth, deleteAccount);
 
 module.exports = router;
