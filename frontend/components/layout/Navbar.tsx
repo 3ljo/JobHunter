@@ -39,6 +39,9 @@ export default function Navbar() {
     fetchSubscription();
   }, [fetchSubscription]);
 
+  // Only derive the visible badge once we actually know the plan — otherwise
+  // a null subscription would flash "Free" on first render for Pro users.
+  const planReady = !!subscription;
   const planLabel = subscription?.plan === 'pro_plus' ? 'Pro+' : subscription?.plan === 'pro' ? 'Pro' : 'Free';
   const planColor = subscription?.plan === 'pro_plus' ? '#c084fc' : subscription?.plan === 'pro' ? '#764DF0' : 'rgba(255,255,255,0.5)';
   const planBg = subscription?.plan === 'pro_plus' ? 'rgba(192,132,252,0.18)' : subscription?.plan === 'pro' ? 'rgba(118,77,240,0.18)' : 'rgba(255,255,255,0.08)';
@@ -170,12 +173,19 @@ export default function Navbar() {
                 >
                   {user?.email?.charAt(0).toUpperCase() ?? 'U'}
                 </div>
-                <span
-                  className="hidden lg:block text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-full"
-                  style={{ background: planBg, color: planColor, letterSpacing: '0.08em' }}
-                >
-                  {planLabel}
-                </span>
+                {planReady ? (
+                  <span
+                    className="hidden lg:block text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-full"
+                    style={{ background: planBg, color: planColor, letterSpacing: '0.08em' }}
+                  >
+                    {planLabel}
+                  </span>
+                ) : (
+                  <span
+                    className="hidden lg:block h-4 w-10 rounded-full animate-pulse"
+                    style={{ background: 'rgba(255,255,255,0.06)' }}
+                  />
+                )}
                 <ChevronDown className="h-3.5 w-3.5 opacity-50 shrink-0" />
               </DropdownMenuTrigger>
 
