@@ -183,6 +183,14 @@ export const refineCoverLetter = (data: { cover_letter: string; instructions: st
 export const changePassword = (newPassword: string) =>
   api.post<{ message: string }>('/api/auth/change-password', { new_password: newPassword });
 
+// Email
+export const changeEmail = (newEmail: string) =>
+  api.post<{ message: string }>('/api/auth/change-email', { new_email: newEmail });
+
+// Account deletion
+export const deleteAccount = () =>
+  api.delete<{ message: string }>('/api/auth/account');
+
 // Usage
 export const getMyUsage = () =>
   api.get('/api/profile/usage');
