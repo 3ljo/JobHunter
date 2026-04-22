@@ -48,7 +48,10 @@ const emptyUsage = (): UsageSnapshot => ({
   resetsAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
 });
 
-async function runFetch(set: (partial: Partial<SubscriptionState>) => void): Promise<void> {
+async function runFetch(
+  set: (partial: Partial<SubscriptionState>) => void,
+  get: () => SubscriptionState,
+): Promise<void> {
   set({ isLoading: true });
   try {
     const res = await getSubscription();
@@ -60,12 +63,16 @@ async function runFetch(set: (partial: Partial<SubscriptionState>) => void): Pro
       _lastFetchedAt: Date.now(),
     });
   } catch {
+    // Don't silently downgrade the user to "free" on a transient error —
+    // that's how Pro users see "Free" for ~2 min after a cold start. Keep
+    // the previous values (or stay null on first ever load) and DO NOT
+    // poison the cache, so the next call re-tries.
+    const prev = get();
     set({
-      subscription: { plan: 'free', status: 'active', billing_interval: null, current_period_end: null, cancel_at_period_end: false },
-      limits: { cv_limit: 3, cl_limit: 5, mi_limit: 0 },
-      usage: emptyUsage(),
+      subscription: prev.subscription,
+      limits: prev.limits,
+      usage: prev.usage,
       isLoading: false,
-      _lastFetchedAt: Date.now(),
     });
   }
 }
@@ -83,7 +90,7 @@ export const useSubscriptionStore = create<SubscriptionState>((set, get) => ({
     if (_inFlight) return _inFlight;
     if (_lastFetchedAt && Date.now() - _lastFetchedAt < TTL_MS) return;
 
-    const promise = runFetch(set).finally(() => set({ _inFlight: null }));
+    const promise = runFetch(set, get).finally(() => set({ _inFlight: null }));
     set({ _inFlight: promise });
     return promise;
   },
@@ -91,7 +98,7 @@ export const useSubscriptionStore = create<SubscriptionState>((set, get) => ({
   refresh: async () => {
     const { _inFlight } = get();
     if (_inFlight) return _inFlight;
-    const promise = runFetch(set).finally(() => set({ _inFlight: null }));
+    const promise = runFetch(set, get).finally(() => set({ _inFlight: null }));
     set({ _inFlight: promise });
     return promise;
   },
