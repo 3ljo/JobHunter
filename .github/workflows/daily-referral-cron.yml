@@ -16,10 +16,11 @@ on:
 
 jobs:
   poke:
-    # This repo is mirrored to a second GitHub account for Vercel
-    # deployments — only the primary origin should run the cron to avoid
-    # double-triggering. Scope the job to the canonical repo.
-    if: github.repository == 'EljoSh-WhiteDesk/JobHunter'
+    # This repo is mirrored across two GitHub accounts (origin for Render
+    # backend deploys, 3ljo for Vercel frontend deploys). The CRON_SECRET
+    # is stored on the 3ljo copy, so we scope the job there to avoid
+    # double-triggering.
+    if: github.repository == '3ljo/JobHunter'
     runs-on: ubuntu-latest
     timeout-minutes: 2
     steps:
