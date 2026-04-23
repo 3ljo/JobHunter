@@ -55,8 +55,12 @@ CREATE INDEX IF NOT EXISTS idx_referrals_vested_at ON referrals(reward_vested_at
 -- One referral per (referrer, email) — can't double-attribute the same
 -- friend to the same referrer. Different referrers can still compete
 -- for the same email (first-touch wins via application logic).
+-- NOTE: no LOWER() in the expression — Supabase's upsert onConflict
+-- matches on plain column names, not indexed expressions, so using
+-- LOWER() here silently breaks every upsert. Callers lowercase the
+-- email in JS before insert instead.
 CREATE UNIQUE INDEX IF NOT EXISTS uq_referrals_referrer_email
-  ON referrals(referrer_id, LOWER(referee_email));
+  ON referrals(referrer_id, referee_email);
 
 -- ───────────────────────────────────────── referral_payouts
 CREATE TABLE IF NOT EXISTS referral_payouts (
@@ -93,10 +97,12 @@ CREATE TABLE IF NOT EXISTS gifted_passes (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Case-insensitive unique on recipient email — can't send two gifts to
--- the same person. Buyer is free to gift many different emails.
+-- Unique on recipient email — can't send two gifts to the same
+-- person. Buyer is free to gift many different emails. Callers
+-- lowercase the email in JS before insert (see giftController);
+-- avoid LOWER() here so Supabase upsert onConflict works.
 CREATE UNIQUE INDEX IF NOT EXISTS uq_gifted_passes_recipient_email
-  ON gifted_passes(LOWER(recipient_email));
+  ON gifted_passes(recipient_email);
 CREATE INDEX IF NOT EXISTS idx_gifted_passes_buyer_user_id ON gifted_passes(buyer_user_id);
 CREATE INDEX IF NOT EXISTS idx_gifted_passes_pass_code ON gifted_passes(pass_code);
 
