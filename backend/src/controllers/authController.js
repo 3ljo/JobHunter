@@ -59,6 +59,17 @@ const register = async (req, res) => {
       return res.status(400).json({ error: error.message });
     }
 
+    // Supabase's email-enumeration protection: when the email is already
+    // registered, signUp resolves successfully but `identities` is empty.
+    // Catch that and surface a clear "account exists" error instead of
+    // pretending we sent a verification email.
+    if (data?.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) {
+      return res.status(409).json({
+        error: 'An account with this email already exists. Please sign in instead.',
+        code: 'email_exists',
+      });
+    }
+
     // Background post-signup work. Wrapped in a try/catch so referral
     // plumbing never blocks or fails a signup.
     if (data.user) {

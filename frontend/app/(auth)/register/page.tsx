@@ -107,7 +107,29 @@ function RegisterForm() {
       setSubmitted(true);
       toast.success('Verification email sent');
     } catch (err: any) {
-      toast.error(err.response?.data?.error || 'Failed to create account');
+      // Backend returns 409 + code='email_exists' when the email is
+      // already registered (see authController). Surface an actionable
+      // message with a link to the sign-in page instead of the generic.
+      if (err.response?.status === 409 && err.response?.data?.code === 'email_exists') {
+        toast.error(
+          (t) => (
+            <span className="flex items-center gap-3">
+              <span>Account already exists.</span>
+              <Link
+                href={`/login?email=${encodeURIComponent(email)}`}
+                onClick={() => toast.dismiss(t.id)}
+                className="underline font-bold"
+                style={{ color: '#a78bfa' }}
+              >
+                Sign in →
+              </Link>
+            </span>
+          ),
+          { duration: 8000 }
+        );
+      } else {
+        toast.error(err.response?.data?.error || 'Failed to create account');
+      }
     } finally {
       setLoading(false);
     }
