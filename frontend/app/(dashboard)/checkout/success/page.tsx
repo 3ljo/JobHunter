@@ -17,7 +17,14 @@ export default function CheckoutSuccessPage() {
     } catch {}
   }, [refresh]);
 
-  const planName = subscription?.plan === 'pro_plus' ? 'Pro+' : subscription?.plan === 'pro' ? 'Pro' : 'Free';
+  const planName =
+    subscription?.plan === 'pro_voice' || subscription?.plan === 'pro_plus'
+      ? 'Pro Voice'
+      : subscription?.plan === 'pro'
+      ? 'Pro'
+      : subscription?.plan === 'starter'
+      ? '7-Day Pass'
+      : 'Free';
 
   return (
     <div className="max-w-2xl mx-auto text-center py-16">

@@ -10,44 +10,66 @@ import toast from 'react-hot-toast';
 import { Tag, Check, X, CreditCard, Smartphone } from 'lucide-react';
 
 /* ── Plan data (mirrors pricing page) ── */
-const PLANS: Record<string, {
+interface PlanEntry {
   name: string;
   bg: string;
   ticketClass: string;
   monthly: number;
   yearly: number;
+  oneTime?: number;
   features: string[];
-}> = {
+  oneTimeOnly?: boolean;
+}
+
+const PLANS: Record<string, PlanEntry> = {
+  starter: {
+    name: '7-Day Pass',
+    bg: '/aivent/misc/l3.webp',
+    ticketClass: 's1',
+    monthly: 9,
+    yearly: 9,
+    oneTime: 9,
+    oneTimeOnly: true,
+    features: [
+      'Unlimited CV analyses (7 days)',
+      'Unlimited cover letters (7 days)',
+      'Full ATS audit & optimization',
+      'AI quick edits',
+      '2 text mock interviews',
+      'Unlimited job tracker',
+      'No subscription — pay once',
+    ],
+  },
   pro: {
     name: 'Pro',
     bg: '/aivent/misc/l4.webp',
     ticketClass: 's2',
-    monthly: 9.99,
-    yearly: 99.99,
-    features: [
-      '25 CV analyses per day',
-      'Unlimited cover letters',
-      'Full ATS audit & optimization',
-      'AI quick edits',
-      'Priority AI processing',
-      'Full CV history & analytics',
-    ],
-  },
-  pro_plus: {
-    name: 'Pro+',
-    bg: '/aivent/misc/l5.webp',
-    ticketClass: 's3',
-    monthly: 14.99,
-    yearly: 149.99,
+    monthly: 19,
+    yearly: 149,
     features: [
       'Unlimited CV analyses',
       'Unlimited cover letters',
       'Full ATS audit & optimization',
       'AI quick edits',
-      'Job application tracker',
+      '5 text mock interviews / month',
       'Priority AI processing',
       'Full CV history & analytics',
-      'Advanced voice matching',
+      'Unlimited job tracker',
+    ],
+  },
+  pro_voice: {
+    name: 'Pro Voice',
+    bg: '/aivent/misc/l5.webp',
+    ticketClass: 's3',
+    monthly: 39,
+    yearly: 299,
+    features: [
+      'Everything in Pro',
+      'Voice Mock Interview — 8 sessions / month',
+      'Voice feedback report',
+      'Interview prep library',
+      'LinkedIn-ready CV export',
+      'Priority AI processing',
     ],
   },
 };
@@ -79,9 +101,9 @@ function CheckoutForm() {
   } = useCheckoutConfigStore();
 
   const planKey = searchParams.get('plan') || 'pro';
-  const intervalParam = searchParams.get('interval') as 'month' | 'year' || 'month';
+  const intervalParam = (searchParams.get('interval') as 'month' | 'year' | 'once') || 'month';
 
-  const [interval, setInterval] = useState<'month' | 'year'>(intervalParam);
+  const [interval, setInterval] = useState<'month' | 'year' | 'once'>(intervalParam);
   const [loading, setLoading] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<'card' | 'paypal' | 'crypto'>('card');
   const [usdtCopied, setUsdtCopied] = useState(false);
@@ -99,20 +121,35 @@ function CheckoutForm() {
   const usdtNetwork = usdtConfig?.network ?? 'TRC-20';
 
   const plan = PLANS[planKey];
+  const isOneTime = plan?.oneTimeOnly === true;
 
   useEffect(() => {
     fetchSubscription();
     loadCheckoutConfig();
   }, [fetchSubscription, loadCheckoutConfig]);
 
+  // Force one-time plans onto `interval=once`; force subscription plans onto month/year.
+  useEffect(() => {
+    if (isOneTime && interval !== 'once') setInterval('once');
+    if (!isOneTime && interval === 'once') setInterval('month');
+  }, [isOneTime, interval]);
+
   if (!plan) {
     router.push('/pricing');
     return null;
   }
 
-  const price = interval === 'month' ? plan.monthly : plan.yearly;
-  const period = interval === 'month' ? 'Monthly' : 'Yearly';
-  const perMonth = interval === 'year' ? (plan.yearly / 12).toFixed(2) : null;
+  const price = isOneTime
+    ? plan.oneTime ?? plan.monthly
+    : interval === 'month'
+      ? plan.monthly
+      : plan.yearly;
+  const period = isOneTime
+    ? 'One-time'
+    : interval === 'month'
+      ? 'Monthly'
+      : 'Yearly';
+  const perMonth = !isOneTime && interval === 'year' ? (plan.yearly / 12).toFixed(2) : null;
 
   // Determine active discount — pick whichever is higher (no stacking)
   const activeDiscount = (() => {
@@ -208,12 +245,17 @@ function CheckoutForm() {
                 ${price.toFixed(2)}
               </span>
               <span className="text-white/50 ml-2" style={{ fontSize: '1rem', fontWeight: 400 }}>
-                /{interval === 'month' ? 'mo' : 'yr'}
+                {isOneTime ? 'one-time' : interval === 'month' ? '/mo' : '/yr'}
               </span>
             </h4>
             {perMonth && (
               <div className="text-sm" style={{ color: '#34d399', fontWeight: 500 }}>
                 ${perMonth}/mo billed yearly
+              </div>
+            )}
+            {isOneTime && (
+              <div className="text-sm" style={{ color: '#34d399', fontWeight: 500 }}>
+                7-day access — no auto-renew
               </div>
             )}
           </div>
@@ -231,28 +273,30 @@ function CheckoutForm() {
             </div>
           </div>
 
-          {/* Billing interval toggle */}
-          <div className="mt-2 mb-6">
-            <h4 className="text-white mb-4" style={{ fontWeight: 700 }}>Billing Period:</h4>
-            <div className="flex gap-3">
-              <button
-                onClick={() => setInterval('month')}
-                className={`btn-aivent fx-slide ${interval === 'month' ? '' : 'btn-line'}`}
-                data-hover="MONTHLY"
-                style={{ minWidth: '130px' }}
-              >
-                <span>Monthly</span>
-              </button>
-              <button
-                onClick={() => setInterval('year')}
-                className={`btn-aivent fx-slide ${interval === 'year' ? '' : 'btn-line'}`}
-                data-hover="YEARLY"
-                style={{ minWidth: '130px' }}
-              >
-                <span>Yearly</span>
-              </button>
+          {/* Billing interval toggle — hidden for one-time plans */}
+          {!isOneTime && (
+            <div className="mt-2 mb-6">
+              <h4 className="text-white mb-4" style={{ fontWeight: 700 }}>Billing Period:</h4>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setInterval('month')}
+                  className={`btn-aivent fx-slide ${interval === 'month' ? '' : 'btn-line'}`}
+                  data-hover="MONTHLY"
+                  style={{ minWidth: '130px' }}
+                >
+                  <span>Monthly</span>
+                </button>
+                <button
+                  onClick={() => setInterval('year')}
+                  className={`btn-aivent fx-slide ${interval === 'year' ? '' : 'btn-line'}`}
+                  data-hover="YEARLY"
+                  style={{ minWidth: '130px' }}
+                >
+                  <span>Yearly</span>
+                </button>
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Payment method selector */}
           <div className="mb-4">
@@ -455,7 +499,7 @@ function CheckoutForm() {
               </h3>
               <br />
               <span className="text-white op-5" style={{ fontSize: '0.75rem' }}>
-                /{interval === 'month' ? 'month' : 'year'}
+                {isOneTime ? 'one-time' : interval === 'month' ? '/month' : '/year'}
               </span>
             </div>
           </div>
@@ -469,7 +513,7 @@ function CheckoutForm() {
             style={{ marginTop: '8px' }}
           >
             <span>
-              {loading ? 'Redirecting to Stripe...' : 'Buy Now'}
+              {loading ? 'Redirecting to checkout...' : 'Buy Now'}
             </span>
           </button>
 

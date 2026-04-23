@@ -10,7 +10,7 @@
 // ────────────────────────────────────────────────────────────────────────────
 
 const supabase = require('../services/supabaseClient');
-const { /* stripe, */ PLANS, getPlanLimits } = require('../services/stripeService');
+const { /* stripe, */ PLANS, getPlanLimits, canonicalPlan } = require('../services/stripeService');
 const { getTodayCount } = require('../services/usageService');
 const ls = require('../services/lemonSqueezyService');
 
@@ -50,8 +50,8 @@ const getSubscription = async (req, res) => {
       .eq('user_id', req.user.id)
       .single();
 
-    const plan = (error || !data) ? 'free' : data.plan;
-    const subscription = (error || !data)
+    let plan = (error || !data) ? 'free' : canonicalPlan(data.plan);
+    let subscription = (error || !data)
       ? {
           plan: 'free',
           status: 'active',
@@ -59,7 +59,17 @@ const getSubscription = async (req, res) => {
           current_period_end: null,
           cancel_at_period_end: false,
         }
-      : data;
+      : { ...data, plan };
+
+    // One-time passes (e.g. `starter`) expire — once `current_period_end`
+    // has passed, the user drops back to `free` entitlements.
+    if (plan === 'starter' && subscription.current_period_end) {
+      const expired = new Date(subscription.current_period_end).getTime() < Date.now();
+      if (expired) {
+        plan = 'free';
+        subscription = { ...subscription, plan: 'free', status: 'canceled' };
+      }
+    }
 
     const usage = await buildUsage(req.user.id, plan);
 
@@ -81,8 +91,18 @@ const createCheckout = async (req, res) => {
     if (!plan || !PLANS[plan] || plan === 'free') {
       return res.status(400).json({ error: 'Invalid plan' });
     }
-    if (!interval || !['month', 'year'].includes(interval)) {
-      return res.status(400).json({ error: 'Invalid billing interval' });
+
+    const planConfig = PLANS[plan];
+    const isOneTime = planConfig.billing_type === 'one_time';
+
+    // Subscriptions take 'month' | 'year'; one-time passes use 'once'.
+    const validIntervals = isOneTime ? ['once'] : ['month', 'year'];
+    if (!interval || !validIntervals.includes(interval)) {
+      return res.status(400).json({
+        error: isOneTime
+          ? 'One-time plans must use interval=once'
+          : 'Invalid billing interval',
+      });
     }
 
     const variantId = ls.getVariantId(plan, interval);
@@ -230,8 +250,43 @@ const handleWebhook = async (req, res) => {
         break;
       }
 
+      case 'order_created': {
+        // One-time purchases (e.g. the Starter 7-day pass) fire `order_created`
+        // — never `subscription_created`. We write a subscription row with
+        // `current_period_end` set to now + pass_duration_days; `getSubscription`
+        // auto-downgrades to free once that timestamp passes.
+        //
+        // Only act if this order is for a plan we recognise as one-time.
+        const custom = payload?.meta?.custom_data || {};
+        const plan = custom.plan;
+        if (!plan || !PLANS[plan] || PLANS[plan].billing_type !== 'one_time') break;
+
+        const userId = custom.user_id;
+        if (!userId) {
+          console.warn(`LS order_created with no user_id in custom_data — order ${subId}`);
+          break;
+        }
+
+        const durationDays = PLANS[plan].pass_duration_days || 7;
+        const now = new Date();
+        const expiresAt = new Date(now.getTime() + durationDays * 24 * 60 * 60 * 1000);
+
+        await supabase.from('subscriptions').upsert({
+          user_id: userId,
+          lemonsqueezy_customer_id: attrs.customer_id ? String(attrs.customer_id) : null,
+          lemonsqueezy_subscription_id: null, // no subscription ID for one-time
+          lemonsqueezy_portal_url: null,
+          plan,
+          billing_interval: 'once',
+          status: 'active',
+          current_period_start: now.toISOString(),
+          current_period_end: expiresAt.toISOString(),
+          cancel_at_period_end: false,
+        }, { onConflict: 'user_id' });
+        break;
+      }
+
       case 'subscription_payment_success':
-      case 'order_created':
       default:
         // Not all events require DB writes — log and move on.
         break;

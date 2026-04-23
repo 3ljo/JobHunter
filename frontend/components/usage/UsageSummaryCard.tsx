@@ -19,8 +19,13 @@ const ROWS: Row[] = [
   // { feature: 'mock_interview', label: 'Mock Interviews',         href: '/interview',    icon: Mic2,            color: '#fbbf24' }, // disabled
 ];
 
-const planLabel = (plan?: string | null) =>
-  plan === 'pro_plus' ? 'Pro+' : plan === 'pro' ? 'Pro' : 'Free';
+const planLabel = (plan?: string | null) => {
+  // `pro_plus` is a legacy alias for `pro_voice`.
+  if (plan === 'pro_voice' || plan === 'pro_plus') return 'Pro Voice';
+  if (plan === 'pro') return 'Pro';
+  if (plan === 'starter') return '7-Day Pass';
+  return 'Free';
+};
 
 const formatResetTime = (iso?: string | null) => {
   if (!iso) return '--:--';

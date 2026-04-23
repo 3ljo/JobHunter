@@ -162,38 +162,56 @@ export default function Home() {
       bg: '/aivent/misc/l3.webp',
       plan: 'Free',
       price: '$0',
-      period: '/month',
-      features: ['3 CV analyses per day', '5 cover letters per day', 'ATS score & keyword report', 'PDF downloads'],
+      period: '',
+      tagline: 'Try the core tools',
+      features: ['1 CV analysis', '2 cover letters', 'ATS score & keyword report', 'PDF downloads', 'Tracker — up to 15 jobs'],
       cta: 'Get Started Free',
       href: isLoggedIn ? '/pricing' : '/register',
       highlight: false,
+      badge: '',
+    },
+    {
+      bg: '/aivent/misc/l3.webp',
+      plan: '7-Day Pass',
+      price: '$9',
+      period: 'one-time',
+      tagline: 'No auto-renew',
+      features: ['Unlimited CV analyses (7 days)', 'Unlimited cover letters (7 days)', 'Full ATS audit & optimization', 'AI quick edits', '2 text mock interviews', 'Unlimited job tracker', 'Pay once — no subscription'],
+      cta: isLoggedIn ? 'Get Pass' : 'Get Pass',
+      href: isLoggedIn ? '/pricing' : '/register',
+      highlight: false,
+      badge: 'Pay once',
     },
     {
       bg: '/aivent/misc/l4.webp',
       plan: 'Pro',
-      price: '$9.99',
+      price: '$19',
       period: '/month',
-      features: ['25 CV analyses per day', 'Unlimited cover letters', 'Full ATS audit & optimization', 'AI quick edits', 'Priority AI processing', 'Full CV history & analytics'],
+      tagline: 'For active job seekers',
+      features: ['Unlimited CV analyses', 'Unlimited cover letters', 'Full ATS audit & optimization', 'AI quick edits', '5 text mock interviews / month', 'Priority AI processing', 'Full CV history & analytics', 'Unlimited job tracker'],
       cta: isLoggedIn ? 'Upgrade to Pro' : 'Start Pro',
       href: isLoggedIn ? '/pricing' : '/register',
       highlight: true,
+      badge: 'Most Popular',
     },
     {
       bg: '/aivent/misc/l5.webp',
-      plan: 'Pro+',
-      price: '$14.99',
+      plan: 'Pro Voice',
+      price: '$39',
       period: '/month',
-      features: ['Unlimited CV analyses', 'Unlimited cover letters', 'Full ATS audit & optimization', 'AI quick edits', 'Job application tracker', 'Priority AI processing', 'Full CV history & analytics', 'Advanced voice matching'],
-      cta: isLoggedIn ? 'Upgrade to Pro+' : 'Start Pro+',
+      tagline: 'With AI voice interview coach',
+      features: ['Everything in Pro', 'Voice Mock Interview — 8 sessions / month', 'Voice feedback report', 'Interview prep library', 'LinkedIn-ready CV export', 'Priority AI processing'],
+      cta: isLoggedIn ? 'Upgrade to Pro Voice' : 'Start Pro Voice',
       href: isLoggedIn ? '/pricing' : '/register',
       highlight: false,
+      badge: '',
     },
   ];
 
   const faqItems = [
     { q: 'What is CvClimber?', a: 'CvClimber is an AI-powered job search platform that analyzes your CV against any job description, generates tailored cover letters, and helps you track all your applications in one place.' },
     { q: 'How does the CV analysis work?', a: 'Upload your CV and paste a job description. Our AI scores your CV for ATS compatibility, identifies missing keywords, and gives you actionable suggestions to improve your score instantly.' },
-    { q: 'Is CvClimber free to use?', a: 'Yes — create a free account and start analyzing your CV right away. No credit card required. Pro and Teams plans unlock unlimited usage.' },
+    { q: 'Is CvClimber free to use?', a: 'Yes — create a free account and start analyzing your CV right away. No credit card required. A $9 one-time 7-day pass or the Pro subscription unlocks unlimited usage.' },
     { q: 'What file formats does it support?', a: 'You can paste your CV text directly or upload a document. The AI processes the content and matches it against your target job description.' },
     { q: 'How does the cover letter generator work?', a: 'After your CV is analyzed, click "Generate Cover Letter". Choose your tone — balanced, formal, or friendly — and our AI crafts a personalized letter in seconds.' },
     { q: 'Is my data secure?', a: 'Yes. Your CV data is stored securely with Supabase and is only used to power your analysis. We never share your data with third parties.' },
@@ -687,32 +705,40 @@ export default function Home() {
         <div className="absolute top-0 left-0 right-0 h-1/4" style={{ background: 'linear-gradient(180deg,#1A1E42 0%,transparent 100%)' }} />
         <div className="absolute bottom-0 left-0 right-0 h-1/4" style={{ background: 'linear-gradient(0deg,#101435 0%,transparent 100%)' }} />
 
-        <div className="relative mx-auto max-w-6xl" style={{ zIndex: 2 }}>
+        <div className="relative mx-auto max-w-7xl" style={{ zIndex: 2 }}>
           <div className="text-center mb-16">
             <span className="aivent-subtitle s2" data-reveal>Pricing Plans</span>
             <h2 className="text-white tracking-tight wow fadeInUp" data-wow-delay=".1s" style={{ fontSize: 'clamp(32px,4vw,48px)', fontWeight: 800 }}>Choose Your Plan</h2>
-            <p className="text-white/55 text-lg mt-4 max-w-2xl mx-auto wow fadeInUp" style={{ fontWeight: 400 }} data-wow-delay=".2s">Start free. Upgrade when you need more power.</p>
+            <p className="text-white/55 text-lg mt-4 max-w-2xl mx-auto wow fadeInUp" style={{ fontWeight: 400 }} data-wow-delay=".2s">Start free. Grab a one-time 7-day pass. Or subscribe for the full search.</p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
             {pricing.map((p, i) => (
               <div key={p.plan} data-reveal data-delay={String(i * 100)}>
                 <div className="d-ticket-card mb-0 rounded-b-none" style={{ backgroundImage: `url(${p.bg})`, border: p.highlight ? '2px solid oklch(0.59 0.245 291)' : '2px solid rgba(255,255,255,0.08)', borderBottom: 'none' }}>
                   <div className="absolute inset-0" style={{ background: 'rgba(16,20,53,0.82)', borderRadius: '10px 10px 0 0' }} />
                   <div className="relative" style={{ zIndex: 1 }}>
-                    <img src="/aivent/logo.png" alt="" style={{ height: '56px', marginBottom: '20px', opacity: 0.8 }} />
-                    <h2 className="text-white mb-1" style={{ fontSize: '1.875rem', fontWeight: 800 }}>{p.plan}</h2>
-                    <h4 className="text-white/80 mb-4" style={{ fontWeight: 600 }}>
-                      <span className="text-white" style={{ fontSize: '2.25rem', fontWeight: 800 }}>{p.price}</span>
-                      <span className="text-white/50 ml-1" style={{ fontSize: '1rem', fontWeight: 400 }}>{p.period}</span>
+                    <img src="/aivent/logo.png" alt="" style={{ height: '48px', marginBottom: '16px', opacity: 0.8 }} />
+                    <h2 className="text-white mb-1" style={{ fontSize: '1.625rem', fontWeight: 800 }}>{p.plan}</h2>
+                    {p.tagline && (
+                      <p className="text-white/50 text-xs mb-3" style={{ fontWeight: 500 }}>{p.tagline}</p>
+                    )}
+                    <h4 className="text-white/80 mb-3" style={{ fontWeight: 600 }}>
+                      <span className="text-white" style={{ fontSize: '2rem', fontWeight: 800 }}>{p.price}</span>
+                      {p.period && (
+                        <span className="text-white/50 ml-1" style={{ fontSize: '0.95rem', fontWeight: 400 }}>{p.period}</span>
+                      )}
                     </h4>
-                    {p.highlight && (
+                    {p.badge === 'Most Popular' && (
                       <span className="inline-block px-3 py-1 rounded-full text-xs uppercase tracking-widest text-white" style={{ fontWeight: 700, background: 'oklch(0.59 0.245 291)' }}>Most Popular</span>
+                    )}
+                    {p.badge === 'Pay once' && (
+                      <span className="inline-block px-3 py-1 rounded-full text-xs uppercase tracking-widest" style={{ fontWeight: 700, background: 'rgba(52,211,153,0.18)', color: '#34d399' }}>Pay once</span>
                     )}
                   </div>
                 </div>
-                <div className="rounded-t-none rounded-b-xl px-6 py-6" style={{ background: '#1A1E42', border: p.highlight ? '2px solid oklch(0.59 0.245 291)' : '2px solid rgba(255,255,255,0.08)', borderTop: 'none' }}>
-                  <ul className="ul-check mb-6 space-y-2">
+                <div className="rounded-t-none rounded-b-xl px-5 py-5" style={{ background: '#1A1E42', border: p.highlight ? '2px solid oklch(0.59 0.245 291)' : '2px solid rgba(255,255,255,0.08)', borderTop: 'none' }}>
+                  <ul className="ul-check mb-5 space-y-2 text-sm">
                     {p.features.map(f => <li key={f}>{f}</li>)}
                   </ul>
                   <Link href={p.href} className="btn-aivent fx-slide w-full text-center block" data-hover={p.cta.toUpperCase()}>

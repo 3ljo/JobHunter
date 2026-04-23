@@ -50,8 +50,13 @@ export default function CVPage() {
   const FALLBACK_TEMPLATE: TemplateId = 'harvard';
 
   const { subscription, usage, fetchSubscription } = useSubscriptionStore();
-  const isPro = subscription?.plan === 'pro' || subscription?.plan === 'pro_plus';
-  const cvLimit = usage?.cv.limit ?? (subscription?.plan === 'pro' ? 25 : subscription?.plan === 'pro_plus' ? 999999 : 3);
+  // Any paid plan (starter pass, Pro, Pro Voice, or legacy Pro+) unlocks paid features.
+  const isPro = subscription?.plan === 'pro'
+    || subscription?.plan === 'pro_voice'
+    || subscription?.plan === 'pro_plus'
+    || subscription?.plan === 'starter';
+  // Fallback: Pro / Pro Voice / Starter all grant unlimited CV analyses; Free gets 1.
+  const cvLimit = usage?.cv.limit ?? (isPro ? 999999 : 1);
   const cvOverLimit = cvLimit < 999999 && (usage?.cv.used ?? 0) >= cvLimit;
 
   // Fetch usage on mount if not already loaded

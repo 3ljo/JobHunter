@@ -15,6 +15,7 @@ const storeId = () => process.env.LEMONSQUEEZY_STORE_ID;
 const webhookSecret = () => process.env.LEMONSQUEEZY_WEBHOOK_SECRET;
 
 // Look up the LS variant ID for a (plan, interval) combination.
+// For one-time plans (e.g. `starter`), pass interval='once'.
 const getVariantId = (plan, interval) => {
   const config = PLANS[plan];
   if (!config || !config.ls_variants) return null;
@@ -103,12 +104,19 @@ const mapStatus = (lsStatus) => {
 };
 
 // Resolve our internal plan key from an LS variant ID (used by webhook
-// updates where `custom_data` may not be present).
+// updates where `custom_data` may not be present). Skips the legacy
+// `pro_plus` alias so we always return the canonical `pro_voice` key.
 const resolvePlanFromVariantId = (variantId) => {
   if (!variantId) return 'free';
   const id = String(variantId);
   for (const [planKey, config] of Object.entries(PLANS)) {
-    if (config.ls_variants && (config.ls_variants.month === id || config.ls_variants.year === id)) {
+    if (config.legacy_alias_for) continue;
+    if (!config.ls_variants) continue;
+    if (
+      config.ls_variants.month === id ||
+      config.ls_variants.year === id ||
+      config.ls_variants.once === id
+    ) {
       return planKey;
     }
   }
@@ -119,10 +127,11 @@ const resolveIntervalFromVariantId = (variantId) => {
   if (!variantId) return 'month';
   const id = String(variantId);
   for (const config of Object.values(PLANS)) {
-    if (config.ls_variants) {
-      if (config.ls_variants.month === id) return 'month';
-      if (config.ls_variants.year === id) return 'year';
-    }
+    if (config.legacy_alias_for) continue;
+    if (!config.ls_variants) continue;
+    if (config.ls_variants.month === id) return 'month';
+    if (config.ls_variants.year === id) return 'year';
+    if (config.ls_variants.once === id) return 'once';
   }
   return 'month';
 };

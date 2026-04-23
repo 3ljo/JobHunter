@@ -36,7 +36,11 @@ const createRateLimiter = (feature, limitKey) => {
       const used = await getTodayCount(userId, feature);
 
       if (used >= limit) {
-        const planName = plan === 'pro_plus' ? 'Pro+' : plan === 'pro' ? 'Pro' : 'Free';
+        const planName =
+          plan === 'pro_voice' || plan === 'pro_plus' ? 'Pro Voice'
+          : plan === 'pro' ? 'Pro'
+          : plan === 'starter' ? '7-Day Pass'
+          : 'Free';
         const todayStart = new Date();
         todayStart.setHours(0, 0, 0, 0);
         return res.status(429).json({

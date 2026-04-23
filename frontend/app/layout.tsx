@@ -122,7 +122,7 @@ const jsonLd = {
         '@type': 'Offer',
         price: '0',
         priceCurrency: 'USD',
-        description: 'Free tier with optional Pro and Pro+ plans',
+        description: 'Free tier, $9 one-time 7-day pass, Pro ($19/mo), and Pro Voice ($39/mo) subscriptions',
       },
       featureList: [
         'AI-powered CV analysis with ATS scoring',

@@ -229,7 +229,7 @@ export const getAdminReferrals = () =>
 export const getSubscription = () =>
   api.get<SubscriptionResponse>('/api/subscription');
 
-export const createCheckoutSession = (plan: string, interval: 'month' | 'year', payment_method?: string) =>
+export const createCheckoutSession = (plan: string, interval: 'month' | 'year' | 'once', payment_method?: string) =>
   api.post<{ url: string }>('/api/subscription/checkout', { plan, interval, payment_method });
 
 export const createPortalSession = () =>
@@ -254,7 +254,7 @@ export const getAdminSettings = () =>
 export const updateAdminSettings = (settings: Record<string, any>) =>
   api.put('/api/admin/settings', settings);
 
-// ═════════════════════ Mock Interview (Pro+ only) ═════════════════════
+// ═════════════════════ Mock Interview (Pro Voice only for voice; Pro gets text) ═════════════════════
 
 export interface InterviewQuestion {
   id: string;

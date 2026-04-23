@@ -49,7 +49,11 @@ const LANGUAGE_LEVELS = ['Native', 'Fluent', 'Advanced', 'Intermediate', 'Basic'
 export default function CreateCVForm({ onSubmittingChange }: CreateCVFormProps = {}) {
   const router = useRouter();
   const { subscription, bumpLocalUsage, refresh: refreshSubscription } = useSubscriptionStore();
-  const isPro = subscription?.plan === 'pro' || subscription?.plan === 'pro_plus';
+  // Any paid plan (starter pass, Pro, Pro Voice, or legacy Pro+) unlocks paid features.
+  const isPro = subscription?.plan === 'pro'
+    || subscription?.plan === 'pro_voice'
+    || subscription?.plan === 'pro_plus'
+    || subscription?.plan === 'starter';
 
   /* ─── Form fields ─── */
   const [fullName, setFullName] = useState('');

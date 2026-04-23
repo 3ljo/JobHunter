@@ -300,7 +300,11 @@ function BillingCard({ subscription }: { subscription: any }) {
         <div>
           <div className="flex items-center gap-2 mb-1">
             <span className="text-lg font-black text-foreground capitalize">
-              {subscription?.plan === 'pro_plus' ? 'Pro+' : subscription?.plan || 'Free'}
+              {subscription?.plan === 'pro_voice' || subscription?.plan === 'pro_plus'
+                ? 'Pro Voice'
+                : subscription?.plan === 'starter'
+                ? '7-Day Pass'
+                : subscription?.plan || 'Free'}
             </span>
             <span
               className="text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full"

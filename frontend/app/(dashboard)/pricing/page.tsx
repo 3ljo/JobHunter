@@ -6,56 +6,98 @@ import { useSubscriptionStore } from '@/store/subscriptionStore';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
 
-const plans = [
+type PlanKey = 'free' | 'starter' | 'pro' | 'pro_voice';
+type Cadence = 'month' | 'year';
+
+interface Plan {
+  key: PlanKey;
+  bg: string;
+  name: string;
+  tagline?: string;
+  monthly: number;
+  yearly: number;
+  oneTime?: number;
+  features: string[];
+  cta: string;
+  highlight: boolean;
+  oneTimeOnly?: boolean;
+}
+
+const plans: Plan[] = [
   {
     key: 'free',
     bg: '/aivent/misc/l3.webp',
     name: 'Free',
+    tagline: 'Try the core tools',
     monthly: 0,
     yearly: 0,
     features: [
-      '3 CV analyses per day',
-      '5 cover letters per day',
+      '1 CV analysis',
+      '2 cover letters',
       'ATS score & keyword report',
       'PDF downloads',
+      'Job tracker — up to 15 jobs',
     ],
     cta: 'Current Plan',
     highlight: false,
   },
   {
+    key: 'starter',
+    bg: '/aivent/misc/l3.webp',
+    name: '7-Day Pass',
+    tagline: 'One-time · No auto-renew',
+    monthly: 9,
+    yearly: 9,
+    oneTime: 9,
+    features: [
+      'Unlimited CV analyses (7 days)',
+      'Unlimited cover letters (7 days)',
+      'Full ATS audit & optimization',
+      'AI quick edits',
+      '2 text mock interviews',
+      'Unlimited job tracker',
+      'No subscription — pay once',
+    ],
+    cta: 'Get 7-Day Pass',
+    highlight: false,
+    oneTimeOnly: true,
+  },
+  {
     key: 'pro',
     bg: '/aivent/misc/l4.webp',
     name: 'Pro',
-    monthly: 9.99,
-    yearly: 99.99,
-    features: [
-      '25 CV analyses per day',
-      'Unlimited cover letters',
-      'Full ATS audit & optimization',
-      'AI quick edits',
-      'Priority AI processing',
-      'Full CV history & analytics',
-    ],
-    cta: 'Start Pro',
-    highlight: true,
-  },
-  {
-    key: 'pro_plus',
-    bg: '/aivent/misc/l5.webp',
-    name: 'Pro+',
-    monthly: 14.99,
-    yearly: 149.99,
+    tagline: 'For active job seekers',
+    monthly: 19,
+    yearly: 149,
     features: [
       'Unlimited CV analyses',
       'Unlimited cover letters',
       'Full ATS audit & optimization',
       'AI quick edits',
-      'Job application tracker',
+      '5 text mock interviews / month',
       'Priority AI processing',
       'Full CV history & analytics',
-      'Advanced voice matching',
+      'Unlimited job tracker',
     ],
-    cta: 'Start Pro+',
+    cta: 'Start Pro',
+    highlight: true,
+  },
+  {
+    key: 'pro_voice',
+    bg: '/aivent/misc/l5.webp',
+    name: 'Pro Voice',
+    tagline: 'With AI voice interview coach',
+    monthly: 39,
+    yearly: 299,
+    features: [
+      'Everything in Pro',
+      'Voice Mock Interview — 8 sessions / month',
+      'Voice feedback report',
+      'Interview prep library',
+      'LinkedIn-ready CV export',
+      'Priority AI processing',
+    ],
+    cta: 'Start Pro Voice',
     highlight: false,
   },
 ];
@@ -69,7 +111,7 @@ export default function PricingPage() {
 }
 
 function PricingContent() {
-  const [interval, setInterval] = useState<'month' | 'year'>('month');
+  const [interval, setInterval] = useState<Cadence>('month');
   const { subscription, fetchSubscription } = useSubscriptionStore();
   const searchParams = useSearchParams();
 
@@ -86,20 +128,20 @@ function PricingContent() {
   const currentPlan = subscription?.plan || 'free';
 
   return (
-    <div className="max-w-6xl mx-auto">
+    <div className="max-w-7xl mx-auto">
 
-      {/* Header — uses aivent-subtitle like landing page */}
+      {/* Header */}
       <div className="text-center mb-10">
         <span className="aivent-subtitle s2">Pricing Plans</span>
         <h2 className="text-white tracking-tight" style={{ fontSize: 'clamp(32px,4vw,48px)', fontWeight: 800 }}>
           Choose Your Plan
         </h2>
         <p className="text-white/55 text-lg mt-4 max-w-2xl mx-auto" style={{ fontWeight: 400 }}>
-          Start free. Upgrade when you need more power.
+          Start free, grab a one-time 7-day pass for a burst job search, or subscribe for the long haul.
         </p>
       </div>
 
-      {/* Monthly / Yearly toggle — styled like AIvent .btn-main toggle */}
+      {/* Monthly / Yearly toggle */}
       <div className="flex items-center justify-center gap-2 mb-12">
         <button
           onClick={() => setInterval('month')}
@@ -112,26 +154,49 @@ function PricingContent() {
         <button
           onClick={() => setInterval('year')}
           className={`btn-aivent fx-slide ${interval === 'year' ? '' : 'btn-line'}`}
-          data-hover="YEARLY — SAVE 17%"
-          style={{ minWidth: '180px' }}
+          data-hover="YEARLY — SAVE 35%"
+          style={{ minWidth: '200px' }}
         >
-          <span>Yearly — Save 17%</span>
+          <span>Yearly — Save 35%</span>
         </button>
       </div>
 
-      {/* Plan cards — same structure as landing page pricing section */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+      {/* Plan cards — 4-column grid that drops to 2 on md, 1 on mobile */}
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
         {plans.map((p) => {
           const isCurrentPlan = currentPlan === p.key;
-          const price = interval === 'month' ? p.monthly : p.yearly;
-          const period = interval === 'month' ? '/mo' : '/yr';
-          const perMonth = interval === 'year' && p.monthly > 0
+          const isPaidSubscription = p.key === 'pro' || p.key === 'pro_voice';
+          const isOneTime = p.oneTimeOnly === true;
+
+          // Price math
+          const price = isOneTime
+            ? p.oneTime ?? 0
+            : interval === 'month'
+              ? p.monthly
+              : p.yearly;
+
+          const period = isOneTime
+            ? 'one-time'
+            : interval === 'month'
+              ? '/mo'
+              : '/yr';
+
+          const perMonth = isPaidSubscription && interval === 'year' && p.monthly > 0
             ? `$${(p.yearly / 12).toFixed(2)}/mo`
             : null;
 
+          const savings = isPaidSubscription && interval === 'year' && p.monthly > 0
+            ? Math.round(((p.monthly * 12 - p.yearly) / (p.monthly * 12)) * 100)
+            : 0;
+
+          // CTA link: subscription → interval param; one-time → interval=once
+          const checkoutHref = isOneTime
+            ? `/checkout?plan=${p.key}&interval=once`
+            : `/checkout?plan=${p.key}&interval=${interval}`;
+
           return (
             <div key={p.key}>
-              {/* Top card — d-ticket-card with background image, same as landing page */}
+              {/* Top card */}
               <div
                 className="d-ticket-card mb-0 rounded-b-none"
                 style={{
@@ -142,29 +207,43 @@ function PricingContent() {
                   borderBottom: 'none',
                 }}
               >
-                {/* Dark overlay */}
                 <div className="absolute inset-0" style={{ background: 'rgba(16,20,53,0.82)', borderRadius: '10px 10px 0 0' }} />
 
                 <div className="relative" style={{ zIndex: 1 }}>
-                  <img src="/aivent/logo.png" alt="" style={{ height: '56px', marginBottom: '20px', opacity: 0.8 }} />
+                  <img src="/aivent/logo.png" alt="" style={{ height: '48px', marginBottom: '16px', opacity: 0.8 }} />
 
-                  <h2 className="text-white mb-1" style={{ fontSize: '1.875rem', fontWeight: 800 }}>
+                  <h2 className="text-white mb-1" style={{ fontSize: '1.625rem', fontWeight: 800 }}>
                     {p.name}
                   </h2>
 
-                  <h4 className="text-white/80 mb-4" style={{ fontWeight: 600 }}>
-                    <span className="text-white" style={{ fontSize: '2.25rem', fontWeight: 800 }}>
-                      ${price === 0 ? '0' : price.toFixed(2)}
+                  {p.tagline && (
+                    <p className="text-white/50 text-xs mb-3" style={{ fontWeight: 500 }}>
+                      {p.tagline}
+                    </p>
+                  )}
+
+                  <h4 className="text-white/80 mb-3" style={{ fontWeight: 600 }}>
+                    <span className="text-white" style={{ fontSize: '2rem', fontWeight: 800 }}>
+                      ${price === 0 ? '0' : price.toFixed(price >= 100 ? 0 : 2)}
                     </span>
-                    <span className="text-white/50 ml-1" style={{ fontSize: '1rem', fontWeight: 400 }}>
+                    <span className="text-white/50 ml-1" style={{ fontSize: '0.95rem', fontWeight: 400 }}>
                       {period}
                     </span>
                   </h4>
 
                   {perMonth && (
-                    <p className="text-sm mb-2" style={{ color: '#34d399', fontWeight: 500 }}>
-                      {perMonth} billed yearly
+                    <p className="text-xs mb-2" style={{ color: '#34d399', fontWeight: 500 }}>
+                      {perMonth} · Save {savings}%
                     </p>
+                  )}
+
+                  {isOneTime && (
+                    <span
+                      className="inline-block px-3 py-1 rounded-full text-xs uppercase tracking-widest text-white"
+                      style={{ fontWeight: 700, background: 'rgba(52,211,153,0.18)', color: '#34d399' }}
+                    >
+                      Pay once
+                    </span>
                   )}
 
                   {p.highlight && (
@@ -187,9 +266,9 @@ function PricingContent() {
                 </div>
               </div>
 
-              {/* Bottom section — features + CTA, same as landing page */}
+              {/* Bottom: features + CTA */}
               <div
-                className="rounded-t-none rounded-b-xl px-6 py-6"
+                className="rounded-t-none rounded-b-xl px-5 py-5"
                 style={{
                   background: '#1A1E42',
                   border: p.highlight
@@ -198,7 +277,7 @@ function PricingContent() {
                   borderTop: 'none',
                 }}
               >
-                <ul className="ul-check mb-6 space-y-2">
+                <ul className="ul-check mb-5 space-y-2 text-sm">
                   {p.features.map((f) => (
                     <li key={f}>{f}</li>
                   ))}
@@ -230,7 +309,7 @@ function PricingContent() {
                   </div>
                 ) : (
                   <Link
-                    href={`/checkout?plan=${p.key}&interval=${interval}`}
+                    href={checkoutHref}
                     className="btn-aivent fx-slide w-full text-center block"
                     data-hover={p.cta.toUpperCase()}
                   >
