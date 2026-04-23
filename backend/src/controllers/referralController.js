@@ -110,20 +110,42 @@ async function looksLikeSelfReferral({ referrerId, refereeEmail, refereeIpHash }
 // Called from authController.register AFTER Supabase createUser succeeds.
 // Idempotent per (referrer, email) — uq_referrals_referrer_email prevents
 // duplicates. Never throws — referral attribution must not block signup.
+// Verbose logging turned ON here so silent production failures become
+// visible in Render logs (attribution bugs are otherwise invisible —
+// nothing shows up on the referrer's dashboard and the signup response
+// looks fine to the user).
 async function attributeOnSignup({ refCode, newUserId, newUserEmail, ipHash, fingerprint }) {
-  if (!refCode || !newUserId || !newUserEmail) return;
+  console.log('[attributeOnSignup] called', { refCode, newUserId, newUserEmail, hasIpHash: !!ipHash });
+  if (!refCode || !newUserId || !newUserEmail) {
+    console.warn('[attributeOnSignup] aborted — missing args', { refCode, newUserId, newUserEmail });
+    return;
+  }
 
   try {
     const normalizedCode = String(refCode).toUpperCase().trim();
 
-    const { data: codeRow } = await supabase
+    const { data: codeRow, error: codeLookupErr } = await supabase
       .from('referral_codes')
       .select('user_id, code, is_active')
       .eq('code', normalizedCode)
       .maybeSingle();
 
-    if (!codeRow || !codeRow.is_active) return;
-    if (codeRow.user_id === newUserId) return; // trivial self-ref
+    if (codeLookupErr) {
+      console.warn('[attributeOnSignup] code lookup error:', codeLookupErr.message, codeLookupErr.code);
+      return;
+    }
+    if (!codeRow) {
+      console.warn('[attributeOnSignup] code not found:', normalizedCode);
+      return;
+    }
+    if (!codeRow.is_active) {
+      console.warn('[attributeOnSignup] code inactive:', normalizedCode);
+      return;
+    }
+    if (codeRow.user_id === newUserId) {
+      console.warn('[attributeOnSignup] trivial self-ref — referrer_id == referee_id');
+      return;
+    }
 
     const isSelfRef = await looksLikeSelfReferral({
       referrerId: codeRow.user_id,
@@ -132,8 +154,9 @@ async function attributeOnSignup({ refCode, newUserId, newUserEmail, ipHash, fin
     });
 
     const status = isSelfRef ? 'fraud' : 'signed_up';
+    console.log('[attributeOnSignup] inserting row', { referrer_id: codeRow.user_id, status });
 
-    await supabase.from('referrals').upsert(
+    const { error: upsertErr } = await supabase.from('referrals').upsert(
       {
         referrer_id: codeRow.user_id,
         referee_id: newUserId,
@@ -146,12 +169,18 @@ async function attributeOnSignup({ refCode, newUserId, newUserEmail, ipHash, fin
       { onConflict: 'referrer_id, referee_email' }
     );
 
+    if (upsertErr) {
+      console.error('[attributeOnSignup] referrals upsert FAILED:', upsertErr.message, upsertErr.code, upsertErr.details, upsertErr.hint);
+      return;
+    }
+    console.log('[attributeOnSignup] row inserted successfully, status=', status);
+
     await logEvent('referral_signup', {
       userId: newUserId,
       metadata: { referrer_id: codeRow.user_id, referral_code: codeRow.code, status },
     });
   } catch (err) {
-    console.warn('attributeOnSignup failed:', err.message);
+    console.error('[attributeOnSignup] threw:', err.message, err.stack);
   }
 }
 

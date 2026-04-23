@@ -100,6 +100,10 @@ function RegisterForm() {
       const manualRef = refCodeInput.trim().toUpperCase();
       const refCode = manualRef || getReferralCookie();
       const fingerprint = getDeviceFingerprint();
+      // Debug: temp log so we can verify the field is actually captured
+      // and forwarded. Safe to remove once referral attribution is confirmed.
+      // eslint-disable-next-line no-console
+      console.log('[register] sending', { email, hasRefCode: !!refCode, refCode, fromManualInput: !!manualRef });
       await registerUser(email, password, refCode, fingerprint);
       // Clear the cookie so it can't re-attribute on repeat signups
       // from the same browser (e.g. the user making a second account).
