@@ -33,19 +33,26 @@ function canonicalFrontend() {
 
 // ─────────────────────────────────────────
 // Idempotent: creates a referral_codes row if the user doesn't have one.
-// Safe to call multiple times. Returns the row (existing or new).
+// Safe to call multiple times. Returns { row } on success, or { error }
+// with the underlying Supabase error so callers can surface it instead
+// of a generic "Could not generate" message.
 async function ensureCodeForUser(userId) {
-  if (!userId) return null;
+  if (!userId) return { error: new Error('missing userId') };
 
-  const { data: existing } = await supabase
+  const { data: existing, error: selectError } = await supabase
     .from('referral_codes')
     .select('*')
     .eq('user_id', userId)
     .maybeSingle();
 
-  if (existing) return existing;
+  if (selectError) {
+    console.warn('referral_codes select failed:', selectError.message, selectError.code);
+    return { error: selectError };
+  }
+  if (existing) return { row: existing };
 
   // Collision retry — DB enforces UNIQUE(code) so we just retry on 23505.
+  let lastError = null;
   for (let attempt = 0; attempt < 5; attempt++) {
     const code = generateCode();
     const { data, error } = await supabase
@@ -53,14 +60,12 @@ async function ensureCodeForUser(userId) {
       .insert({ user_id: userId, code, tier: 'standard' })
       .select()
       .single();
-    if (!error) return data;
-    if (error.code !== '23505') {
-      console.warn('referral_codes insert failed:', error.message);
-      return null;
-    }
+    if (!error) return { row: data };
+    lastError = error;
+    console.warn('referral_codes insert failed:', error.message, error.code, error.details, error.hint);
+    if (error.code !== '23505') return { error };
   }
-  console.warn('referral_codes: 5 code collisions in a row — giving up');
-  return null;
+  return { error: lastError || new Error('5 code collisions in a row') };
 }
 
 // Self-referral check. Returns true if this (referrer, email, ip_hash)
@@ -156,9 +161,12 @@ const getMyReferralInfo = async (req, res) => {
   try {
     const userId = req.user.id;
 
-    const codeRow = await ensureCodeForUser(userId);
+    const { row: codeRow, error: codeError } = await ensureCodeForUser(userId);
     if (!codeRow) {
-      return res.status(500).json({ error: 'Could not generate a referral code for this user' });
+      const detail = codeError?.message || 'unknown';
+      return res.status(500).json({
+        error: `Could not generate a referral code for this user: ${detail}`,
+      });
     }
 
     // Aggregate referrals by status for the dashboard stats block.
