@@ -319,8 +319,12 @@ const handleWebhook = async (req, res) => {
           cancel_at_period_end: false,
         }, { onConflict: 'user_id' });
 
-        // Self-purchase of a Pass still counts as a paid conversion for the referrer.
-        await onPaidConversion(buyerId);
+        // NOTE: 7-Day Pass purchases do NOT trigger referral rewards — a
+        // $10 reward on $9 revenue is a loss leader. Only Pro/Pro Voice
+        // subscriptions (subscription_created case above) credit the referrer.
+        // If this user later upgrades to a subscription, the normal
+        // subscription_created flow will still find their 'signed_up'
+        // referral row and reward the referrer properly.
         break;
       }
 

@@ -88,7 +88,7 @@ export default function GiftPage() {
             <Check className="h-3.5 w-3.5 text-emerald-400" /> Full ATS audit + job tracker
           </p>
           <p className="text-sm font-bold text-white flex items-center gap-2">
-            <Check className="h-3.5 w-3.5 text-emerald-400" /> If they convert to paid within 30 days, you earn referral credit
+            <Check className="h-3.5 w-3.5 text-emerald-400" /> Your friend keeps the pass; no subscription, no surprise charges
           </p>
         </div>
 
