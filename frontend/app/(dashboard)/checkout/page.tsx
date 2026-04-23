@@ -73,7 +73,7 @@ const PLANS: Record<string, PlanEntry> = {
 };
 
 interface Discount {
-  source: 'promo' | 'referral';
+  source: 'promo';
   type: 'percent' | 'fixed';
   amount: number;
   label: string;
@@ -94,7 +94,6 @@ function CheckoutForm() {
   const { fetchSubscription } = useSubscriptionStore();
   const {
     usdtConfig,
-    referralDiscount: storedReferralDiscount,
     load: loadCheckoutConfig,
   } = useCheckoutConfigStore();
 
@@ -106,15 +105,12 @@ function CheckoutForm() {
   const [paymentMethod, setPaymentMethod] = useState<'card' | 'paypal' | 'crypto'>('card');
   const [usdtCopied, setUsdtCopied] = useState(false);
 
-  // Discount state — promo is user-entered (not cached); referral comes from the store.
+  // Discount state — promo is user-entered (not cached).
   const [promoInput, setPromoInput] = useState('');
   const [promoLoading, setPromoLoading] = useState(false);
   const [promoError, setPromoError] = useState('');
   const [discount, setDiscount] = useState<Discount | null>(null);
 
-  const referralDiscount: Discount | null = storedReferralDiscount
-    ? { source: 'referral', ...storedReferralDiscount }
-    : null;
   const usdtWallet = usdtConfig?.wallet ?? '';
   const usdtNetwork = usdtConfig?.network ?? 'TRC-20';
 
@@ -149,16 +145,8 @@ function CheckoutForm() {
       : 'Yearly';
   const perMonth = !isOneTime && interval === 'year' ? (plan.yearly / 12).toFixed(2) : null;
 
-  // Determine active discount — pick whichever is higher (no stacking)
-  const activeDiscount = (() => {
-    if (!discount && !referralDiscount) return null;
-    if (discount && !referralDiscount) return discount;
-    if (!discount && referralDiscount) return referralDiscount;
-    // Both exist — pick higher
-    const promoSaving = discount!.type === 'percent' ? price * (discount!.amount / 100) : discount!.amount;
-    const refSaving = referralDiscount!.type === 'percent' ? price * (referralDiscount!.amount / 100) : referralDiscount!.amount;
-    return promoSaving >= refSaving ? discount : referralDiscount;
-  })();
+  // Only promo discounts exist now — referrals are out.
+  const activeDiscount = discount;
 
   const discountAmount = activeDiscount
     ? activeDiscount.type === 'percent'
@@ -387,24 +375,8 @@ function CheckoutForm() {
             </div>
           )}
 
-          {/* Referral discount — auto-applied */}
-          {referralDiscount && activeDiscount?.source === 'referral' && (
-            <div className="flex items-center py-3" style={{ borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
-              <div className="flex-1">
-                <span className="text-sm" style={{ color: '#34d399', fontWeight: 600 }}>
-                  {referralDiscount.label}
-                </span>
-              </div>
-              <div className="text-right">
-                <p className="mb-0 text-sm" style={{ color: '#34d399', fontWeight: 700 }}>
-                  -${discountAmount.toFixed(2)}
-                </p>
-              </div>
-            </div>
-          )}
-
-          {/* Promo discount — if applied and is the active one */}
-          {discount && activeDiscount?.source === 'promo' && (
+          {/* Promo discount — if applied */}
+          {discount && (
             <div className="flex items-center py-3" style={{ borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
               <div className="flex-1">
                 <span className="text-sm" style={{ color: '#34d399', fontWeight: 600 }}>
@@ -420,13 +392,6 @@ function CheckoutForm() {
                 </button>
               </div>
             </div>
-          )}
-
-          {/* Note when referral beats promo */}
-          {discount && referralDiscount && activeDiscount?.source === 'referral' && (
-            <p className="text-xs text-white op-5 mt-1 mb-0" style={{ fontWeight: 400 }}>
-              Your referral discount is higher — it was applied instead.
-            </p>
           )}
 
           {/* Promo code input — styled to match AIvent form inputs */}

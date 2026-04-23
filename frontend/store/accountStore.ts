@@ -1,19 +1,10 @@
 import { create } from 'zustand';
-import { getMyReferralCode, getMyReferrals, getMyUsage, getProfile } from '@/lib/api';
+import { getMyUsage, getProfile } from '@/lib/api';
 import { Profile } from '@/types';
 
-// Shared cache for user-scoped account data consumed by Settings and Referrals.
-// Both pages were refetching the same referral code endpoint on every mount —
-// bundling them here means any sequence of Settings ↔ Referrals visits within
-// the TTL hits the cache with zero network calls.
-
-export interface Referral {
-  id: string;
-  referred_email: string;
-  referrer_reward_applied: boolean;
-  referred_reward_applied: boolean;
-  created_at: string;
-}
+// Shared cache for user-scoped account data consumed by Settings.
+// Bundling profile + monthly usage here means Settings mounts (and any future
+// account-scoped views) hit the cache with zero network calls within the TTL.
 
 export interface MonthlyUsage {
   cv_today: number;
@@ -25,8 +16,6 @@ export interface MonthlyUsage {
 }
 
 interface AccountState {
-  referralCode: { code: string; times_used: number } | null;
-  referrals: Referral[];
   myUsage: MonthlyUsage | null;
   profile: Profile | null;
   loaded: boolean;
@@ -46,17 +35,11 @@ const TTL_MS = 60_000;
 async function runFetch(set: (partial: Partial<AccountState>) => void): Promise<void> {
   set({ isLoading: true });
   // Use allSettled so one failing endpoint doesn't blank out the others.
-  const [codeRes, refRes, usageRes, profileRes] = await Promise.allSettled([
-    getMyReferralCode(),
-    getMyReferrals(),
+  const [usageRes, profileRes] = await Promise.allSettled([
     getMyUsage(),
     getProfile(),
   ]);
   set({
-    referralCode: codeRes.status === 'fulfilled'
-      ? { code: codeRes.value.data.referral_code.code, times_used: codeRes.value.data.referral_code.times_used || 0 }
-      : null,
-    referrals: refRes.status === 'fulfilled' ? (refRes.value.data.referrals || []) : [],
     myUsage: usageRes.status === 'fulfilled' ? usageRes.value.data.usage : null,
     profile: profileRes.status === 'fulfilled' ? profileRes.value.data.profile : null,
     loaded: true,
@@ -66,8 +49,6 @@ async function runFetch(set: (partial: Partial<AccountState>) => void): Promise<
 }
 
 export const useAccountStore = create<AccountState>((set, get) => ({
-  referralCode: null,
-  referrals: [],
   myUsage: null,
   profile: null,
   loaded: false,
@@ -96,8 +77,6 @@ export const useAccountStore = create<AccountState>((set, get) => ({
   invalidate: () => set({ _lastFetchedAt: null }),
 
   clear: () => set({
-    referralCode: null,
-    referrals: [],
     myUsage: null,
     profile: null,
     loaded: false,

@@ -17,7 +17,6 @@ const adminRoutes = require('./routes/admin');
 
 const subscriptionRoutes = require('./routes/subscription');
 const promoRoutes = require('./routes/promo');
-const referralRoutes = require('./routes/referral');
 const { handleWebhook } = require('./controllers/subscriptionController');
 
 const app = express();
@@ -54,7 +53,6 @@ app.use('/api/interview', interviewRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/subscription', subscriptionRoutes);
 app.use('/api/promo', promoRoutes);
-app.use('/api/referral', referralRoutes);
 
 // Global error handler
 app.use((err, req, res, next) => {

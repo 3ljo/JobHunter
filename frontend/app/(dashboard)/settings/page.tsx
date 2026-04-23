@@ -5,9 +5,9 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
 import {
-  Settings, User, CreditCard, BarChart3, Gift, AlertTriangle,
+  Settings, User, CreditCard, BarChart3, AlertTriangle,
   Mail, Lock, Eye, EyeOff, Crown, ExternalLink, FileText, FileSignature,
-  Zap, Copy, Check, Users, Trash2, LogOut,
+  Zap, Trash2, LogOut,
 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
@@ -27,13 +27,13 @@ import {
   updateProfile, createPortalSession,
 } from '@/lib/api';
 
-type TabKey = 'account' | 'billing' | 'usage' | 'referrals' | 'danger';
+type TabKey = 'account' | 'billing' | 'usage' | 'danger';
 
 export default function SettingsPage() {
   const router = useRouter();
   const { user, logout } = useAuthStore();
   const { subscription, fetchSubscription } = useSubscriptionStore();
-  const { referralCode, myUsage: usage, load: loadAccount } = useAccountStore();
+  const { myUsage: usage, load: loadAccount } = useAccountStore();
 
   const [tab, setTab] = useState<TabKey>('account');
 
@@ -59,7 +59,6 @@ export default function SettingsPage() {
           <TabsTrigger value="account"><User className="h-3.5 w-3.5" /> Account</TabsTrigger>
           <TabsTrigger value="billing"><CreditCard className="h-3.5 w-3.5" /> Billing</TabsTrigger>
           <TabsTrigger value="usage"><BarChart3 className="h-3.5 w-3.5" /> Usage</TabsTrigger>
-          <TabsTrigger value="referrals"><Gift className="h-3.5 w-3.5" /> Referrals</TabsTrigger>
           <TabsTrigger value="danger"><AlertTriangle className="h-3.5 w-3.5" /> Danger</TabsTrigger>
         </TabsList>
 
@@ -75,10 +74,6 @@ export default function SettingsPage() {
 
         <TabsContent value="usage" className="mt-6 space-y-6">
           <UsageCard usage={usage} />
-        </TabsContent>
-
-        <TabsContent value="referrals" className="mt-6 space-y-6">
-          <ReferralsCard referralCode={referralCode?.code ?? null} timesUsed={referralCode?.times_used ?? 0} />
         </TabsContent>
 
         <TabsContent value="danger" className="mt-6 space-y-6">
@@ -421,94 +416,6 @@ function UsageTile({
         <p className="text-[10px] text-muted-foreground/50 mt-1">{sub}</p>
       )}
     </div>
-  );
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Referrals
-// ─────────────────────────────────────────────────────────────────────────────
-function ReferralsCard({ referralCode, timesUsed }: { referralCode: string | null; timesUsed: number }) {
-  const [copied, setCopied] = useState<'code' | 'link' | null>(null);
-  const referralLink = referralCode
-    ? `${typeof window !== 'undefined' ? window.location.origin : ''}/register?ref=${referralCode}`
-    : '';
-
-  const copy = (text: string, kind: 'code' | 'link') => {
-    navigator.clipboard.writeText(text);
-    setCopied(kind);
-    toast.success('Copied!');
-    setTimeout(() => setCopied(null), 2000);
-  };
-
-  if (!referralCode) {
-    return (
-      <Card title="Referral Program" icon={Gift}>
-        <p className="text-sm text-muted-foreground/60">Your referral code is being generated. Refresh in a moment.</p>
-      </Card>
-    );
-  }
-
-  return (
-    <Card title="Referral Program" icon={Gift}>
-      <p className="text-xs text-muted-foreground/60 mb-4">
-        Share your code. Friends get <span className="text-emerald-400 font-semibold">30% off</span> their first month, you get a <span className="text-emerald-400 font-semibold">free month</span> when they subscribe.
-      </p>
-
-      <div className="space-y-3">
-        <div>
-          <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground block mb-1.5">Your code</label>
-          <div className="flex items-center gap-2">
-            <div
-              className="flex-1 flex items-center h-10 rounded-xl px-4 text-sm font-mono font-bold text-white tracking-wider"
-              style={{ background: 'rgba(118,77,240,0.08)', border: '1px solid rgba(118,77,240,0.2)' }}
-            >
-              {referralCode}
-            </div>
-            <button
-              onClick={() => copy(referralCode, 'code')}
-              className="h-10 w-10 rounded-xl flex items-center justify-center transition-all"
-              style={{ background: 'rgba(118,77,240,0.1)', border: '1px solid rgba(118,77,240,0.2)' }}
-              title="Copy code"
-            >
-              {copied === 'code' ? <Check className="h-4 w-4 text-emerald-400" /> : <Copy className="h-4 w-4 text-violet-400" />}
-            </button>
-          </div>
-        </div>
-
-        <div>
-          <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground block mb-1.5">Shareable link</label>
-          <div className="flex items-center gap-2">
-            <div
-              className="flex-1 flex items-center h-10 rounded-xl px-4 text-xs text-white/60 truncate"
-              style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)' }}
-            >
-              {referralLink}
-            </div>
-            <button
-              onClick={() => copy(referralLink, 'link')}
-              className="h-10 w-10 rounded-xl flex items-center justify-center transition-all shrink-0"
-              style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}
-              title="Copy link"
-            >
-              {copied === 'link' ? <Check className="h-4 w-4 text-emerald-400" /> : <Copy className="h-4 w-4 text-muted-foreground" />}
-            </button>
-          </div>
-        </div>
-
-        <div
-          className="flex items-center gap-3 rounded-xl p-3"
-          style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)' }}
-        >
-          <Users className="h-4 w-4 text-muted-foreground" />
-          <div>
-            <span className="text-lg font-black text-foreground tabular-nums">{timesUsed}</span>
-            <span className="text-xs text-muted-foreground/60 ml-1.5">
-              {timesUsed === 1 ? 'person' : 'people'} referred
-            </span>
-          </div>
-        </div>
-      </div>
-    </Card>
   );
 }
 

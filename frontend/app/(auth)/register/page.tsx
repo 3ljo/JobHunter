@@ -1,13 +1,12 @@
 'use client';
 
 import { useState, Suspense } from 'react';
-import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { registerUser, resendVerification, validateReferralCode } from '@/lib/api';
+import { registerUser, resendVerification } from '@/lib/api';
 import toast from 'react-hot-toast';
-import { Mail, Lock, ShieldCheck, Check, Eye, EyeOff, Gift, MailCheck } from 'lucide-react';
+import { Mail, Lock, ShieldCheck, Check, Eye, EyeOff, MailCheck } from 'lucide-react';
 import { GoogleSignInButton } from '@/components/auth/GoogleSignInButton';
 
 function getPasswordStrength(password: string): number {
@@ -57,22 +56,6 @@ function RegisterForm() {
   const [submitted, setSubmitted] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
-  const [showReferral, setShowReferral] = useState(false);
-  const [referralCode, setReferralCode] = useState('');
-  const [referralValid, setReferralValid] = useState<boolean | null>(null);
-  const searchParams = useSearchParams();
-
-  // Pre-fill referral code from URL (e.g. /register?ref=REF-ABC123)
-  useState(() => {
-    const ref = searchParams.get('ref');
-    if (ref) {
-      setReferralCode(ref);
-      setShowReferral(true);
-      validateReferralCode(ref)
-        .then(() => setReferralValid(true))
-        .catch(() => setReferralValid(false));
-    }
-  });
 
   const strength = getPasswordStrength(password);
 
@@ -88,7 +71,7 @@ function RegisterForm() {
     }
     setLoading(true);
     try {
-      await registerUser(email, password, referralCode || undefined);
+      await registerUser(email, password);
       setSubmitted(true);
       toast.success('Verification email sent');
     } catch (err: any) {
@@ -296,63 +279,6 @@ function RegisterForm() {
                   </button>
                 </div>
               </div>
-            </div>
-
-            {/* Referral code — collapsible */}
-            <div>
-              {!showReferral ? (
-                <button
-                  type="button"
-                  onClick={() => setShowReferral(true)}
-                  className="flex items-center gap-2 text-xs font-600 transition-colors hover:text-white"
-                  style={{ color: 'oklch(0.59 0.245 291)' }}
-                >
-                  <Gift className="h-3.5 w-3.5" />
-                  Have a referral code?
-                </button>
-              ) : (
-                <div className="space-y-1.5">
-                  <Label htmlFor="referral" className="text-xs font-700 uppercase tracking-widest text-white/50">
-                    Referral Code
-                  </Label>
-                  <div className="group relative">
-                    <Gift className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-white/30 transition-colors group-focus-within:text-violet-400" />
-                    <Input
-                      id="referral"
-                      type="text"
-                      placeholder="e.g. REF-ABC123"
-                      value={referralCode}
-                      onChange={(e) => {
-                        setReferralCode(e.target.value.toUpperCase());
-                        setReferralValid(null);
-                      }}
-                      onBlur={async () => {
-                        if (referralCode.trim()) {
-                          try {
-                            await validateReferralCode(referralCode.trim());
-                            setReferralValid(true);
-                          } catch {
-                            setReferralValid(false);
-                          }
-                        }
-                      }}
-                      className="h-12 rounded-xl border-white/10 bg-white/[0.04] pl-10 pr-10 text-sm font-500 text-white placeholder:text-white/25 transition-all focus:border-violet-500/50 focus:ring-2 focus:ring-violet-500/20"
-                      style={{ backdropFilter: 'blur(10px)' }}
-                    />
-                    {referralValid === true && (
-                      <Check className="absolute right-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-emerald-400" />
-                    )}
-                    {referralValid === false && (
-                      <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-red-400 text-xs font-600">Invalid</span>
-                    )}
-                  </div>
-                  {referralValid === true && (
-                    <p className="text-xs font-500" style={{ color: '#34d399' }}>
-                      You will get 30% off your first paid month!
-                    </p>
-                  )}
-                </div>
-              )}
             </div>
 
             <button

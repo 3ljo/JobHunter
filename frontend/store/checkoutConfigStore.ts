@@ -1,25 +1,16 @@
 import { create } from 'zustand';
 import axios from 'axios';
-import { checkReferralDiscount } from '@/lib/api';
 
-// Cache for checkout-page extras: the USDT wallet config (server static) and
-// the user's active referral discount. Neither changes mid-session, so a TTL
-// cache avoids refiring two network calls every time the user opens checkout.
+// Cache for the checkout page's USDT wallet config (server static).
+// Avoids refiring the network call every time the user opens checkout.
 
 export interface UsdtConfig {
   wallet: string;
   network: string;
 }
 
-export interface ReferralDiscount {
-  type: 'percent' | 'fixed';
-  amount: number;
-  label: string;
-}
-
 interface CheckoutConfigState {
   usdtConfig: UsdtConfig | null;
-  referralDiscount: ReferralDiscount | null;
   loaded: boolean;
   isLoading: boolean;
 
@@ -36,20 +27,12 @@ const TTL_MS = 60_000;
 
 async function runFetch(set: (partial: Partial<CheckoutConfigState>) => void): Promise<void> {
   set({ isLoading: true });
-  const [usdtRes, discRes] = await Promise.allSettled([
+  const [usdtRes] = await Promise.allSettled([
     axios.get(`${process.env.NEXT_PUBLIC_API_URL}/api/subscription/usdt-config`),
-    checkReferralDiscount(),
   ]);
   set({
     usdtConfig: usdtRes.status === 'fulfilled'
       ? { wallet: usdtRes.value.data.wallet_address, network: usdtRes.value.data.network }
-      : null,
-    referralDiscount: discRes.status === 'fulfilled' && discRes.value.data.has_discount
-      ? {
-          type: discRes.value.data.discount_type as 'percent' | 'fixed',
-          amount: discRes.value.data.discount_amount!,
-          label: discRes.value.data.label!,
-        }
       : null,
     loaded: true,
     isLoading: false,
@@ -59,7 +42,6 @@ async function runFetch(set: (partial: Partial<CheckoutConfigState>) => void): P
 
 export const useCheckoutConfigStore = create<CheckoutConfigState>((set, get) => ({
   usdtConfig: null,
-  referralDiscount: null,
   loaded: false,
   isLoading: false,
   _lastFetchedAt: null,
@@ -87,7 +69,6 @@ export const useCheckoutConfigStore = create<CheckoutConfigState>((set, get) => 
 
   clear: () => set({
     usdtConfig: null,
-    referralDiscount: null,
     loaded: false,
     isLoading: false,
     _lastFetchedAt: null,

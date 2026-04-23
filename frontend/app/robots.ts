@@ -21,7 +21,6 @@ export default function robots(): MetadataRoute.Robots {
           '/cover-letter',
           '/interview',
           '/tracker',
-          '/referrals',
           '/settings',
           '/checkout',
           '/pricing',
