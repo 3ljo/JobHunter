@@ -42,13 +42,12 @@ const PLANS = {
     pass_duration_days: 7,
     cv_limit: 999999, // unlimited during the 7-day window
     cl_limit: 999999,
-    mi_limit: 2, // 2 text mock interviews during the window
+    mi_limit: 0, // mock interview is voice-only, gated to Pro Voice
     features: [
       'Unlimited CV analyses (7 days)',
       'Unlimited cover letters (7 days)',
       'Full ATS audit & optimization',
       'AI quick edits',
-      '2 text mock interviews',
       'Unlimited job tracker',
       'No auto-renew — one-time $9',
     ],
@@ -62,13 +61,12 @@ const PLANS = {
     billing_type: 'subscription',
     cv_limit: 999999, // unlimited
     cl_limit: 999999,
-    mi_limit: 5, // 5 text mock interviews / month
+    mi_limit: 0, // mock interview is voice-only, gated to Pro Voice
     features: [
       'Unlimited CV analyses',
       'Unlimited cover letters',
       'Full ATS audit & optimization',
       'AI quick edits',
-      '5 text mock interviews / month',
       'Priority AI processing',
       'Full CV history & analytics',
       'Unlimited job tracker',

@@ -20,7 +20,7 @@ const navItems = [
   { href: '/cv',           label: 'CV Analyzer'  },
   { href: '/create-cv',    label: 'Create CV'    },
   { href: '/cover-letter', label: 'Cover Letter' },
-  // { href: '/interview',    label: 'Interview', badge: 'PRO+' }, // disabled
+  { href: '/interview',    label: 'Interview', badge: 'PRO VOICE' },
   { href: '/tracker',      label: 'Tracker'      },
   { href: '/cv-history',   label: 'History'      },
 ];
@@ -111,11 +111,12 @@ export default function Navbar() {
           >
             {navItems.map((item) => {
               const isActive = pathname === item.href;
+              const badge = 'badge' in item ? item.badge : undefined;
               return (
                 <Link
                   key={item.href}
                   href={item.href}
-                  className="relative rounded-full px-3.5 py-1.5 text-[13px] font-semibold transition-all duration-200"
+                  className="relative inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-[13px] font-semibold transition-all duration-200"
                   style={{
                     color: isActive ? '#fff' : 'rgba(255,255,255,0.6)',
                     background: isActive
@@ -138,6 +139,14 @@ export default function Navbar() {
                   }}
                 >
                   {item.label}
+                  {badge && (
+                    <span
+                      className="text-[9px] font-black px-1.5 py-0.5 rounded"
+                      style={{ background: 'rgba(192,132,252,0.15)', color: '#c084fc', border: '1px solid rgba(192,132,252,0.3)' }}
+                    >
+                      {badge}
+                    </span>
+                  )}
                 </Link>
               );
             })}
@@ -277,12 +286,13 @@ export default function Navbar() {
             <div className="flex flex-col gap-1">
               {navItems.map((item) => {
                 const isActive = pathname === item.href;
+                const badge = 'badge' in item ? item.badge : undefined;
                 return (
                   <Link
                     key={item.href}
                     href={item.href}
                     onClick={() => setMobileOpen(false)}
-                    className="flex items-center rounded-xl px-3 py-2.5 text-sm font-semibold transition-all"
+                    className="flex items-center gap-2 rounded-xl px-3 py-2.5 text-sm font-semibold transition-all"
                     style={{
                       color: isActive ? '#fff' : 'rgba(255,255,255,0.7)',
                       background: isActive
@@ -292,6 +302,14 @@ export default function Navbar() {
                     }}
                   >
                     {item.label}
+                    {badge && (
+                      <span
+                        className="text-[9px] font-black px-1.5 py-0.5 rounded"
+                        style={{ background: 'rgba(192,132,252,0.15)', color: '#c084fc', border: '1px solid rgba(192,132,252,0.3)' }}
+                      >
+                        {badge}
+                      </span>
+                    )}
                   </Link>
                 );
               })}
