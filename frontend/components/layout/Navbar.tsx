@@ -227,8 +227,7 @@ export default function Navbar() {
                   className="flex items-center gap-2.5 rounded-xl px-3 py-2 text-sm cursor-pointer mt-1 text-white/75 hover:text-white focus:text-white"
                 >
                   <Gift className="h-4 w-4 opacity-70" style={{ color: '#34d399' }} />
-                  <span className="flex-1">Refer &amp; earn</span>
-                  <span className="text-[9px] font-black px-1.5 py-0.5 rounded" style={{ background: 'rgba(52,211,153,0.15)', color: '#34d399', border: '1px solid rgba(52,211,153,0.3)' }}>$10</span>
+                  Refer &amp; earn
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={() => router.push('/pricing')}
@@ -323,8 +322,7 @@ export default function Navbar() {
                 className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-white/70 hover:text-white hover:bg-white/[0.04] transition-all"
               >
                 <Gift className="h-4 w-4" style={{ color: '#34d399' }} />
-                <span className="flex-1">Refer &amp; earn</span>
-                <span className="text-[9px] font-black px-1.5 py-0.5 rounded" style={{ background: 'rgba(52,211,153,0.15)', color: '#34d399', border: '1px solid rgba(52,211,153,0.3)' }}>$10</span>
+                Refer &amp; earn
               </Link>
               <Link
                 href="/pricing"
