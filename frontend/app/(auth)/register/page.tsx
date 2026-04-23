@@ -98,12 +98,13 @@ function RegisterForm() {
     try {
       // Manual input wins over the cookie (user may correct a stale cookie).
       const manualRef = refCodeInput.trim().toUpperCase();
-      const refCode = manualRef || getReferralCookie();
+      const cookieRef = getReferralCookie();
+      const refCode = manualRef || cookieRef;
       const fingerprint = getDeviceFingerprint();
-      // Debug: temp log so we can verify the field is actually captured
-      // and forwarded. Safe to remove once referral attribution is confirmed.
+      // Flat-string logs so automated browser agents capture the value
+      // instead of showing the collapsed [object Object] marker.
       // eslint-disable-next-line no-console
-      console.log('[register] sending', { email, hasRefCode: !!refCode, refCode, fromManualInput: !!manualRef });
+      console.log(`[register] manualRef="${manualRef}" cookieRef="${cookieRef || ''}" refCode="${refCode || ''}" refCodeInputState="${refCodeInput}"`);
       await registerUser(email, password, refCode, fingerprint);
       // Clear the cookie so it can't re-attribute on repeat signups
       // from the same browser (e.g. the user making a second account).

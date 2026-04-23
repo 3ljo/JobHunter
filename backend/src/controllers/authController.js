@@ -76,6 +76,14 @@ const register = async (req, res) => {
     // diagnose attribution failures from the frontend Network tab.
     // TODO: remove _debug once referral attribution is verified working.
     let _debug = null;
+    // Snapshot of what the backend actually received so we can
+    // distinguish "frontend didn't send it" from "backend didn't read it".
+    const _body_seen = {
+      keys: Object.keys(req.body || {}),
+      ref_code_type: typeof req.body?.ref_code,
+      ref_code_len: typeof req.body?.ref_code === 'string' ? req.body.ref_code.length : null,
+      content_type: req.headers['content-type'] || null,
+    };
     if (data.user) {
       try {
         await ensureCodeForUser(data.user.id);
@@ -101,6 +109,7 @@ const register = async (req, res) => {
       message: 'Verification email sent',
       user: data.user,
       _debug,
+      _body_seen,
     });
   } catch (err) {
     return res.status(400).json({ error: err.message });
