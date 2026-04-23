@@ -25,13 +25,18 @@ const getVariantId = (plan, interval) => {
 // Create a hosted Lemon Squeezy checkout URL. Stashes the user_id + plan +
 // interval in `custom_data` so the webhook can link the resulting subscription
 // back to our user without needing the email lookup.
-const createCheckout = async ({ variantId, userId, email, plan, interval, successUrl }) => {
+const createCheckout = async ({ variantId, userId, email, plan, interval, successUrl, custom }) => {
   if (!apiKey() || !storeId()) {
     throw new Error('Lemon Squeezy not configured — set LEMONSQUEEZY_API_KEY and LEMONSQUEEZY_STORE_ID');
   }
   if (!variantId) {
     throw new Error(`LS variant ID missing for plan=${plan}, interval=${interval} — set LEMONSQUEEZY_VARIANT_* env vars`);
   }
+
+  // Default custom payload links the order back to our user via webhook.
+  // Callers can pass extra fields (e.g. { gift: true, recipient_email })
+  // which get merged in.
+  const customData = { user_id: userId, plan, interval, ...(custom || {}) };
 
   const body = {
     data: {
@@ -40,7 +45,7 @@ const createCheckout = async ({ variantId, userId, email, plan, interval, succes
         checkout_options: { embed: false, media: false, logo: true },
         checkout_data: {
           email: email || undefined,
-          custom: { user_id: userId, plan, interval },
+          custom: customData,
         },
         product_options: {
           redirect_url: successUrl,

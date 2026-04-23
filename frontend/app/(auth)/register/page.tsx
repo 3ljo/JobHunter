@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, Suspense } from 'react';
+import { useState, useEffect, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -8,6 +9,7 @@ import { registerUser, resendVerification } from '@/lib/api';
 import toast from 'react-hot-toast';
 import { Mail, Lock, ShieldCheck, Check, Eye, EyeOff, MailCheck } from 'lucide-react';
 import { GoogleSignInButton } from '@/components/auth/GoogleSignInButton';
+import { getReferralCookie, setReferralCookie, clearReferralCookie, getDeviceFingerprint } from '@/lib/referralCookie';
 
 function getPasswordStrength(password: string): number {
   let score = 0;
@@ -56,6 +58,14 @@ function RegisterForm() {
   const [submitted, setSubmitted] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
+  const searchParams = useSearchParams();
+
+  // If the user landed directly on /register?ref=CODE (bypassing the
+  // landing page), capture the code into the cookie on mount.
+  useEffect(() => {
+    const ref = searchParams.get('ref');
+    if (ref) setReferralCookie(ref);
+  }, [searchParams]);
 
   const strength = getPasswordStrength(password);
 
@@ -71,7 +81,12 @@ function RegisterForm() {
     }
     setLoading(true);
     try {
-      await registerUser(email, password);
+      const refCode = getReferralCookie();
+      const fingerprint = getDeviceFingerprint();
+      await registerUser(email, password, refCode, fingerprint);
+      // Clear the cookie so it can't re-attribute on repeat signups
+      // from the same browser (e.g. the user making a second account).
+      clearReferralCookie();
       setSubmitted(true);
       toast.success('Verification email sent');
     } catch (err: any) {

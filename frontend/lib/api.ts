@@ -37,8 +37,18 @@ api.interceptors.response.use(
 );
 
 // Auth
-export const registerUser = (email: string, password: string) =>
-  api.post<{ message: string; user: User }>('/api/auth/register', { email, password });
+export const registerUser = (
+  email: string,
+  password: string,
+  refCode?: string | null,
+  deviceFingerprint?: string | null,
+) =>
+  api.post<{ message: string; user: User }>('/api/auth/register', {
+    email,
+    password,
+    ref_code: refCode || undefined,
+    device_fingerprint: deviceFingerprint || undefined,
+  });
 
 export const loginUser = (email: string, password: string) =>
   api.post<{ user: User; session: { access_token: string } }>('/api/auth/login', { email, password });
@@ -207,6 +217,63 @@ export const updateAdminPromo = (id: string, data: Record<string, any>) =>
 
 export const deleteAdminPromo = (id: string) =>
   api.delete(`/api/admin/promos/${id}`);
+
+// Referrals — Hired & Help
+export interface ReferralRecent {
+  id: string;
+  status: 'clicked' | 'signed_up' | 'paid' | 'confirmed' | 'paid_out' | 'refunded' | 'fraud';
+  referee_email: string;
+  reward_cents: number;
+  created_at: string;
+  paid_conversion_at: string | null;
+  vested_at: string | null;
+  paid_at: string | null;
+}
+
+export interface ReferralInfo {
+  code: string;
+  tier: 'standard' | 'ambassador' | 'founding_100';
+  is_active: boolean;
+  share_url: string;
+  stats: {
+    signup_count: number;
+    paid_count: number;
+    confirmed_count: number;
+    pending_reward_cents: number;
+    vested_reward_cents: number;
+    paid_out_reward_cents: number;
+  };
+  recent_referrals: ReferralRecent[];
+}
+
+export const getMyReferralInfo = () =>
+  api.get<ReferralInfo>('/api/referral/me');
+
+export const trackReferralClick = (code: string) =>
+  api.post<{ valid: boolean }>('/api/referral/track', { code });
+
+export const requestReferralPayout = (paypal_email: string) =>
+  api.post<{ payout: { id: string; amount_cents: number; status: string } }>(
+    '/api/referral/payout',
+    { paypal_email }
+  );
+
+// Gift-a-Pass
+export interface GiftLookup {
+  recipient_email: string;
+  message: string | null;
+  redeemed: boolean;
+  created_at: string;
+}
+
+export const createGiftCheckout = (recipient_email: string, message?: string) =>
+  api.post<{ url: string }>('/api/gift/checkout', { recipient_email, message });
+
+export const lookupGift = (code: string) =>
+  api.get<GiftLookup>(`/api/gift/${encodeURIComponent(code)}`);
+
+export const redeemGift = (code: string) =>
+  api.post<{ ok: true; expires_at: string }>(`/api/gift/${encodeURIComponent(code)}/redeem`);
 
 // Subscription
 export const getSubscription = () =>

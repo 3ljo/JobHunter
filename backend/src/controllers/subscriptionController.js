@@ -13,6 +13,7 @@ const supabase = require('../services/supabaseClient');
 const { /* stripe, */ PLANS, getPlanLimits, canonicalPlan } = require('../services/stripeService');
 const { getTodayCount } = require('../services/usageService');
 const ls = require('../services/lemonSqueezyService');
+const { onPaidConversion, onRefund } = require('../lib/referrals/webhookHooks');
 
 // FRONTEND_URL may be a comma-separated list (used by CORS). For redirect URLs
 // we only want the canonical first entry, otherwise we'd redirect users to a
@@ -215,6 +216,12 @@ const handleWebhook = async (req, res) => {
           current_period_end: attrs.renews_at || attrs.ends_at || null,
           cancel_at_period_end: attrs.cancelled === true,
         }, { onConflict: 'user_id' });
+
+        // Referral reward — only trigger on subscription_created (first paid
+        // conversion). Renewals / updates are a no-op for the referrer.
+        if (eventName === 'subscription_created' && ls.mapStatus(attrs.status) === 'active') {
+          await onPaidConversion(userId);
+        }
         break;
       }
 
@@ -251,28 +258,51 @@ const handleWebhook = async (req, res) => {
       }
 
       case 'order_created': {
-        // One-time purchases (e.g. the Starter 7-day pass) fire `order_created`
-        // — never `subscription_created`. We write a subscription row with
-        // `current_period_end` set to now + pass_duration_days; `getSubscription`
-        // auto-downgrades to free once that timestamp passes.
-        //
-        // Only act if this order is for a plan we recognise as one-time.
+        // One-time purchases fire `order_created` — never `subscription_created`.
+        // Three flavours:
+        //   a) Starter 7-Day Pass purchased for self → grants user the pass
+        //   b) Gift-a-Pass purchase (custom.gift === true) → records a
+        //      gifted_passes row and emails recipient with pass_code
+        //   c) Unknown plan → ignore
         const custom = payload?.meta?.custom_data || {};
         const plan = custom.plan;
         if (!plan || !PLANS[plan] || PLANS[plan].billing_type !== 'one_time') break;
 
-        const userId = custom.user_id;
-        if (!userId) {
+        const buyerId = custom.user_id;
+        if (!buyerId) {
           console.warn(`LS order_created with no user_id in custom_data — order ${subId}`);
           break;
         }
 
+        // ── Gift-a-Pass path ─────────────────────────────────────
+        if (custom.gift === true || custom.gift === 'true') {
+          const recipient = (custom.recipient_email || '').toLowerCase().trim();
+          const giftMessage = custom.gift_message || null;
+          if (!recipient) {
+            console.warn(`gift order ${subId} missing recipient_email`);
+            break;
+          }
+          const passCode = require('crypto').randomBytes(6).toString('hex').toUpperCase();
+          await supabase.from('gifted_passes').upsert({
+            buyer_user_id: buyerId,
+            recipient_email: recipient,
+            pass_code: passCode,
+            message: giftMessage,
+            lemonsqueezy_order_id: subId,
+          }, { onConflict: 'recipient_email' });
+          // (Email notification to recipient is a TODO — the record is
+          // the source of truth; the UI will let the buyer copy the
+          // redeem link manually until an email service is wired up.)
+          break;
+        }
+
+        // ── Self-purchase path (regular 7-Day Pass) ──────────────
         const durationDays = PLANS[plan].pass_duration_days || 7;
         const now = new Date();
         const expiresAt = new Date(now.getTime() + durationDays * 24 * 60 * 60 * 1000);
 
         await supabase.from('subscriptions').upsert({
-          user_id: userId,
+          user_id: buyerId,
           lemonsqueezy_customer_id: attrs.customer_id ? String(attrs.customer_id) : null,
           lemonsqueezy_subscription_id: null, // no subscription ID for one-time
           lemonsqueezy_portal_url: null,
@@ -283,6 +313,18 @@ const handleWebhook = async (req, res) => {
           current_period_end: expiresAt.toISOString(),
           cancel_at_period_end: false,
         }, { onConflict: 'user_id' });
+
+        // Self-purchase of a Pass still counts as a paid conversion for the referrer.
+        await onPaidConversion(buyerId);
+        break;
+      }
+
+      case 'subscription_payment_refunded':
+      case 'order_refunded': {
+        // Either a subscription refund or a one-time order refund. Reverse
+        // the referral reward if we're still inside the 14-day vesting window.
+        const userId = await lookupUser();
+        if (userId) await onRefund(userId);
         break;
       }
 

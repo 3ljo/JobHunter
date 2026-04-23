@@ -5,6 +5,7 @@ import Link from 'next/link';
 
 import { ChevronDown, Menu, X, Tag, X as XIcon } from 'lucide-react';
 import axios from 'axios';
+import { setReferralCookie } from '@/lib/referralCookie';
 
 /* ── Scroll reveal ── */
 function useScrollReveal() {
@@ -74,6 +75,13 @@ export default function Home() {
     axios.get(`${process.env.NEXT_PUBLIC_API_URL}/api/promo/banner`)
       .then((res) => { if (res.data.banner) setPromoBanner(res.data.banner); })
       .catch(() => {});
+
+    // ?ref=CODE capture — stored in a 90-day cookie and read at signup.
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const ref = params.get('ref');
+      if (ref) setReferralCookie(ref);
+    }
   }, []);
 
   /* ── Active section tracking ── */

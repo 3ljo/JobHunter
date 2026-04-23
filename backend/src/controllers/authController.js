@@ -3,6 +3,8 @@
 
 const { body, validationResult } = require('express-validator');
 const supabase = require('../services/supabaseClient');
+const { ensureCodeForUser, attributeOnSignup } = require('./referralController');
+const { hashIp, getClientIp } = require('../lib/referrals/hashIp');
 
 // FRONTEND_URL may be a comma-separated CORS list — pick the first canonical
 // origin for building auth redirect links.
@@ -42,7 +44,7 @@ const register = async (req, res) => {
     return res.status(400).json({ error: errors.array()[0].msg });
   }
 
-  const { email, password } = req.body;
+  const { email, password, ref_code, device_fingerprint } = req.body;
 
   try {
     const { data, error } = await supabase.auth.signUp({
@@ -55,6 +57,31 @@ const register = async (req, res) => {
 
     if (error) {
       return res.status(400).json({ error: error.message });
+    }
+
+    // Background post-signup work. Wrapped in a try/catch so referral
+    // plumbing never blocks or fails a signup.
+    if (data.user) {
+      try {
+        // Every new user gets their own referral code eagerly so it's
+        // ready on first dashboard render.
+        await ensureCodeForUser(data.user.id);
+
+        // If they arrived via ?ref=CODE (forwarded by the frontend),
+        // record the attribution with IP hash + device fingerprint.
+        if (ref_code) {
+          const ipHash = hashIp(getClientIp(req));
+          await attributeOnSignup({
+            refCode: ref_code,
+            newUserId: data.user.id,
+            newUserEmail: data.user.email || email,
+            ipHash,
+            fingerprint: device_fingerprint || null,
+          });
+        }
+      } catch (bgErr) {
+        console.warn('post-signup referral work failed:', bgErr.message);
+      }
     }
 
     return res.status(201).json({
