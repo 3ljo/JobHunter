@@ -11,6 +11,10 @@ const {
   checkAdmin,
 } = require('../controllers/adminController');
 const { listPromos, createPromo, updatePromo, deletePromo } = require('../controllers/promoController');
+const {
+  requireAdminPassword, listFlagged, approveFlagged, rejectFlagged,
+  markPayoutSent, getFunnel,
+} = require('../controllers/adminReferralController');
 
 // All routes require admin
 router.use(requireAdmin);
@@ -27,5 +31,12 @@ router.get('/promos', listPromos);
 router.post('/promos', createPromo);
 router.put('/promos/:id', updatePromo);
 router.delete('/promos/:id', deletePromo);
+
+// Referral fraud queue — extra X-Admin-Password header required.
+router.get('/referrals/flagged',                 requireAdminPassword, listFlagged);
+router.post('/referrals/:id/approve',            requireAdminPassword, approveFlagged);
+router.post('/referrals/:id/reject',             requireAdminPassword, rejectFlagged);
+router.post('/referrals/payouts/:id/mark-paid',  requireAdminPassword, markPayoutSent);
+router.get('/referrals/funnel',                  requireAdminPassword, getFunnel);
 
 module.exports = router;

@@ -14,6 +14,7 @@
 
 const supabase = require('../../services/supabaseClient');
 const { calculateReward } = require('./calculateReward');
+const { logEvent } = require('../events');
 
 const VEST_DAYS = 14;
 
@@ -62,6 +63,17 @@ async function onPaidConversion(userId) {
         reward_vested_at: vestedAt.toISOString(),
       })
       .eq('id', row.id);
+
+    await logEvent('referral_paid', {
+      userId: row.referrer_id,
+      metadata: {
+        referral_id: row.id,
+        referee_id: userId,
+        reward_cents: reward.rewardCents,
+        referral_number: reward.referralNumber,
+        multiplier: reward.multiplier,
+      },
+    });
 
     // Grant milestone tiers on the referrer.
     if (reward.grantAmbassador && tier === 'standard') {

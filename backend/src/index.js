@@ -19,6 +19,7 @@ const subscriptionRoutes = require('./routes/subscription');
 const promoRoutes = require('./routes/promo');
 const referralRoutes = require('./routes/referral');
 const giftRoutes = require('./routes/gift');
+const cronRoutes = require('./routes/cron');
 const { handleWebhook } = require('./controllers/subscriptionController');
 
 const app = express();
@@ -62,6 +63,7 @@ app.use('/api/subscription', subscriptionRoutes);
 app.use('/api/promo', promoRoutes);
 app.use('/api/referral', referralRoutes);
 app.use('/api/gift', giftRoutes);
+app.use('/api/cron', cronRoutes);
 
 // Global error handler
 app.use((err, req, res, next) => {

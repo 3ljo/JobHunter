@@ -13,6 +13,7 @@
 const crypto = require('crypto');
 const supabase = require('../services/supabaseClient');
 const { hashIp, getClientIp } = require('../lib/referrals/hashIp');
+const { logEvent } = require('../lib/events');
 
 // 8-char URL-safe code. Alphabet excludes look-alike chars (0/O, 1/I/L).
 const ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
@@ -139,6 +140,11 @@ async function attributeOnSignup({ refCode, newUserId, newUserEmail, ipHash, fin
       },
       { onConflict: 'referrer_id, referee_email' }
     );
+
+    await logEvent('referral_signup', {
+      userId: newUserId,
+      metadata: { referrer_id: codeRow.user_id, referral_code: codeRow.code, status },
+    });
   } catch (err) {
     console.warn('attributeOnSignup failed:', err.message);
   }
@@ -245,6 +251,8 @@ const trackClick = async (req, res) => {
       return res.json({ valid: false });
     }
 
+    await logEvent('referral_clicked', { metadata: { code } });
+
     // (Intentionally not creating a referrals row here — we do that at
     // signup, when we actually know the referee_email. Clicks-without-
     // signup get no persistent record, just a cookie on the visitor.)
@@ -304,6 +312,11 @@ const requestPayout = async (req, res) => {
         .update({ status: 'paid_out', reward_paid_at: new Date().toISOString() })
         .in('id', ids);
     }
+
+    await logEvent('payout_requested', {
+      userId,
+      metadata: { amount_cents: total, payout_id: payout.id, referral_count: ids.length },
+    });
 
     return res.json({ payout });
   } catch (err) {

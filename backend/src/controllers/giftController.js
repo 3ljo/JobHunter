@@ -7,6 +7,7 @@
 const supabase = require('../services/supabaseClient');
 const { PLANS } = require('../services/stripeService');
 const ls = require('../services/lemonSqueezyService');
+const { logEvent } = require('../lib/events');
 
 function canonicalFrontend() {
   const raw = process.env.FRONTEND_URL || '';
@@ -150,6 +151,11 @@ const redeemGift = async (req, res) => {
         redeemed_by_user_id: req.user.id,
       })
       .eq('id', gift.id);
+
+    await logEvent('gift_pass_redeemed', {
+      userId: req.user.id,
+      metadata: { gift_id: gift.id, buyer_user_id: gift.buyer_user_id, pass_code: gift.pass_code },
+    });
 
     return res.json({
       ok: true,

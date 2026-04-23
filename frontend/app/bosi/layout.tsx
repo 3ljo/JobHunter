@@ -4,13 +4,14 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import AdminGuard from '@/components/admin/AdminGuard';
-import { LayoutDashboard, Users, BarChart3, Settings, ArrowLeft, Menu, X, Tag } from 'lucide-react';
+import { LayoutDashboard, Users, BarChart3, Settings, ArrowLeft, Menu, X, Tag, ShieldAlert } from 'lucide-react';
 
 const NAV = [
   { href: '/bosi', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/bosi/users', label: 'Users', icon: Users },
   { href: '/bosi/usage', label: 'Usage & Costs', icon: BarChart3 },
   { href: '/bosi/promos', label: 'Promo Codes', icon: Tag },
+  { href: '/bosi/referrals', label: 'Referral Fraud', icon: ShieldAlert },
   { href: '/bosi/settings', label: 'Settings', icon: Settings },
 ] as const;
 

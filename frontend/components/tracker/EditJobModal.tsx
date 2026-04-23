@@ -10,10 +10,12 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { updateTrackerJob } from '@/lib/api';
+import { getMyReferralInfo, updateTrackerJob } from '@/lib/api';
 import { TrackerJob } from '@/types';
 import toast from 'react-hot-toast';
 import { Check } from 'lucide-react';
+import ShareCardModal from '@/components/share/ShareCardModal';
+import { useAccountStore } from '@/store/accountStore';
 
 interface EditJobModalProps {
   job: TrackerJob | null;
@@ -40,6 +42,14 @@ export default function EditJobModal({ job, open, onClose, onUpdated }: EditJobM
     notes: '',
   });
 
+  // Share-card state — opened when status transitions to 'offer'.
+  const [shareOpen, setShareOpen] = useState(false);
+  const [shareImgUrl, setShareImgUrl] = useState('');
+  const [shareCompany, setShareCompany] = useState('');
+  const [shareRefUrl, setShareRefUrl] = useState('');
+  const { profile } = useAccountStore();
+  const firstName = (profile?.full_name || '').split(' ')[0] || '';
+
   useEffect(() => {
     if (job) {
       setForm({
@@ -63,6 +73,32 @@ export default function EditJobModal({ job, open, onClose, onUpdated }: EditJobM
     try {
       await updateTrackerJob(job.id, form);
       toast.success('Job updated');
+
+      // If the user just flipped this job to "offer" (from something
+      // else), fire the share-card flow. Non-blocking — we ignore
+      // failure and still close the edit modal.
+      const becameOffer = form.status === 'offer' && job.status !== 'offer';
+      if (becameOffer) {
+        try {
+          const refRes = await getMyReferralInfo();
+          const code = refRes.data.code;
+          const company = form.company_name.trim();
+          const params = new URLSearchParams();
+          if (firstName) params.set('name', firstName);
+          if (company) params.set('company', company);
+          if (code) params.set('ref', code);
+          setShareImgUrl(`/api/og/hired?${params.toString()}`);
+          setShareCompany(company);
+          setShareRefUrl(refRes.data.share_url);
+          setShareOpen(true);
+          // Don't close the parent modal yet — the share dialog renders
+          // on top. We close after share is dismissed.
+          return;
+        } catch {
+          /* referral fetch failed, fall through to normal close */
+        }
+      }
+
       onClose();
       onUpdated();
     } catch (err: any) {
@@ -72,7 +108,26 @@ export default function EditJobModal({ job, open, onClose, onUpdated }: EditJobM
     }
   };
 
+  const handleShareClose = () => {
+    setShareOpen(false);
+    onClose();
+    onUpdated();
+  };
+
   return (
+    <>
+    <ShareCardModal
+      open={shareOpen}
+      onClose={handleShareClose}
+      title="🎉 You landed it — share the win"
+      description="Download the badge or post it to LinkedIn. Every referral-link conversion earns you $10+."
+      imageUrl={shareImgUrl}
+      downloadFilename={`cvclimber-hired${shareCompany ? '-' + shareCompany.toLowerCase().replace(/[^a-z0-9]/g, '-') : ''}.png`}
+      shareText={`Just accepted an offer${shareCompany ? ` at ${shareCompany}` : ''}! 🎉\n\nCvClimber helped me tailor every CV + cover letter and practice the interview. Try it free:`}
+      referralUrl={shareRefUrl}
+      eventName="hire_share"
+      eventMeta={{ company: shareCompany || null }}
+    />
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent>
         <DialogHeader>
@@ -156,5 +211,6 @@ export default function EditJobModal({ job, open, onClose, onUpdated }: EditJobM
         </form>
       </DialogContent>
     </Dialog>
+    </>
   );
 }

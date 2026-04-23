@@ -7,6 +7,7 @@ const {
   trackClick,
   requestPayout,
 } = require('../controllers/referralController');
+const { logEvent, KNOWN_EVENTS } = require('../lib/events');
 
 // Basic in-memory rate limit per IP for the unauth tracking endpoint.
 // Cheap, no extra deps. 30 req/min per IP is plenty for ?ref landings.
@@ -35,5 +36,17 @@ function rateLimit(req, res, next) {
 router.get('/me',       requireAuth, getMyReferralInfo);
 router.post('/track',   rateLimit,   trackClick);
 router.post('/payout',  requireAuth, requestPayout);
+
+// Client-side telemetry sink for share-card opens (ats_share, hire_share).
+// Authenticated so we get the user_id. Ignores unknown event names silently.
+router.post('/event', requireAuth, rateLimit, async (req, res) => {
+  const { event_name, metadata } = req.body || {};
+  const allowed = new Set(['ats_share', 'hire_share']);
+  if (!allowed.has(event_name)) {
+    return res.status(400).json({ error: 'Unknown event_name' });
+  }
+  await logEvent(event_name, { userId: req.user.id, metadata: metadata || {} });
+  return res.json({ ok: true });
+});
 
 module.exports = router;

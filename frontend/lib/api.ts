@@ -218,6 +218,35 @@ export const updateAdminPromo = (id: string, data: Record<string, any>) =>
 export const deleteAdminPromo = (id: string) =>
   api.delete(`/api/admin/promos/${id}`);
 
+// Admin — referral fraud queue (requires X-Admin-Password header)
+export interface FlaggedReferral {
+  id: string;
+  referrer_id: string;
+  referrer_email: string;
+  referee_email: string | null;
+  referral_code: string;
+  status: string;
+  reward_amount_cents: number;
+  created_at: string;
+  ip_address_hash: string | null;
+  device_fingerprint: string | null;
+}
+
+export const adminListFlaggedReferrals = (password: string) =>
+  api.get<{ flagged: FlaggedReferral[] }>('/api/admin/referrals/flagged', {
+    headers: { 'X-Admin-Password': password },
+  });
+
+export const adminApproveReferral = (id: string, password: string) =>
+  api.post<{ ok: true }>(`/api/admin/referrals/${id}/approve`, {}, {
+    headers: { 'X-Admin-Password': password },
+  });
+
+export const adminRejectReferral = (id: string, password: string) =>
+  api.post<{ ok: true }>(`/api/admin/referrals/${id}/reject`, {}, {
+    headers: { 'X-Admin-Password': password },
+  });
+
 // Referrals — Hired & Help
 export interface ReferralRecent {
   id: string;
@@ -256,6 +285,15 @@ export const requestReferralPayout = (paypal_email: string) =>
   api.post<{ payout: { id: string; amount_cents: number; status: string } }>(
     '/api/referral/payout',
     { paypal_email }
+  );
+
+export const logReferralEvent = (event_name: 'ats_share' | 'hire_share', metadata: Record<string, unknown> = {}) =>
+  api.post<{ ok: true }>('/api/referral/event', { event_name, metadata });
+
+export const adminGetFunnel = (password: string) =>
+  api.get<{ funnel: Array<{ event_name: string; count: number }>; since: string }>(
+    '/api/admin/referrals/funnel',
+    { headers: { 'X-Admin-Password': password } }
   );
 
 // Gift-a-Pass

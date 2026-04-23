@@ -17,10 +17,14 @@ import { downloadCVPdf } from '@/lib/api';
 import { useCVAnalysisStore } from '@/store/cvAnalysisStore';
 import { useCoverLetterStore } from '@/store/coverLetterStore';
 import { useSubscriptionStore } from '@/store/subscriptionStore';
+import { useAccountStore } from '@/store/accountStore';
+import { getMyReferralInfo } from '@/lib/api';
+import ShareCardModal from '@/components/share/ShareCardModal';
 import toast from 'react-hot-toast';
 import {
   Download, RotateCcw, ArrowRight, TrendingUp, FileSignature,
   Sparkles, Copy, Check, X, Send, Palette, ChevronDown, ChevronUp,
+  Share2,
 } from 'lucide-react';
 
 const tones = [
@@ -66,8 +70,33 @@ export default function CVPage() {
   const [templatesExpanded, setTemplatesExpanded] = useState(false);
   const [downloadDialogOpen, setDownloadDialogOpen] = useState(false);
 
+  // Share-card state — visible when ATS score ≥ 90.
+  const { profile } = useAccountStore();
+  const [shareOpen, setShareOpen] = useState(false);
+  const [shareImgUrl, setShareImgUrl] = useState('');
+  const [shareRefUrl, setShareRefUrl] = useState('');
+  const [shareScore, setShareScore] = useState(0);
+
   const activeTemplateMeta = TEMPLATES[template];
   const showPhotoSlot = activeTemplateMeta?.supportsPhoto;
+
+  const openShareCard = async (score: number) => {
+    const firstName = (profile?.full_name || '').split(' ')[0] || '';
+    try {
+      const refRes = await getMyReferralInfo();
+      const code = refRes.data.code;
+      const params = new URLSearchParams();
+      if (firstName) params.set('name', firstName);
+      params.set('score', String(score));
+      if (code) params.set('ref', code);
+      setShareImgUrl(`/api/og/score?${params.toString()}`);
+      setShareRefUrl(refRes.data.share_url);
+      setShareScore(score);
+      setShareOpen(true);
+    } catch {
+      toast.error('Could not load your referral code — try again in a moment.');
+    }
+  };
 
   const {
     inlineResult: clResult,
@@ -314,6 +343,19 @@ export default function CVPage() {
   const scoreDelta = result.scores.projected_ats - result.scores.current_ats;
 
   return (
+    <>
+    <ShareCardModal
+      open={shareOpen}
+      onClose={() => setShareOpen(false)}
+      title={`${shareScore}% ATS — share your win`}
+      description="Download the card or post it to LinkedIn/X. Every click on your referral link in the post earns you $10+ if it converts."
+      imageUrl={shareImgUrl}
+      downloadFilename={`cvclimber-ats-${shareScore}.png`}
+      shareText={`Just hit ${shareScore}% ATS compatibility on my CV 🎯\n\nCvClimber's AI does the keyword match, formatting check, and bullet-quality audit for me. Try it free:`}
+      referralUrl={shareRefUrl}
+      eventName="ats_share"
+      eventMeta={{ score: shareScore }}
+    />
     <div
       style={{
         width: '100vw',
@@ -456,6 +498,18 @@ export default function CVPage() {
 
               {/* actions */}
               <div className="flex flex-wrap items-center justify-center gap-2 w-full sm:w-auto">
+                {result.scores.current_ats >= 90 && (
+                  <button
+                    onClick={() => openShareCard(result.scores.current_ats)}
+                    className="flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition-all duration-200"
+                    style={{ background: 'rgba(52,211,153,0.18)', border: '1px solid rgba(52,211,153,0.35)', color: '#34d399' }}
+                    onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(52,211,153,0.28)'; }}
+                    onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(52,211,153,0.18)'; }}
+                  >
+                    <Share2 className="h-4 w-4" />
+                    Share your win
+                  </button>
+                )}
                 <button
                   onClick={handleDownload}
                   disabled={downloading}
@@ -936,5 +990,6 @@ export default function CVPage() {
         </div>
       )}
     </div>
+    </>
   );
 }

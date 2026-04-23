@@ -14,6 +14,7 @@ const { /* stripe, */ PLANS, getPlanLimits, canonicalPlan } = require('../servic
 const { getTodayCount } = require('../services/usageService');
 const ls = require('../services/lemonSqueezyService');
 const { onPaidConversion, onRefund } = require('../lib/referrals/webhookHooks');
+const { logEvent } = require('../lib/events');
 
 // FRONTEND_URL may be a comma-separated list (used by CORS). For redirect URLs
 // we only want the canonical first entry, otherwise we'd redirect users to a
@@ -290,6 +291,10 @@ const handleWebhook = async (req, res) => {
             message: giftMessage,
             lemonsqueezy_order_id: subId,
           }, { onConflict: 'recipient_email' });
+          await logEvent('gift_pass_purchased', {
+            userId: buyerId,
+            metadata: { recipient_email: recipient, order_id: subId, pass_code: passCode },
+          });
           // (Email notification to recipient is a TODO — the record is
           // the source of truth; the UI will let the buyer copy the
           // redeem link manually until an email service is wired up.)
