@@ -114,11 +114,15 @@ async function looksLikeSelfReferral({ referrerId, refereeEmail, refereeIpHash }
 // visible in Render logs (attribution bugs are otherwise invisible —
 // nothing shows up on the referrer's dashboard and the signup response
 // looks fine to the user).
+// Returns a debug trace string so authController can surface the result
+// in the register response during diagnosis. Remove the trace return
+// value once attribution is known to work end-to-end.
 async function attributeOnSignup({ refCode, newUserId, newUserEmail, ipHash, fingerprint }) {
   console.log('[attributeOnSignup] called', { refCode, newUserId, newUserEmail, hasIpHash: !!ipHash });
   if (!refCode || !newUserId || !newUserEmail) {
-    console.warn('[attributeOnSignup] aborted — missing args', { refCode, newUserId, newUserEmail });
-    return;
+    const msg = `missing args refCode=${!!refCode} newUserId=${!!newUserId} newUserEmail=${!!newUserEmail}`;
+    console.warn('[attributeOnSignup]', msg);
+    return { ok: false, stage: 'args', msg };
   }
 
   try {
@@ -131,30 +135,24 @@ async function attributeOnSignup({ refCode, newUserId, newUserEmail, ipHash, fin
       .maybeSingle();
 
     if (codeLookupErr) {
-      console.warn('[attributeOnSignup] code lookup error:', codeLookupErr.message, codeLookupErr.code);
-      return;
+      return { ok: false, stage: 'code_lookup', msg: codeLookupErr.message, code: codeLookupErr.code };
     }
-    if (!codeRow) {
-      console.warn('[attributeOnSignup] code not found:', normalizedCode);
-      return;
-    }
-    if (!codeRow.is_active) {
-      console.warn('[attributeOnSignup] code inactive:', normalizedCode);
-      return;
-    }
-    if (codeRow.user_id === newUserId) {
-      console.warn('[attributeOnSignup] trivial self-ref — referrer_id == referee_id');
-      return;
-    }
+    if (!codeRow) return { ok: false, stage: 'code_not_found', msg: normalizedCode };
+    if (!codeRow.is_active) return { ok: false, stage: 'code_inactive', msg: normalizedCode };
+    if (codeRow.user_id === newUserId) return { ok: false, stage: 'trivial_self_ref' };
 
-    const isSelfRef = await looksLikeSelfReferral({
-      referrerId: codeRow.user_id,
-      refereeEmail: newUserEmail,
-      refereeIpHash: ipHash,
-    });
+    let isSelfRef = false;
+    try {
+      isSelfRef = await looksLikeSelfReferral({
+        referrerId: codeRow.user_id,
+        refereeEmail: newUserEmail,
+        refereeIpHash: ipHash,
+      });
+    } catch (e) {
+      return { ok: false, stage: 'self_ref_check_threw', msg: e.message };
+    }
 
     const status = isSelfRef ? 'fraud' : 'signed_up';
-    console.log('[attributeOnSignup] inserting row', { referrer_id: codeRow.user_id, status });
 
     const { error: upsertErr } = await supabase.from('referrals').upsert(
       {
@@ -170,17 +168,20 @@ async function attributeOnSignup({ refCode, newUserId, newUserEmail, ipHash, fin
     );
 
     if (upsertErr) {
-      console.error('[attributeOnSignup] referrals upsert FAILED:', upsertErr.message, upsertErr.code, upsertErr.details, upsertErr.hint);
-      return;
+      return {
+        ok: false, stage: 'upsert',
+        msg: upsertErr.message, code: upsertErr.code,
+        details: upsertErr.details, hint: upsertErr.hint,
+      };
     }
-    console.log('[attributeOnSignup] row inserted successfully, status=', status);
 
     await logEvent('referral_signup', {
       userId: newUserId,
       metadata: { referrer_id: codeRow.user_id, referral_code: codeRow.code, status },
     });
+    return { ok: true, status, referrer_id: codeRow.user_id };
   } catch (err) {
-    console.error('[attributeOnSignup] threw:', err.message, err.stack);
+    return { ok: false, stage: 'threw', msg: err.message };
   }
 }
 

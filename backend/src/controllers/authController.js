@@ -71,33 +71,36 @@ const register = async (req, res) => {
     }
 
     // Background post-signup work. Wrapped in a try/catch so referral
-    // plumbing never blocks or fails a signup.
+    // plumbing never blocks or fails a signup. The attribution result
+    // is stashed in `_debug` on the response temporarily so we can
+    // diagnose attribution failures from the frontend Network tab.
+    // TODO: remove _debug once referral attribution is verified working.
+    let _debug = null;
     if (data.user) {
       try {
-        // Every new user gets their own referral code eagerly so it's
-        // ready on first dashboard render.
         await ensureCodeForUser(data.user.id);
 
-        // If they arrived via ?ref=CODE (forwarded by the frontend),
-        // record the attribution with IP hash + device fingerprint.
         if (ref_code) {
           const ipHash = hashIp(getClientIp(req));
-          await attributeOnSignup({
+          _debug = await attributeOnSignup({
             refCode: ref_code,
             newUserId: data.user.id,
             newUserEmail: data.user.email || email,
             ipHash,
             fingerprint: device_fingerprint || null,
           });
+        } else {
+          _debug = { ok: false, stage: 'no_ref_code_in_body' };
         }
       } catch (bgErr) {
-        console.warn('post-signup referral work failed:', bgErr.message);
+        _debug = { ok: false, stage: 'register_catch', msg: bgErr.message };
       }
     }
 
     return res.status(201).json({
       message: 'Verification email sent',
       user: data.user,
+      _debug,
     });
   } catch (err) {
     return res.status(400).json({ error: err.message });
