@@ -6,8 +6,9 @@ import Link from 'next/link';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { registerUser, resendVerification, trackReferralClick } from '@/lib/api';
+import { friendlyError } from '@/lib/errorMessages';
 import toast from 'react-hot-toast';
-import { Mail, Lock, ShieldCheck, Check, Eye, EyeOff, MailCheck, Gift } from 'lucide-react';
+import { Mail, Lock, ShieldCheck, Check, X as XIcon, Eye, EyeOff, MailCheck, Gift } from 'lucide-react';
 import { GoogleSignInButton } from '@/components/auth/GoogleSignInButton';
 import { getReferralCookie, setReferralCookie, clearReferralCookie, getDeviceFingerprint } from '@/lib/referralCookie';
 
@@ -148,7 +149,7 @@ function RegisterForm() {
           { duration: 8000 }
         );
       } else {
-        toast.error(err.response?.data?.error || 'Failed to create account');
+        toast.error(friendlyError(err, 'register'));
       }
     } finally {
       setLoading(false);
@@ -161,13 +162,17 @@ function RegisterForm() {
       await resendVerification(email);
       toast.success('Verification email resent');
     } catch (err: any) {
-      toast.error(err.response?.data?.error || 'Failed to resend');
+      toast.error(friendlyError(err, 'verify'));
     } finally {
       setResending(false);
     }
   };
 
   const passwordsMatch = confirmPassword.length > 0 && password === confirmPassword;
+  // Negative-state indicator: show the red X only after the user has
+  // typed enough that they've clearly finished the field (length >=
+  // min password length) so we don't nag while they're still typing.
+  const passwordsMismatch = confirmPassword.length >= 6 && password !== confirmPassword;
 
   return (
     <div className="relative flex min-h-screen overflow-hidden" style={{ background: '#101435' }}>
@@ -335,13 +340,24 @@ function RegisterForm() {
                   placeholder="Confirm your password"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
-                  className="h-12 rounded-xl border-white/10 bg-white/[0.04] pl-10 pr-16 text-sm font-500 text-white placeholder:text-white/25 transition-all focus:border-violet-500/50 focus:ring-2 focus:ring-violet-500/20"
-                  style={{ backdropFilter: 'blur(10px)' }}
+                  className="h-12 rounded-xl bg-white/[0.04] pl-10 pr-16 text-sm font-500 text-white placeholder:text-white/25 transition-all focus:ring-2"
+                  style={{
+                    backdropFilter: 'blur(10px)',
+                    borderColor: passwordsMismatch
+                      ? 'rgba(239,68,68,0.55)'
+                      : 'rgba(255,255,255,0.1)',
+                    boxShadow: passwordsMismatch
+                      ? '0 0 0 1px rgba(239,68,68,0.35)'
+                      : undefined,
+                  }}
                   required
                 />
                 <div className="absolute right-3.5 top-1/2 -translate-y-1/2 flex items-center gap-1.5">
                   {passwordsMatch && (
                     <Check className="h-4 w-4 text-emerald-400" />
+                  )}
+                  {passwordsMismatch && (
+                    <XIcon className="h-4 w-4 text-red-400" />
                   )}
                   <button
                     type="button"
@@ -353,6 +369,11 @@ function RegisterForm() {
                   </button>
                 </div>
               </div>
+              {passwordsMismatch && (
+                <p className="text-[11px] text-red-400 pt-1" style={{ fontWeight: 500 }}>
+                  Passwords don't match.
+                </p>
+              )}
             </div>
 
             {/* Referral code — collapsible. Pre-expanded + pre-filled if

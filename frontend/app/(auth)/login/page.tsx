@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { loginUser, resendVerification, attributeReferral } from '@/lib/api';
+import { friendlyError } from '@/lib/errorMessages';
 import { useAuthStore } from '@/store/authStore';
 import toast from 'react-hot-toast';
 import { Mail, Lock, Eye, EyeOff } from 'lucide-react';
@@ -83,7 +84,7 @@ function LoginForm() {
         setUnconfirmed(true);
         toast.error('Please verify your email first');
       } else {
-        toast.error(err.response?.data?.error || 'Failed to sign in');
+        toast.error(friendlyError(err, 'login'));
       }
     } finally {
       setLoading(false);
@@ -96,7 +97,7 @@ function LoginForm() {
       await resendVerification(email);
       toast.success('Verification email resent');
     } catch (err: any) {
-      toast.error(err.response?.data?.error || 'Failed to resend');
+      toast.error(friendlyError(err, 'verify'));
     } finally {
       setResending(false);
     }

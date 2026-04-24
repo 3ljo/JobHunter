@@ -41,7 +41,25 @@ export default function Navbar() {
   // landed after they navigated away no longer sees a stale FREE pill.
   useEffect(() => {
     fetchSubscription();
+    // Close the mobile drawer on route changes (belt-and-braces — links
+    // inside the drawer already call setMobileOpen(false), but a
+    // router.push() invoked from a deeper component wouldn't).
+    setMobileOpen(false);
   }, [fetchSubscription, pathname]);
+
+  // Refresh plan when the user returns to the tab. If they upgraded in
+  // another tab (or on mobile) and come back to this one, the webhook
+  // has typically landed and the navbar should reflect it without
+  // needing an F5. Uses the store's refresh (bypasses the 60s TTL).
+  useEffect(() => {
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        useSubscriptionStore.getState().refresh();
+      }
+    };
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => document.removeEventListener('visibilitychange', onVisibility);
+  }, []);
 
   // Only derive the visible badge once we actually know the plan — otherwise
   // a null subscription would flash "Free" on first render for paid users.
