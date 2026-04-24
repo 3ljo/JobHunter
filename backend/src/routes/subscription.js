@@ -4,13 +4,18 @@
 const express = require('express');
 const router = express.Router();
 const requireAuth = require('../middleware/requireAuth');
-const { getSubscription, createCheckout, createPortal } = require('../controllers/subscriptionController');
+const { getSubscription, createCheckout, createPortal, configCheck } = require('../controllers/subscriptionController');
 const { getSetting } = require('../services/settingsService');
 
 // All routes except webhook require auth
 router.get('/', requireAuth, getSubscription);
 router.post('/checkout', requireAuth, createCheckout);
 router.post('/portal', requireAuth, createPortal);
+
+// Shape-only LS config diagnostic. Guarded by ADMIN_PASSWORD header in
+// the controller — exposes booleans + an LS liveness status, never
+// secret values.
+router.get('/config-check', configCheck);
 
 // Public — USDT wallet config for checkout page
 router.get('/usdt-config', (req, res) => {

@@ -126,9 +126,43 @@ const createCheckout = async (req, res) => {
 
     return res.json({ url: checkoutUrl });
   } catch (err) {
+    // Full error (with LS response body) goes to server logs only —
+    // a raw LS 401 body leaked to the client would both confuse the
+    // user and potentially echo IDs we don't need to expose.
     console.error('LS checkout error:', err.message);
-    return res.status(500).json({ error: err.message });
+    if (err.lsStatus === 401 || err.lsStatus === 403) {
+      return res.status(503).json({
+        error: 'Payment provider is temporarily unavailable. Please try again in a moment or contact support.',
+        code: 'payment_provider_unavailable',
+      });
+    }
+    return res.status(500).json({
+      error: 'Could not start checkout. Please try again.',
+      code: 'checkout_failed',
+    });
   }
+};
+
+// GET /api/subscription/config-check — admin-gated liveness probe for the
+// Lemon Squeezy config. Returns shape-only booleans + a round-trip ping
+// to LS. Never reveals secret values. Gated with the same ADMIN_PASSWORD
+// header that protects /bosi/* so random visitors can't fingerprint the
+// setup.
+const configCheck = async (req, res) => {
+  const expected = process.env.ADMIN_PASSWORD;
+  const provided = req.headers['x-admin-password'];
+  if (!expected || !provided || provided !== expected) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+  const config = ls.inspectConfig();
+  const ping = await ls.pingApi();
+  return res.json({
+    config,
+    ping,
+    overall_ok: config.api_key_shape === 'ok' &&
+                config.store_id_shape === 'ok' &&
+                ping.ok,
+  });
 };
 
 // POST /api/subscription/portal — Return the user's Lemon Squeezy customer portal URL.
@@ -553,4 +587,4 @@ function resolvePlanFromStripePriceId(priceId) {
 
    ════════════════════════════════════════════════════════════════════════════ */
 
-module.exports = { getSubscription, createCheckout, createPortal, handleWebhook };
+module.exports = { getSubscription, createCheckout, createPortal, handleWebhook, configCheck };

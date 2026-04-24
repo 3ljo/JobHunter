@@ -70,7 +70,12 @@ const createCheckout = async ({ variantId, userId, email, plan, interval, succes
 
   if (!res.ok) {
     const errText = await res.text();
-    throw new Error(`LS checkout create failed (${res.status}): ${errText}`);
+    // Attach the HTTP status so callers can branch on auth failures
+    // without string-matching the body. Full body goes to server logs
+    // only — never back to the client.
+    const e = new Error(`LS checkout create failed (${res.status}): ${errText}`);
+    e.lsStatus = res.status;
+    throw e;
   }
 
   const json = await res.json();
@@ -141,11 +146,61 @@ const resolveIntervalFromVariantId = (variantId) => {
   return 'month';
 };
 
+// Shape-only introspection for the /api/subscription/config-check
+// endpoint. NEVER returns secret values — only booleans and coarse
+// hints so a misconfig can be diagnosed without exposing keys.
+const inspectConfig = () => {
+  const key = apiKey() || '';
+  const sid = storeId() || '';
+  const wh = webhookSecret() || '';
+  // LS API keys are JWT-ish (three dot-separated base64 segments).
+  // Anything else is almost certainly wrong / truncated / whitespace-padded.
+  let keyShape = 'missing';
+  if (key) {
+    if (key !== key.trim()) keyShape = 'whitespace';
+    else if (key.split('.').length === 3) keyShape = 'ok';
+    else keyShape = 'wrong_shape';
+  }
+  const storeShape = !sid ? 'missing' : /^\d+$/.test(sid) ? 'ok' : 'wrong_shape';
+  return {
+    api_key_present: !!key,
+    api_key_shape: keyShape,
+    api_key_length: key.length,
+    store_id_present: !!sid,
+    store_id_shape: storeShape,
+    webhook_secret_present: !!wh,
+  };
+};
+
+// Live round-trip against LS /v1/users/me. Returns { ok, status, hint }.
+// A 200 means the key is live and authorized; 401 means it's invalid/revoked.
+// Never surfaces the response body — only the status code.
+const pingApi = async () => {
+  if (!apiKey()) return { ok: false, status: 0, hint: 'api_key_missing' };
+  try {
+    const res = await fetch(`${API_BASE}/users/me`, {
+      headers: {
+        Accept: 'application/vnd.api+json',
+        Authorization: `Bearer ${apiKey()}`,
+      },
+    });
+    let hint = 'ok';
+    if (res.status === 401) hint = 'unauthenticated_check_key';
+    else if (res.status === 403) hint = 'forbidden_check_scope';
+    else if (!res.ok) hint = `unexpected_${res.status}`;
+    return { ok: res.ok, status: res.status, hint };
+  } catch (err) {
+    return { ok: false, status: 0, hint: 'network_error' };
+  }
+};
+
 module.exports = {
   getVariantId,
   createCheckout,
   verifyWebhook,
   mapStatus,
+  inspectConfig,
+  pingApi,
   resolvePlanFromVariantId,
   resolveIntervalFromVariantId,
 };
