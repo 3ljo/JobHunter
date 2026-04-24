@@ -90,31 +90,58 @@ const createCheckout = async ({ variantId, userId, email, plan, interval, succes
 // Used by the /resync endpoint to self-heal users whose webhook didn't
 // land. LS /v1/subscriptions supports `filter[user_email]=...` via JSON:API.
 // Returns the full subscription object or null.
+//
+// Keeps the query minimal (filter[store_id] + filter[user_email]) —
+// LS's JSON:API has been finicky about compound sort + page params on
+// certain plans, and we only need the 5 most recent anyway. Sorting
+// client-side on the returned array is reliable.
 const findLatestSubscriptionByEmail = async (email) => {
-  if (!apiKey() || !storeId() || !email) return null;
-  const params = new URLSearchParams({
-    'filter[store_id]': String(storeId()),
-    'filter[user_email]': email,
-    // Latest first — if the user re-subscribed we want the freshest row.
-    sort: '-created_at',
-    'page[size]': '5',
-  });
-  const res = await fetch(`${API_BASE}/subscriptions?${params.toString()}`, {
+  if (!apiKey()) {
+    const e = new Error('LS not configured: LEMONSQUEEZY_API_KEY missing');
+    e.lsStatus = 0; e.lsHint = 'api_key_missing';
+    throw e;
+  }
+  if (!storeId()) {
+    const e = new Error('LS not configured: LEMONSQUEEZY_STORE_ID missing');
+    e.lsStatus = 0; e.lsHint = 'store_id_missing';
+    throw e;
+  }
+  if (!email) return null;
+
+  const params = new URLSearchParams();
+  params.append('filter[store_id]', String(storeId()));
+  params.append('filter[user_email]', email);
+
+  const url = `${API_BASE}/subscriptions?${params.toString()}`;
+  const res = await fetch(url, {
     headers: {
       Accept: 'application/vnd.api+json',
       Authorization: `Bearer ${apiKey()}`,
     },
   });
+
   if (!res.ok) {
     const body = await res.text();
-    const err = new Error(`LS subscriptions lookup failed (${res.status}): ${body}`);
+    // Surface the full body and URL in server logs. LS error bodies
+    // contain detail strings like "The filter.user_email field is
+    // required." — invaluable for debugging but still safe (no secrets).
+    console.error(`LS /subscriptions lookup failed: status=${res.status} url=${url} body=${body}`);
+    const err = new Error(`LS lookup ${res.status}`);
     err.lsStatus = res.status;
+    err.lsBody = body;
     throw err;
   }
+
   const json = await res.json();
   const rows = Array.isArray(json?.data) ? json.data : [];
   if (rows.length === 0) return null;
-  // Prefer an active row over a cancelled one.
+
+  // Sort client-side to avoid LS sort-param quirks.
+  rows.sort((a, b) => {
+    const ta = new Date(a?.attributes?.created_at || 0).getTime();
+    const tb = new Date(b?.attributes?.created_at || 0).getTime();
+    return tb - ta;
+  });
   const active = rows.find((r) => r?.attributes?.status === 'active');
   return active || rows[0];
 };

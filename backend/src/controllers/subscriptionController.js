@@ -159,14 +159,32 @@ const resyncSubscription = async (req, res) => {
     try {
       lsSub = await ls.findLatestSubscriptionByEmail(email);
     } catch (err) {
-      console.error('resync: LS lookup failed:', err.message);
+      console.error(
+        `resync: LS lookup failed for user ${userId} email=${email} status=${err.lsStatus} hint=${err.lsHint || 'n/a'} body=${err.lsBody || 'n/a'}`
+      );
+      // Surface actionable hints to the client. LS error bodies are
+      // non-secret ("The store_id field must be a number", etc).
+      // Helps users / support tell the three cases apart:
+      //   - our backend isn't configured (api_key_missing)
+      //   - our key was rotated / has no scope (401/403)
+      //   - LS filter rejected (400/422) — our bug
+      if (err.lsHint === 'api_key_missing' || err.lsHint === 'store_id_missing') {
+        return res.status(503).json({
+          error: 'Payment provider is not configured. Please contact support.',
+          code: 'payment_provider_unconfigured',
+        });
+      }
       if (err.lsStatus === 401 || err.lsStatus === 403) {
         return res.status(503).json({
-          error: 'Payment provider temporarily unavailable.',
+          error: 'Payment provider temporarily unavailable. Please contact support if this persists.',
           code: 'payment_provider_unavailable',
         });
       }
-      return res.status(502).json({ error: 'Could not query payment provider' });
+      return res.status(502).json({
+        error: 'Could not query payment provider',
+        code: 'payment_provider_error',
+        ls_status: err.lsStatus || null,
+      });
     }
 
     if (!lsSub) {
