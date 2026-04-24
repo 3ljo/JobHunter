@@ -352,6 +352,27 @@ const requestPayout = async (req, res) => {
       return res.status(400).json({ error: 'Valid paypal_email is required' });
     }
 
+    // Idempotency: block concurrent or repeated payout requests while one
+    // is already pending. Without this, a double-click on "Request payout"
+    // creates two payout rows with overlapping referral IDs, and the
+    // optimistic paid_out flip below races — worst case the user ends up
+    // with two pending payouts for the same $20. We check pending+approved
+    // because approved-but-not-yet-sent is the same "locked" state.
+    const { data: openPayouts, error: openPayoutsErr } = await supabase
+      .from('referral_payouts')
+      .select('id, status, amount_cents')
+      .eq('user_id', userId)
+      .in('status', ['pending', 'approved'])
+      .limit(1);
+    if (openPayoutsErr) throw openPayoutsErr;
+    if (openPayouts && openPayouts.length > 0) {
+      return res.status(409).json({
+        error: 'You already have a payout in progress. Please wait for it to complete before requesting another.',
+        code: 'payout_in_progress',
+        pending_payout_id: openPayouts[0].id,
+      });
+    }
+
     // Promote vested rows first — otherwise a user whose reward vested
     // after the nightly cron ran would see "vested" on the dashboard
     // (the UI computes vesting in real time) but get a $0 balance here.
@@ -373,6 +394,22 @@ const requestPayout = async (req, res) => {
       });
     }
 
+    const ids = (confirmed || []).map((r) => r.id);
+
+    // Flip referrals → paid_out FIRST so a racing second request sees
+    // zero 'confirmed' rows (and hits the min-payout check). Only then
+    // create the payout row. If this 2nd step fails, admin can recover
+    // by reading the event log; the referrals row has reward_paid_at
+    // so the money isn't double-spent.
+    if (ids.length > 0) {
+      const { error: updErr } = await supabase
+        .from('referrals')
+        .update({ status: 'paid_out', reward_paid_at: new Date().toISOString() })
+        .in('id', ids)
+        .eq('status', 'confirmed'); // conditional update — only flip rows still confirmed
+      if (updErr) throw updErr;
+    }
+
     const { data: payout, error } = await supabase
       .from('referral_payouts')
       .insert({
@@ -387,17 +424,6 @@ const requestPayout = async (req, res) => {
 
     if (error) throw error;
 
-    // Mark the referrals as paid_out OPTIMISTICALLY — if the manual
-    // PayPal send fails later, admin flips referrals back to 'confirmed'
-    // and the payout row to 'failed'.
-    const ids = (confirmed || []).map((r) => r.id);
-    if (ids.length > 0) {
-      await supabase
-        .from('referrals')
-        .update({ status: 'paid_out', reward_paid_at: new Date().toISOString() })
-        .in('id', ids);
-    }
-
     await logEvent('payout_requested', {
       userId,
       metadata: { amount_cents: total, payout_id: payout.id, referral_count: ids.length },
@@ -405,7 +431,8 @@ const requestPayout = async (req, res) => {
 
     return res.json({ payout });
   } catch (err) {
-    return res.status(500).json({ error: err.message });
+    console.error('requestPayout error:', err.message);
+    return res.status(500).json({ error: 'Could not process payout request' });
   }
 };
 

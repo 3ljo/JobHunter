@@ -15,7 +15,9 @@ router.get('/download/:cv_id', requireAuth, downloadCVPdf);
 router.post('/download/:cv_id', requireAuth, downloadCVPdf);
 router.get('/preview/:cv_id', requireAuth, previewCVPdf);
 router.post('/preview/:cv_id', requireAuth, previewCVPdf);
-router.post('/refine', requireAuth, refineCV);
+// Refine also counts against the CV quota — otherwise a user could
+// call /analyze once and then /refine 1000x and burn unlimited AI.
+router.post('/refine', requireAuth, rateLimitCV, refineCV);
 router.delete('/:cv_id', requireAuth, deleteCVRecord);
 
 module.exports = router;

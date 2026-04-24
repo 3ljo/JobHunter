@@ -301,18 +301,26 @@ const handleWebhook = async (req, res) => {
   const attrs = payload?.data?.attributes || {};
   const subId = payload?.data?.id;
 
-  // Find the user tied to this subscription — prefer the custom_data we injected
-  // at checkout, fall back to looking up by LS subscription ID (for renewals / updates).
+  // Find the user tied to this subscription. Strategy: prefer our OWN
+  // database (by lemonsqueezy_subscription_id) over custom_data, because
+  // custom_data is just a string LS echoes back unvalidated — a crafted
+  // webhook with the right signature secret could spoof user_id. The DB
+  // lookup proves the caller actually owns this subscription. Fall back
+  // to custom_data only for brand-new subscriptions that aren't in our
+  // DB yet (the very first subscription_created event).
   const lookupUser = async () => {
-    if (custom.user_id) return custom.user_id;
     if (subId) {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('subscriptions')
         .select('user_id')
         .eq('lemonsqueezy_subscription_id', subId)
-        .single();
-      return data?.user_id || null;
+        .maybeSingle();
+      if (!error && data?.user_id) return data.user_id;
     }
+    // First-ever event for this sub — no DB row exists yet. Trust the
+    // custom_data we stashed at checkout creation time (same origin,
+    // signed payload).
+    if (custom.user_id) return custom.user_id;
     return null;
   };
 
@@ -372,33 +380,60 @@ const handleWebhook = async (req, res) => {
 
       case 'subscription_cancelled': {
         const userId = await lookupUser();
-        if (!userId) break;
-        await supabase.from('subscriptions').update({
+        if (!userId) {
+          console.warn(`LS subscription_cancelled: no user_id match for sub ${subId}`);
+          break;
+        }
+        const { error } = await supabase.from('subscriptions').update({
           status: ls.mapStatus(attrs.status),
           cancel_at_period_end: true,
           current_period_end: attrs.ends_at || attrs.renews_at || null,
         }).eq('user_id', userId);
+        if (error) {
+          console.error(
+            `LS subscription_cancelled update failed for user ${userId}:`,
+            error.message, error.code, error.details, error.hint
+          );
+        }
         break;
       }
 
       case 'subscription_expired': {
         const userId = await lookupUser();
-        if (!userId) break;
-        await supabase.from('subscriptions').update({
+        if (!userId) {
+          console.warn(`LS subscription_expired: no user_id match for sub ${subId}`);
+          break;
+        }
+        const { error } = await supabase.from('subscriptions').update({
           plan: 'free',
           status: 'canceled',
           lemonsqueezy_subscription_id: null,
           cancel_at_period_end: false,
         }).eq('user_id', userId);
+        if (error) {
+          console.error(
+            `LS subscription_expired update failed for user ${userId}:`,
+            error.message, error.code, error.details, error.hint
+          );
+        }
         break;
       }
 
       case 'subscription_payment_failed': {
         const userId = await lookupUser();
-        if (!userId) break;
-        await supabase.from('subscriptions').update({
+        if (!userId) {
+          console.warn(`LS subscription_payment_failed: no user_id match for sub ${subId}`);
+          break;
+        }
+        const { error } = await supabase.from('subscriptions').update({
           status: 'past_due',
         }).eq('user_id', userId);
+        if (error) {
+          console.error(
+            `LS subscription_payment_failed update failed for user ${userId}:`,
+            error.message, error.code, error.details, error.hint
+          );
+        }
         break;
       }
 
