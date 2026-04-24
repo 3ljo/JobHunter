@@ -23,13 +23,32 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+// Endpoints where a 401 is a *normal* response (bad credentials / invalid
+// reset token / expired verification link) — the calling page handles the
+// error inline. The global redirect-to-login interceptor below only fires
+// for 401s on *authenticated* endpoints (i.e. genuinely expired sessions).
+const UNAUTH_401_ENDPOINTS = [
+  '/api/auth/login',
+  '/api/auth/register',
+  '/api/auth/forgot-password',
+  '/api/auth/resend-verification',
+  '/api/auth/reset-password',
+];
+
 api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      useAuthStore.getState().logout();
-      if (typeof window !== 'undefined') {
-        window.location.href = '/login';
+      // Strip query string and baseURL before comparing so both relative
+      // and absolute request URLs match the allowlist.
+      const url: string = error.config?.url || '';
+      const path = url.split('?')[0];
+      const isUnauthEndpoint = UNAUTH_401_ENDPOINTS.some((e) => path.endsWith(e));
+      if (!isUnauthEndpoint) {
+        useAuthStore.getState().logout();
+        if (typeof window !== 'undefined') {
+          window.location.href = '/login';
+        }
       }
     }
     return Promise.reject(error);
