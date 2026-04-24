@@ -44,12 +44,29 @@ const analyzeCV = async (req, res) => {
     if (!req.file) {
       return res.status(400).json({ error: 'CV file (PDF) is required' });
     }
-    if (!req.body.job_description) {
-      return res.status(400).json({ error: 'Job description is required' });
+    // Job description needs real content — an empty or 1-char string just
+    // burns a CV analysis quota slot and returns a garbage AI response
+    // that crashes downstream when we try to read result.scores. Cap at
+    // ~15k chars (about 3.5k tokens) so a pasted 50KB blob doesn't hit
+    // the AI's context limit and 500 after spending the quota.
+    const jobDescriptionRaw = typeof req.body.job_description === 'string'
+      ? req.body.job_description.trim()
+      : '';
+    if (jobDescriptionRaw.length < 20) {
+      return res.status(400).json({
+        error: 'Job description is too short — please paste at least 20 characters.',
+        code: 'jd_too_short',
+      });
+    }
+    if (jobDescriptionRaw.length > 15000) {
+      return res.status(400).json({
+        error: 'Job description is too long. Please shorten it (max ~15,000 characters).',
+        code: 'jd_too_long',
+      });
     }
 
     uploadedFilePath = req.file.path;
-    const jobDescription = req.body.job_description;
+    const jobDescription = jobDescriptionRaw;
 
     // Stage 1: Parse the PDF
     const cvText = await parsePDF(uploadedFilePath);
@@ -109,20 +126,36 @@ const analyzeCV = async (req, res) => {
   }
 };
 
-// GET /api/cv/history — Get user's CV analysis history
+// GET /api/cv/history — Get user's CV analysis history (paginated).
+// Query params: ?page=1&page_size=20 (page_size capped at 50 so a
+// malicious client can't request 10k rows in one query).
 const getCVHistory = async (req, res) => {
   try {
-    const { data, error } = await supabase
+    const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+    const rawPageSize = parseInt(req.query.page_size, 10) || 20;
+    const pageSize = Math.min(50, Math.max(1, rawPageSize));
+    const from = (page - 1) * pageSize;
+    const to = from + pageSize - 1;
+
+    const { data, error, count } = await supabase
       .from('cvs')
-      .select('*')
+      .select('*', { count: 'exact' })
       .eq('user_id', req.user.id)
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false })
+      .range(from, to);
 
     if (error) {
-      return res.status(400).json({ error: error.message });
+      console.error('getCVHistory error:', error.message);
+      return res.status(500).json({ error: 'Could not load CV history' });
     }
 
-    return res.status(200).json({ cvs: data });
+    return res.status(200).json({
+      cvs: data || [],
+      page,
+      page_size: pageSize,
+      total: count || 0,
+      has_more: count ? from + (data || []).length < count : false,
+    });
   } catch (err) {
     return res.status(500).json({ error: err.message });
   }
@@ -328,6 +361,27 @@ const createCV = async (req, res) => {
     }
     if (!cv.full_name || !String(cv.full_name).trim()) {
       return res.status(400).json({ error: 'Full name is required' });
+    }
+
+    // Beyond name, require that at least ONE meaningful section has
+    // real content — otherwise users submit {full_name: "X"} and burn
+    // a CV quota slot on an empty PDF that has nothing to render.
+    const hasExperience = Array.isArray(cv.experience) && cv.experience.some(
+      (e) => (e?.title && String(e.title).trim()) ||
+             (e?.company && String(e.company).trim()) ||
+             (Array.isArray(e?.bullets) && e.bullets.some((b) => b && String(b).trim()))
+    );
+    const hasEducation = Array.isArray(cv.education) && cv.education.some(
+      (e) => (e?.degree && String(e.degree).trim()) ||
+             (e?.institution && String(e.institution).trim())
+    );
+    const hasSkills = Array.isArray(cv.skills) && cv.skills.some((s) => s && String(s).trim());
+    const hasSummary = typeof cv.summary === 'string' && cv.summary.trim().length >= 20;
+    if (!hasExperience && !hasEducation && !hasSkills && !hasSummary) {
+      return res.status(400).json({
+        error: 'Please fill in at least one section (experience, education, skills, or a summary).',
+        code: 'cv_empty',
+      });
     }
 
     // Normalize: drop empty strings/arrays so the templates render cleanly.

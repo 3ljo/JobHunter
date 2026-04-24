@@ -4,6 +4,41 @@
 const path = require('path');
 require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
 
+// ── Startup env-var validation ────────────────────────────────────────
+// Fail fast at boot if a required secret is missing. Previously the
+// server started fine and then erupted in 500s the first time a user
+// hit an affected endpoint (e.g. LS checkout → 401 Unauthenticated,
+// or a Supabase query with an empty key). Crashing here means Render
+// marks the deploy as failed and keeps serving the old container
+// instead of silently rolling forward a broken build.
+(() => {
+  const required = [
+    'SUPABASE_URL',
+    'SUPABASE_SERVICE_ROLE_KEY',
+    'FRONTEND_URL',
+  ];
+  // Not strictly required for the server to boot, but if the payments
+  // or admin subsystems are expected to work, these must be present.
+  // Warned rather than fatal so local dev without LS still runs.
+  const warnIfMissing = [
+    'LEMONSQUEEZY_API_KEY',
+    'LEMONSQUEEZY_STORE_ID',
+    'LEMONSQUEEZY_WEBHOOK_SECRET',
+    'REFERRAL_SALT',
+    'ADMIN_PASSWORD',
+    'CRON_SECRET',
+  ];
+  const missing = required.filter((k) => !process.env[k] || !String(process.env[k]).trim());
+  if (missing.length > 0) {
+    console.error(`[startup] FATAL: required env vars missing: ${missing.join(', ')}`);
+    process.exit(1);
+  }
+  const warn = warnIfMissing.filter((k) => !process.env[k] || !String(process.env[k]).trim());
+  if (warn.length > 0) {
+    console.warn(`[startup] WARNING: optional env vars missing: ${warn.join(', ')} — matching features will fail until set`);
+  }
+})();
+
 const express = require('express');
 const cors = require('cors');
 const authRoutes = require('./routes/auth');
