@@ -35,9 +35,13 @@ export default function Navbar() {
   const [scrolled,    setScrolled]    = useState(false);
   const [mobileOpen,  setMobileOpen]  = useState(false);
 
+  // Re-run on every pathname change, not just on mount. The store has
+  // a 60s TTL so this is a cheap no-op most of the time — but after 60s
+  // it silently refreshes the plan badge, so a user whose webhook
+  // landed after they navigated away no longer sees a stale FREE pill.
   useEffect(() => {
     fetchSubscription();
-  }, [fetchSubscription]);
+  }, [fetchSubscription, pathname]);
 
   // Only derive the visible badge once we actually know the plan — otherwise
   // a null subscription would flash "Free" on first render for paid users.

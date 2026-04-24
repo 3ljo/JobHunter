@@ -353,6 +353,23 @@ export const createCheckoutSession = (plan: string, interval: 'month' | 'year' |
 export const createPortalSession = () =>
   api.post<{ url: string }>('/api/subscription/portal');
 
+// Self-heal: re-pull the caller's latest subscription from Lemon
+// Squeezy and upsert our DB row. Used when a user paid but the
+// webhook didn't land (test-mode misconfig, 5xx retry, etc). Safe
+// no-op if LS has nothing for this email.
+export const resyncSubscription = () =>
+  api.post<{
+    ok: boolean;
+    changed: boolean;
+    message?: string;
+    subscription?: {
+      plan: string;
+      status: string;
+      billing_interval: string | null;
+      current_period_end: string | null;
+    };
+  }>('/api/subscription/resync');
+
 // Admin
 export const checkAdmin = () =>
   api.get<{ isAdmin: boolean; email: string }>('/api/admin/check');

@@ -86,6 +86,39 @@ const createCheckout = async ({ variantId, userId, email, plan, interval, succes
   return url;
 };
 
+// Find the most recent active subscription for a given email address.
+// Used by the /resync endpoint to self-heal users whose webhook didn't
+// land. LS /v1/subscriptions supports `filter[user_email]=...` via JSON:API.
+// Returns the full subscription object or null.
+const findLatestSubscriptionByEmail = async (email) => {
+  if (!apiKey() || !storeId() || !email) return null;
+  const params = new URLSearchParams({
+    'filter[store_id]': String(storeId()),
+    'filter[user_email]': email,
+    // Latest first — if the user re-subscribed we want the freshest row.
+    sort: '-created_at',
+    'page[size]': '5',
+  });
+  const res = await fetch(`${API_BASE}/subscriptions?${params.toString()}`, {
+    headers: {
+      Accept: 'application/vnd.api+json',
+      Authorization: `Bearer ${apiKey()}`,
+    },
+  });
+  if (!res.ok) {
+    const body = await res.text();
+    const err = new Error(`LS subscriptions lookup failed (${res.status}): ${body}`);
+    err.lsStatus = res.status;
+    throw err;
+  }
+  const json = await res.json();
+  const rows = Array.isArray(json?.data) ? json.data : [];
+  if (rows.length === 0) return null;
+  // Prefer an active row over a cancelled one.
+  const active = rows.find((r) => r?.attributes?.status === 'active');
+  return active || rows[0];
+};
+
 // Verify the `X-Signature` HMAC of a webhook request. `rawBody` must be the
 // exact raw payload bytes the request arrived with — parsing it loses the signature.
 const verifyWebhook = (rawBody, signatureHeader) => {
@@ -201,6 +234,7 @@ module.exports = {
   mapStatus,
   inspectConfig,
   pingApi,
+  findLatestSubscriptionByEmail,
   resolvePlanFromVariantId,
   resolveIntervalFromVariantId,
 };

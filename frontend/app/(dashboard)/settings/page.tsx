@@ -7,7 +7,7 @@ import toast from 'react-hot-toast';
 import {
   Settings, User, CreditCard, BarChart3, AlertTriangle,
   Mail, Lock, Eye, EyeOff, Crown, ExternalLink, FileText, FileSignature,
-  Zap, Trash2, LogOut,
+  Zap, Trash2, LogOut, RefreshCw,
 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
@@ -24,7 +24,7 @@ import { useSubscriptionStore } from '@/store/subscriptionStore';
 import { useAccountStore } from '@/store/accountStore';
 import {
   changePassword, deleteAccount,
-  updateProfile, createPortalSession,
+  updateProfile, createPortalSession, resyncSubscription,
 } from '@/lib/api';
 
 type TabKey = 'account' | 'billing' | 'usage' | 'danger';
@@ -69,7 +69,7 @@ export default function SettingsPage() {
         </TabsContent>
 
         <TabsContent value="billing" className="mt-6 space-y-6">
-          <BillingCard subscription={subscription} />
+          <BillingCard subscription={subscription} onResynced={fetchSubscription} />
         </TabsContent>
 
         <TabsContent value="usage" className="mt-6 space-y-6">
@@ -275,8 +275,15 @@ function PasswordCard() {
 // ─────────────────────────────────────────────────────────────────────────────
 // Billing / subscription
 // ─────────────────────────────────────────────────────────────────────────────
-function BillingCard({ subscription }: { subscription: any }) {
+function BillingCard({
+  subscription,
+  onResynced,
+}: {
+  subscription: any;
+  onResynced: () => Promise<void> | void;
+}) {
   const [portalLoading, setPortalLoading] = useState(false);
+  const [resyncing, setResyncing] = useState(false);
 
   const openPortal = async () => {
     setPortalLoading(true);
@@ -286,6 +293,27 @@ function BillingCard({ subscription }: { subscription: any }) {
     } catch {
       toast.error('Failed to open billing portal');
       setPortalLoading(false);
+    }
+  };
+
+  // Manual self-heal for users whose webhook didn't land — pulls the
+  // latest subscription straight from Lemon Squeezy and refreshes the
+  // local store. Called out with a tooltip-esque helper line for users
+  // who just paid but still see 'Free' here.
+  const resync = async () => {
+    setResyncing(true);
+    try {
+      const res = await resyncSubscription();
+      await onResynced();
+      if (res.data.changed) {
+        toast.success('Plan refreshed');
+      } else {
+        toast(res.data.message || 'No subscription on file');
+      }
+    } catch (err: any) {
+      toast.error(err.response?.data?.error || 'Could not refresh plan');
+    } finally {
+      setResyncing(false);
     }
   };
 
@@ -324,6 +352,25 @@ function BillingCard({ subscription }: { subscription: any }) {
         </div>
 
         <div className="flex items-center gap-2">
+          <Button
+            onClick={resync}
+            disabled={resyncing}
+            variant="outline"
+            title="Pull the latest plan status from the payment provider"
+            className="rounded-xl border-white/10 text-sm hover:bg-white/5 transition-all"
+          >
+            {resyncing ? (
+              <span className="flex items-center gap-2">
+                <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                Syncing…
+              </span>
+            ) : (
+              <span className="flex items-center gap-2">
+                <RefreshCw className="h-3.5 w-3.5" />
+                Refresh plan
+              </span>
+            )}
+          </Button>
           {subscription?.plan !== 'free' && (
             <Button
               onClick={openPortal}
@@ -353,6 +400,13 @@ function BillingCard({ subscription }: { subscription: any }) {
           </Link>
         </div>
       </div>
+      {subscription?.plan === 'free' && (
+        <p className="text-xs text-muted-foreground/50 mt-4">
+          Just paid and still seeing <span className="font-semibold text-white/75">Free</span>?
+          Hit <span className="font-semibold text-white/75">Refresh plan</span> — we'll pull the latest
+          status from the payment provider.
+        </p>
+      )}
     </Card>
   );
 }

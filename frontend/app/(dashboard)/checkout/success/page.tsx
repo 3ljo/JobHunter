@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useSubscriptionStore } from '@/store/subscriptionStore';
+import { resyncSubscription } from '@/lib/api';
 import {
   CheckCircle2, ArrowRight, Sparkles, FileText, PenLine, Settings,
   Crown, Zap, Loader2, AlertCircle, RefreshCw, Mail,
@@ -75,8 +76,22 @@ export default function CheckoutSuccessPage() {
         }
         await new Promise((r) => setTimeout(r, Math.min(1000 + attempt * 250, 3000)));
       }
-      // Webhook never arrived. Don't lie about which plan they have —
-      // tell them the payment went through and activation is pending.
+      // Webhook still hadn't landed after 30s — one last attempt: pull
+      // the subscription straight from Lemon Squeezy and upsert. Handles
+      // the case where the webhook was dropped entirely (test-mode
+      // misconfig, 401 signature, etc) without requiring the user to
+      // click anything.
+      if (cancelled) return;
+      try {
+        const res = await resyncSubscription();
+        if (res.data.changed && res.data.subscription?.plan && res.data.subscription.plan !== 'free') {
+          await refresh();
+          if (!cancelled) setPhase('ready');
+          return;
+        }
+      } catch {
+        /* fall through to delayed state */
+      }
       if (!cancelled) setPhase('delayed');
     };
 
@@ -93,7 +108,14 @@ export default function CheckoutSuccessPage() {
   const manualRefresh = async () => {
     setPhase('polling');
     setAttempts(0);
-    for (let attempt = 0; attempt < 5; attempt++) {
+    // Go straight to LS this time — the normal webhook retry window
+    // has already elapsed, so just resolve authoritatively.
+    try {
+      await resyncSubscription();
+    } catch {
+      /* fall through — refresh will still show whatever the DB has */
+    }
+    for (let attempt = 0; attempt < 3; attempt++) {
       setAttempts(attempt + 1);
       await refresh();
       const current = useSubscriptionStore.getState().subscription;
@@ -101,7 +123,7 @@ export default function CheckoutSuccessPage() {
         setPhase('ready');
         return;
       }
-      await new Promise((r) => setTimeout(r, 1500));
+      await new Promise((r) => setTimeout(r, 1000));
     }
     setPhase('delayed');
   };

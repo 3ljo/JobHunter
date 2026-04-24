@@ -143,6 +143,98 @@ const createCheckout = async (req, res) => {
   }
 };
 
+// POST /api/subscription/resync — Self-heal for users whose webhook
+// didn't land (test-mode misconfig, 5xx retry queue, whatever). Looks
+// up the current user's latest LS subscription by email and upserts
+// our DB row to match. No-op if LS has nothing for this email.
+// Authenticated — the caller can only fix their own plan, never
+// someone else's.
+const resyncSubscription = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const email = req.user.email;
+    if (!email) return res.status(400).json({ error: 'No email on user' });
+
+    let lsSub;
+    try {
+      lsSub = await ls.findLatestSubscriptionByEmail(email);
+    } catch (err) {
+      console.error('resync: LS lookup failed:', err.message);
+      if (err.lsStatus === 401 || err.lsStatus === 403) {
+        return res.status(503).json({
+          error: 'Payment provider temporarily unavailable.',
+          code: 'payment_provider_unavailable',
+        });
+      }
+      return res.status(502).json({ error: 'Could not query payment provider' });
+    }
+
+    if (!lsSub) {
+      return res.json({
+        ok: true,
+        changed: false,
+        message: 'No Lemon Squeezy subscription found for your email.',
+      });
+    }
+
+    const attrs = lsSub.attributes || {};
+    const plan = ls.resolvePlanFromVariantId(attrs.variant_id);
+    const interval = ls.resolveIntervalFromVariantId(attrs.variant_id);
+
+    const row = {
+      user_id: userId,
+      lemonsqueezy_customer_id: attrs.customer_id ? String(attrs.customer_id) : null,
+      lemonsqueezy_subscription_id: lsSub.id ? String(lsSub.id) : null,
+      lemonsqueezy_portal_url: attrs?.urls?.customer_portal || null,
+      plan,
+      billing_interval: interval,
+      status: ls.mapStatus(attrs.status),
+      current_period_start: attrs.created_at || null,
+      current_period_end: attrs.renews_at || attrs.ends_at || null,
+      cancel_at_period_end: attrs.cancelled === true,
+    };
+
+    const { error: upsertErr } = await supabase
+      .from('subscriptions')
+      .upsert(row, { onConflict: 'user_id' });
+    if (upsertErr) {
+      console.error('resync: subscriptions upsert failed:', upsertErr.message, upsertErr.code);
+      return res.status(500).json({ error: 'Could not update subscription row' });
+    }
+
+    // If this looks like a first-time paid conversion and the user was
+    // referred, run the referral hook the missed webhook would have.
+    // Idempotent — onPaidConversion early-exits if the referral isn't
+    // in 'signed_up'/'clicked' state.
+    if (row.status === 'active') {
+      try {
+        await onPaidConversion(userId);
+      } catch (err) {
+        console.warn('resync: onPaidConversion failed (non-fatal):', err.message);
+      }
+    }
+
+    await logEvent('subscription_resynced', {
+      userId,
+      metadata: { plan, interval, status: row.status, ls_sub_id: row.lemonsqueezy_subscription_id },
+    });
+
+    return res.json({
+      ok: true,
+      changed: true,
+      subscription: {
+        plan,
+        status: row.status,
+        billing_interval: interval,
+        current_period_end: row.current_period_end,
+      },
+    });
+  } catch (err) {
+    console.error('resyncSubscription error:', err.message);
+    return res.status(500).json({ error: err.message });
+  }
+};
+
 // GET /api/subscription/config-check — admin-gated liveness probe for the
 // Lemon Squeezy config. Returns shape-only booleans + a round-trip ping
 // to LS. Never reveals secret values. Gated with the same ADMIN_PASSWORD
@@ -239,7 +331,7 @@ const handleWebhook = async (req, res) => {
         const plan = custom.plan || ls.resolvePlanFromVariantId(attrs.variant_id);
         const interval = custom.interval || ls.resolveIntervalFromVariantId(attrs.variant_id);
 
-        await supabase.from('subscriptions').upsert({
+        const upsertRow = {
           user_id: userId,
           lemonsqueezy_customer_id: attrs.customer_id ? String(attrs.customer_id) : null,
           lemonsqueezy_subscription_id: subId,
@@ -250,7 +342,25 @@ const handleWebhook = async (req, res) => {
           current_period_start: attrs.created_at || null,
           current_period_end: attrs.renews_at || attrs.ends_at || null,
           cancel_at_period_end: attrs.cancelled === true,
-        }, { onConflict: 'user_id' });
+        };
+
+        // Previously we didn't surface upsert errors here, so a silent
+        // failure (RLS, FK violation, column mismatch) left the user
+        // stuck on 'free' even though the webhook had fired. Log loudly
+        // so the next occurrence is visible in Render logs, and don't
+        // short-circuit the referral reward — onPaidConversion reads
+        // from `referrals`, not `subscriptions`, so it works independently.
+        const { error: upsertErr } = await supabase
+          .from('subscriptions')
+          .upsert(upsertRow, { onConflict: 'user_id' });
+        if (upsertErr) {
+          console.error(
+            `LS ${eventName} subscriptions upsert failed for user ${userId}:`,
+            upsertErr.message, upsertErr.code, upsertErr.details, upsertErr.hint
+          );
+        } else {
+          console.log(`LS ${eventName} subscriptions upserted for user ${userId} → plan=${plan}`);
+        }
 
         // Referral reward — only trigger on subscription_created (first paid
         // conversion). Renewals / updates are a no-op for the referrer.
@@ -587,4 +697,4 @@ function resolvePlanFromStripePriceId(priceId) {
 
    ════════════════════════════════════════════════════════════════════════════ */
 
-module.exports = { getSubscription, createCheckout, createPortal, handleWebhook, configCheck };
+module.exports = { getSubscription, createCheckout, createPortal, handleWebhook, configCheck, resyncSubscription };
