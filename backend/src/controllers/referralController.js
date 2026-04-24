@@ -270,7 +270,13 @@ const getMyReferralInfo = async (req, res) => {
       }
     }
 
-    const shareUrl = `${canonicalFrontend()}/?ref=${codeRow.code}`;
+    // Share link points at /register so the referred visitor lands
+    // directly on the signup form with the code pre-filled (the register
+    // page reads ?ref= on mount). The middleware.ts cookie capture still
+    // runs, so /?ref=CODE and other entry points remain fully supported
+    // for people who share the bare domain link — this is just the
+    // canonical share URL we hand back to the referrer.
+    const shareUrl = `${canonicalFrontend()}/register?ref=${codeRow.code}`;
 
     // Latest 10 for the dashboard's "Recent referrals" table. Strip IPs.
     const recent = referrals.slice(0, 10).map((r) => ({
