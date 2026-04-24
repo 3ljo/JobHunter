@@ -1,0 +1,188 @@
+================================================================
+CVCLIMBER — VIDEO AD SCRIPT FOR GEMINI / VEO
+30-second vertical ad (9:16) split into four 8-second clips
+Hero asset: /aivent/misc/landingrobot.png
+Brand colors: navy #0a0d24, purple #764DF0 (oklch 0.59 0.245 291)
+================================================================
+
+
+CONCEPT: "The Robot That Reads Your CV"
+----------------------------------------------------------------
+Hook -> robot scans CV -> ATS score climbs -> cover letter
+writes itself -> user lands the job.
+
+Tone:           confident, modern, slightly playful
+Lighting:       cinematic, brand-purple rim light on navy
+Aspect ratio:   9:16 vertical (also export 1:1 for feed)
+Total length:   30 seconds (4 x ~8s clips, stitched in editor)
+
+
+================================================================
+SHOT 1 — HOOK (0:00 - 0:08)
+================================================================
+
+GEMINI PROMPT (attach landingrobot.png as reference image):
+
+  Cinematic 9:16 vertical shot. The friendly white-and-purple
+  robot from the reference image stands center-frame in a dark
+  navy studio (#0a0d24) with soft purple volumetric light.
+  A glowing holographic CV document floats in front of its
+  chest, paper-white with crisp text lines. The robot tilts
+  its head, points a finger, and the CV rotates 90 degrees
+  toward the camera. Subtle particle dust drifting up.
+  Slow 5% push-in. Shallow depth of field. Gentle synth pad
+  with a soft whoosh on the rotation. 8 seconds.
+
+VOICEOVER:
+  "Your CV gets 6 seconds before a robot decides your future."
+
+ON-SCREEN TEXT (top):
+  6 SECONDS. ONE ROBOT. YOUR FUTURE.
+
+
+================================================================
+SHOT 2 — PROBLEM -> SCORE (0:08 - 0:16)
+================================================================
+
+GEMINI PROMPT (attach landingrobot.png):
+
+  Cinematic 9:16. Same robot, same dark navy environment.
+  The holographic CV stays floating; a circular ATS score
+  gauge rises beside it, animating from a red 42% to a bright
+  purple 91%. Keyword tags ("React", "Leadership", "Python",
+  "Stakeholder") fly into the CV and lock in with a soft
+  chime. The robot gives a small confident nod. Purple rim
+  light, glow on score gauge. Camera locked off. UI text
+  crisp, sans-serif. 8 seconds.
+
+VOICEOVER:
+  "CvClimber scores your CV against any job — and tells you
+   exactly what's missing."
+
+ON-SCREEN TEXT (bottom):
+  ATS SCORE   42%  ->  91%
+
+
+================================================================
+SHOT 3 — COVER LETTER MAGIC (0:16 - 0:24)
+================================================================
+
+GEMINI PROMPT (attach landingrobot.png):
+
+  Cinematic 9:16. The robot raises an open palm; a second
+  floating document materializes — a cover letter — text
+  typing itself line by line at high speed with a soft
+  typewriter sound. Behind it, a kanban board with three
+  columns ("Saved", "Applied", "Interview") slides in; cards
+  animate from left to right column. Warm purple glow, navy
+  background, subtle bokeh. Smooth parallax. 8 seconds.
+
+VOICEOVER:
+  "Tailored cover letters in seconds. Every application
+   tracked in one place."
+
+ON-SCREEN TEXT (bottom):
+  COVER LETTERS  ·  TRACKER  ·  ATS AUDIT
+
+
+================================================================
+SHOT 4 — PAYOFF + CTA (0:24 - 0:30)
+================================================================
+
+GEMINI PROMPT (attach landingrobot.png):
+
+  Cinematic 9:16. The robot turns toward camera and gives a
+  confident thumbs-up. Behind it, logos of Google, Meta,
+  Stripe softly fade in then out. The frame transitions:
+  robot slides to the left, and a clean end card fills the
+  right side — solid #0a0d24 background, the word
+  "CvClimber" in bold white sans-serif, a glowing purple
+  button reading "Start Free", and a small subtitle
+  "No credit card. AI built for job seekers." Subtle
+  particle sparkle on the button. 6 seconds video + 2 second
+  hold on end card.
+
+VOICEOVER:
+  "CvClimber. Land your dream job — with AI on your side."
+
+ON-SCREEN TEXT:
+  cvclimber.com   ·   START FREE
+
+
+================================================================
+PRODUCTION TIPS FOR GEMINI / VEO
+================================================================
+
+1. CHARACTER CONSISTENCY
+   Always attach landingrobot.png as a reference in every
+   shot. Veo drifts the character design otherwise.
+
+2. LOCK THE PALETTE
+   Repeat in every prompt:
+   "deep navy #0a0d24 background, purple #764DF0 accent
+   lighting." Repetition keeps shots cohesive.
+
+3. GENERATE MULTIPLE TAKES
+   Run 3 takes per shot and pick the best. First generation
+   rarely nails the character.
+
+4. AUDIO
+   Veo 3 generates audio, but for clean voiceover record it
+   yourself or use ElevenLabs (male/female voice, age 25-35).
+   Mix over silent video for crisper results.
+
+5. MUSIC
+   Search "minimal cinematic synth" or "future tech ambient"
+   on Epidemic Sound / Artlist. Keep music under the VO at
+   roughly -18 dB.
+
+6. END CARD
+   Generate as a static frame in Figma or Photoshop and add
+   as the last 2 seconds in your editor. Way crisper than
+   asking Veo to render legible UI text.
+
+
+================================================================
+15-SECOND CUTDOWN (for paid ads on Meta / TikTok)
+================================================================
+
+Keep:
+  - SHOT 1 (hook)            full 8s
+  - SHOT 2 (score climb)     full 8s minus 1s
+  - SHOT 4 (end card)        last 3s
+
+Total: ~15 seconds. This is the version you actually run as
+a paid ad. The full 30s is for organic posts and your
+landing page.
+
+
+================================================================
+6-SECOND BUMPER (for YouTube pre-roll)
+================================================================
+
+Use only SHOT 1 + last 1.5s of SHOT 4 end card.
+Voiceover (single line):
+  "Beat the resume robot — with CvClimber."
+
+
+================================================================
+SUGGESTED AD COPY (paste into Meta / TikTok ad manager)
+================================================================
+
+PRIMARY TEXT:
+  Your CV has 6 seconds before a robot decides your future.
+  CvClimber scores it against any job, fixes the gaps, and
+  writes the cover letter for you. Free to start.
+
+HEADLINE OPTIONS:
+  - Beat the ATS in 60 seconds
+  - The AI that gets you hired
+  - Your CV deserves a 91% score
+
+CTA BUTTON:
+  Sign Up   (or)   Try Free
+
+
+================================================================
+END OF SCRIPT
+================================================================
