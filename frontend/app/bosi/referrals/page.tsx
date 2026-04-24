@@ -1,10 +1,13 @@
 'use client';
 
-// /bosi/referrals — admin fraud-review queue.
-// Double-gated: the parent /bosi layout is requireAdmin (email allowlist),
-// AND this page prompts for ADMIN_PASSWORD on load and sends it as
-// X-Admin-Password on every call. Password is held in sessionStorage so
-// a page refresh doesn't re-prompt mid-session.
+// /bosi/referrals — admin referral panel.
+//
+// Gating: the parent /bosi layout is requireAdmin (email allowlist), so
+// reaching this route already proves you're on the admin list. We
+// previously had a 2nd-layer ADMIN_PASSWORD prompt on top; it's been
+// removed to unblock testing. To re-enable, set ADMIN_PASSWORD on
+// Render, uncomment `requireAdminPassword` in backend/src/routes/admin.js,
+// and restore the password gate below.
 
 import { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
@@ -14,70 +17,47 @@ import {
   adminGetFunnel,
   type FlaggedReferral, type AdminPayout,
 } from '@/lib/api';
-import { Shield, AlertTriangle, Check, X, Users, BarChart3, DollarSign, Copy } from 'lucide-react';
+import { AlertTriangle, Check, X, Users, BarChart3, DollarSign, Copy } from 'lucide-react';
 
-const PW_KEY = 'bosi_referrals_pw';
 const dollars = (cents: number) => `$${(cents / 100).toFixed(2)}`;
 
 export default function AdminReferralsPage() {
-  const [password, setPassword] = useState<string | null>(null);
-  const [entry, setEntry] = useState('');
   const [rows, setRows] = useState<FlaggedReferral[] | null>(null);
   const [payouts, setPayouts] = useState<AdminPayout[] | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [funnel, setFunnel] = useState<Array<{ event_name: string; count: number }> | null>(null);
   const [funnelSince, setFunnelSince] = useState<string | null>(null);
 
-  // Read cached password on mount.
+  // Load flagged referrals + payouts + funnel on mount. Each call is
+  // individually resilient — a 500 on funnel shouldn't blank the whole
+  // page when the flagged queue loaded fine.
   useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const pw = sessionStorage.getItem(PW_KEY);
-    if (pw) setPassword(pw);
+    const load = async () => {
+      setLoading(true);
+      try {
+        const [flaggedRes, payoutsRes, funnelRes] = await Promise.all([
+          adminListFlaggedReferrals().catch((e) => { throw e; }),
+          adminListPayouts().catch(() => null),
+          adminGetFunnel().catch(() => null),
+        ]);
+        setRows(flaggedRes.data.flagged);
+        if (payoutsRes) setPayouts(payoutsRes.data.payouts);
+        if (funnelRes) {
+          setFunnel(funnelRes.data.funnel);
+          setFunnelSince(funnelRes.data.since);
+        }
+      } catch (err: any) {
+        toast.error(err.response?.data?.error || 'Failed to load admin data');
+      } finally {
+        setLoading(false);
+      }
+    };
+    load();
   }, []);
 
-  // Load flagged referrals + payouts + funnel whenever we have a password.
-  const reloadAll = async (pw: string) => {
-    setLoading(true);
-    try {
-      const [flaggedRes, payoutsRes, funnelRes] = await Promise.all([
-        adminListFlaggedReferrals(pw),
-        adminListPayouts(pw).catch(() => null),
-        adminGetFunnel(pw).catch(() => null),
-      ]);
-      setRows(flaggedRes.data.flagged);
-      if (payoutsRes) setPayouts(payoutsRes.data.payouts);
-      if (funnelRes) {
-        setFunnel(funnelRes.data.funnel);
-        setFunnelSince(funnelRes.data.since);
-      }
-    } catch (err: any) {
-      if (err.response?.status === 401) {
-        sessionStorage.removeItem(PW_KEY);
-        setPassword(null);
-        toast.error('Wrong admin password');
-      } else {
-        toast.error(err.response?.data?.error || 'Failed to load admin data');
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
-  useEffect(() => {
-    if (password) reloadAll(password);
-  }, [password]);
-
-  const handleUnlock = () => {
-    const v = entry.trim();
-    if (!v) return;
-    sessionStorage.setItem(PW_KEY, v);
-    setPassword(v);
-    setEntry('');
-  };
-
   const handleApprove = async (id: string) => {
-    if (!password) return;
     try {
-      await adminApproveReferral(id, password);
+      await adminApproveReferral(id);
       setRows((prev) => (prev || []).filter((r) => r.id !== id));
       toast.success('Approved — referral returned to the normal flow.');
     } catch (err: any) {
@@ -86,10 +66,9 @@ export default function AdminReferralsPage() {
   };
 
   const handleReject = async (id: string) => {
-    if (!password) return;
     if (!confirm('Reject this referral permanently? Reward will stay at $0.')) return;
     try {
-      await adminRejectReferral(id, password);
+      await adminRejectReferral(id);
       setRows((prev) => (prev || []).filter((r) => r.id !== id));
       toast.success('Rejected — row is permanent fraud.');
     } catch (err: any) {
@@ -98,10 +77,9 @@ export default function AdminReferralsPage() {
   };
 
   const handleMarkPaid = async (p: AdminPayout) => {
-    if (!password) return;
     if (!confirm(`Confirm $${(p.amount_cents / 100).toFixed(2)} sent to ${p.paypal_email} via PayPal?`)) return;
     try {
-      await adminMarkPayoutPaid(p.id, password);
+      await adminMarkPayoutPaid(p.id);
       setPayouts((prev) => (prev || []).filter((x) => x.id !== p.id));
       toast.success('Marked paid — user dashboard will reflect this.');
     } catch (err: any) {
@@ -110,11 +88,10 @@ export default function AdminReferralsPage() {
   };
 
   const handleRejectPayout = async (p: AdminPayout) => {
-    if (!password) return;
     const reason = prompt('Reason for rejecting? (Shown in internal logs; not sent to user.)', '');
     if (reason === null) return;
     try {
-      await adminRejectPayout(p.id, password, reason || undefined);
+      await adminRejectPayout(p.id, reason || undefined);
       setPayouts((prev) => (prev || []).filter((x) => x.id !== p.id));
       toast.success('Rejected — referrals reverted to Confirmed so they can be re-paid.');
     } catch (err: any) {
@@ -131,67 +108,21 @@ export default function AdminReferralsPage() {
     }
   };
 
-  // ── Unlock screen ──────────────────────────────────────────
-  if (!password) {
-    return (
-      <div className="max-w-md mx-auto py-12 space-y-5">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-red-500/20 to-red-700/10 ring-1 ring-red-500/25">
-            <Shield className="h-4 w-4 text-red-400" />
-          </div>
-          <div>
-            <h1 className="text-lg font-black text-foreground">Referral fraud queue</h1>
-            <p className="text-muted-foreground/60 text-xs">Enter the admin password to review.</p>
-          </div>
-        </div>
-        <div className="space-y-2">
-          <input
-            type="password"
-            autoFocus
-            placeholder="ADMIN_PASSWORD"
-            value={entry}
-            onChange={(e) => setEntry(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handleUnlock()}
-            className="w-full h-11 rounded-xl px-4 text-sm text-white placeholder:text-white/25"
-            style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', outline: 'none' }}
-          />
-          <button
-            onClick={handleUnlock}
-            className="btn-aivent fx-slide w-full"
-            data-hover="UNLOCK"
-            style={{ height: '44px' }}
-          >
-            <span>Unlock</span>
-          </button>
-        </div>
-      </div>
-    );
-  }
-
   // ── Main UI ────────────────────────────────────────────────
   return (
     <div className="space-y-5">
       <header className="flex items-center justify-between gap-3 flex-wrap">
         <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-red-500/20 to-red-700/10 ring-1 ring-red-500/25">
-            <AlertTriangle className="h-4 w-4 text-red-400" />
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500/20 to-violet-700/10 ring-1 ring-violet-500/25">
+            <AlertTriangle className="h-4 w-4 text-violet-400" />
           </div>
           <div>
-            <h1 className="text-xl font-black text-foreground tracking-tight">Flagged referrals</h1>
+            <h1 className="text-xl font-black text-foreground tracking-tight">Referral admin</h1>
             <p className="text-muted-foreground/60 text-xs">
-              Auto-flagged by the fraud heuristic (&gt;5 signups from one referrer in 24h) or by self-referral IP match.
+              Payout queue, fraud review, and the 30-day funnel.
             </p>
           </div>
         </div>
-        <button
-          onClick={() => {
-            sessionStorage.removeItem(PW_KEY);
-            setPassword(null);
-          }}
-          className="text-xs text-white/50 hover:text-white underline"
-        >
-          Lock
-        </button>
       </header>
 
       {loading && <p className="text-white/50 text-sm">Loading admin data…</p>}

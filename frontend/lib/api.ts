@@ -251,20 +251,18 @@ export interface FlaggedReferral {
   device_fingerprint: string | null;
 }
 
-export const adminListFlaggedReferrals = (password: string) =>
-  api.get<{ flagged: FlaggedReferral[] }>('/api/admin/referrals/flagged', {
-    headers: { 'X-Admin-Password': password },
-  });
+// Admin referral endpoints. Previously took an extra `password` arg that
+// got forwarded as X-Admin-Password; the email-allowlist requireAdmin
+// middleware on the server is the only gate now so the password param
+// was removed. Re-add it if we turn the second layer back on.
+export const adminListFlaggedReferrals = () =>
+  api.get<{ flagged: FlaggedReferral[] }>('/api/admin/referrals/flagged');
 
-export const adminApproveReferral = (id: string, password: string) =>
-  api.post<{ ok: true }>(`/api/admin/referrals/${id}/approve`, {}, {
-    headers: { 'X-Admin-Password': password },
-  });
+export const adminApproveReferral = (id: string) =>
+  api.post<{ ok: true }>(`/api/admin/referrals/${id}/approve`, {});
 
-export const adminRejectReferral = (id: string, password: string) =>
-  api.post<{ ok: true }>(`/api/admin/referrals/${id}/reject`, {}, {
-    headers: { 'X-Admin-Password': password },
-  });
+export const adminRejectReferral = (id: string) =>
+  api.post<{ ok: true }>(`/api/admin/referrals/${id}/reject`, {});
 
 // Admin — payout queue
 export interface AdminPayout {
@@ -281,22 +279,18 @@ export interface AdminPayout {
 
 // Default returns pending+approved (= anything unpaid the admin still
 // owns). Pass ?status=paid|rejected to filter the history view.
-export const adminListPayouts = (password: string, status?: string) =>
+export const adminListPayouts = (status?: string) =>
   api.get<{ payouts: AdminPayout[] }>(
-    `/api/admin/referrals/payouts${status ? `?status=${encodeURIComponent(status)}` : ''}`,
-    { headers: { 'X-Admin-Password': password } }
+    `/api/admin/referrals/payouts${status ? `?status=${encodeURIComponent(status)}` : ''}`
   );
 
-export const adminMarkPayoutPaid = (id: string, password: string) =>
-  api.post<{ ok: true }>(`/api/admin/referrals/payouts/${id}/mark-paid`, {}, {
-    headers: { 'X-Admin-Password': password },
-  });
+export const adminMarkPayoutPaid = (id: string) =>
+  api.post<{ ok: true }>(`/api/admin/referrals/payouts/${id}/mark-paid`, {});
 
-export const adminRejectPayout = (id: string, password: string, reason?: string) =>
+export const adminRejectPayout = (id: string, reason?: string) =>
   api.post<{ ok: true }>(
     `/api/admin/referrals/payouts/${id}/reject`,
-    { reason: reason || null },
-    { headers: { 'X-Admin-Password': password } }
+    { reason: reason || null }
   );
 
 // Referrals — Hired & Help
@@ -368,10 +362,9 @@ export const listMyReferralPayouts = () =>
 export const logReferralEvent = (event_name: 'ats_share' | 'hire_share', metadata: Record<string, unknown> = {}) =>
   api.post<{ ok: true }>('/api/referral/event', { event_name, metadata });
 
-export const adminGetFunnel = (password: string) =>
+export const adminGetFunnel = () =>
   api.get<{ funnel: Array<{ event_name: string; count: number }>; since: string }>(
-    '/api/admin/referrals/funnel',
-    { headers: { 'X-Admin-Password': password } }
+    '/api/admin/referrals/funnel'
   );
 
 // Gift-a-Pass
