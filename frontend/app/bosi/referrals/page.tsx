@@ -13,11 +13,11 @@ import { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import {
   adminListFlaggedReferrals, adminApproveReferral, adminRejectReferral,
-  adminListPayouts, adminMarkPayoutPaid, adminRejectPayout,
-  adminGetFunnel,
-  type FlaggedReferral, type AdminPayout,
+  adminListPayouts, adminMarkPayoutPaid, adminSendPayoutViaPaypal,
+  adminRejectPayout, adminPaypalConfigCheck, adminGetFunnel,
+  type FlaggedReferral, type AdminPayout, type PaypalConfigCheck,
 } from '@/lib/api';
-import { AlertTriangle, Check, X, Users, BarChart3, DollarSign, Copy } from 'lucide-react';
+import { AlertTriangle, Check, X, Users, BarChart3, DollarSign, Copy, Send, ShieldCheck, ShieldAlert } from 'lucide-react';
 
 const dollars = (cents: number) => `$${(cents / 100).toFixed(2)}`;
 
@@ -27,6 +27,8 @@ export default function AdminReferralsPage() {
   const [loading, setLoading] = useState(true);
   const [funnel, setFunnel] = useState<Array<{ event_name: string; count: number }> | null>(null);
   const [funnelSince, setFunnelSince] = useState<string | null>(null);
+  const [paypalConfig, setPaypalConfig] = useState<PaypalConfigCheck | null>(null);
+  const [sendingId, setSendingId] = useState<string | null>(null);
 
   // Load flagged referrals + payouts + funnel on mount. Each call is
   // individually resilient — a 500 on funnel shouldn't blank the whole
@@ -35,10 +37,11 @@ export default function AdminReferralsPage() {
     const load = async () => {
       setLoading(true);
       try {
-        const [flaggedRes, payoutsRes, funnelRes] = await Promise.all([
+        const [flaggedRes, payoutsRes, funnelRes, ppRes] = await Promise.all([
           adminListFlaggedReferrals().catch((e) => { throw e; }),
           adminListPayouts().catch(() => null),
           adminGetFunnel().catch(() => null),
+          adminPaypalConfigCheck().catch(() => null),
         ]);
         setRows(flaggedRes.data.flagged);
         if (payoutsRes) setPayouts(payoutsRes.data.payouts);
@@ -46,6 +49,7 @@ export default function AdminReferralsPage() {
           setFunnel(funnelRes.data.funnel);
           setFunnelSince(funnelRes.data.since);
         }
+        if (ppRes) setPaypalConfig(ppRes.data);
       } catch (err: any) {
         toast.error(err.response?.data?.error || 'Failed to load admin data');
       } finally {
@@ -77,13 +81,49 @@ export default function AdminReferralsPage() {
   };
 
   const handleMarkPaid = async (p: AdminPayout) => {
-    if (!confirm(`Confirm $${(p.amount_cents / 100).toFixed(2)} sent to ${p.paypal_email} via PayPal?`)) return;
+    if (!confirm(`Confirm $${(p.amount_cents / 100).toFixed(2)} ALREADY sent manually to ${p.paypal_email} via PayPal? This is an acknowledgement — it does NOT move any money.`)) return;
     try {
       await adminMarkPayoutPaid(p.id);
       setPayouts((prev) => (prev || []).filter((x) => x.id !== p.id));
       toast.success('Marked paid — user dashboard will reflect this.');
     } catch (err: any) {
       toast.error(err.response?.data?.error || 'Mark-paid failed');
+    }
+  };
+
+  const handleSendViaPaypal = async (p: AdminPayout) => {
+    const mode = paypalConfig?.config.mode || 'sandbox';
+    const prompt = mode === 'live'
+      ? `⚠️  LIVE MODE — this will send REAL MONEY.\n\nSend $${(p.amount_cents / 100).toFixed(2)} to ${p.paypal_email} via PayPal now?`
+      : `SANDBOX MODE (fake money).\n\nSend $${(p.amount_cents / 100).toFixed(2)} to ${p.paypal_email} via PayPal sandbox?`;
+    if (!confirm(prompt)) return;
+
+    setSendingId(p.id);
+    try {
+      const res = await adminSendPayoutViaPaypal(p.id);
+      if (res.data.ok) {
+        setPayouts((prev) => (prev || []).filter((x) => x.id !== p.id));
+        toast.success(`PayPal ${res.data.mode} payout sent · batch ${res.data.batch_id?.slice(0, 8) || '—'}`);
+      } else {
+        toast.error(`PayPal accepted the request but returned ${res.data.batch_status}. Check logs.`);
+      }
+    } catch (err: any) {
+      const d = err?.response?.data;
+      const code = d?.code;
+      const map: Record<string, string> = {
+        not_configured: 'PayPal credentials not set on the server. Set PAYPAL_CLIENT_ID + PAYPAL_CLIENT_SECRET on Render.',
+        bad_credentials: 'PayPal rejected the credentials. Check PAYPAL_CLIENT_ID / PAYPAL_CLIENT_SECRET match the selected mode (sandbox vs live).',
+        insufficient_funds: 'PayPal balance is too low to cover this payout. Top up the business account.',
+        recipient_not_paypal: `${p.paypal_email} does not have a PayPal account yet. They will receive an email to claim it; no need to retry.`,
+        validation_error: 'PayPal rejected the request shape. Check logs for the validation details.',
+        duplicate_batch: 'PayPal already processed a payout with this ID. Refresh the queue.',
+        already_paid: 'This payout is already marked paid.',
+        already_rejected: 'This payout was rejected earlier and cannot be sent.',
+        already_processing: 'Already in flight — refresh to see its current status.',
+      };
+      toast.error(map[code] || d?.error || 'PayPal send failed');
+    } finally {
+      setSendingId(null);
     }
   };
 
@@ -176,7 +216,62 @@ export default function AdminReferralsPage() {
         );
       })()}
 
-      {/* Payout queue — pending manual PayPal sends */}
+      {/* PayPal config status banner. Shows the current mode (sandbox
+          vs live), whether credentials are configured, and whether a
+          live OAuth round-trip succeeded. Disables the Send button
+          when something's off. */}
+      {!loading && paypalConfig && (() => {
+        const { config, ping, overall_ok } = paypalConfig;
+        const ok = overall_ok;
+        const mode = config.mode;
+        const hint = !config.client_id_present || !config.client_secret_present
+          ? 'Set PAYPAL_CLIENT_ID and PAYPAL_CLIENT_SECRET on Render, then redeploy.'
+          : !ping.ok && ping.hint === 'bad_credentials'
+            ? 'Credentials are set but PayPal rejected them. Make sure they match the selected mode (sandbox keys don\'t work in live and vice versa).'
+            : !ping.ok
+              ? `PayPal OAuth returned ${ping.status || 'network error'} (${ping.hint}).`
+              : mode === 'live'
+                ? 'LIVE mode — Send via PayPal will move real money. Test in sandbox first.'
+                : 'Sandbox mode — fake money only. Flip PAYPAL_MODE=live on Render when ready for real payouts.';
+        return (
+          <section
+            className="rounded-2xl p-4 flex items-start gap-3"
+            style={{
+              background: ok
+                ? mode === 'live'
+                  ? 'rgba(239,68,68,0.05)'
+                  : 'rgba(59,130,246,0.06)'
+                : 'rgba(251,191,36,0.08)',
+              border: `1px solid ${ok
+                ? mode === 'live' ? 'rgba(239,68,68,0.25)' : 'rgba(59,130,246,0.25)'
+                : 'rgba(251,191,36,0.3)'}`,
+            }}
+          >
+            {ok
+              ? <ShieldCheck className="h-4 w-4 mt-0.5 shrink-0" style={{ color: mode === 'live' ? '#f87171' : '#60a5fa' }} />
+              : <ShieldAlert className="h-4 w-4 mt-0.5 shrink-0" style={{ color: '#fbbf24' }} />}
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 flex-wrap mb-0.5">
+                <span className="text-xs font-black uppercase tracking-widest text-white/80">
+                  PayPal · {mode}
+                </span>
+                <span
+                  className="text-[10px] font-bold uppercase tracking-widest px-1.5 py-0.5 rounded"
+                  style={{
+                    background: ok ? 'rgba(52,211,153,0.12)' : 'rgba(251,191,36,0.12)',
+                    color: ok ? '#34d399' : '#fbbf24',
+                  }}
+                >
+                  {ok ? 'ready' : 'not ready'}
+                </span>
+              </div>
+              <p className="text-[11px] text-white/60">{hint}</p>
+            </div>
+          </section>
+        );
+      })()}
+
+      {/* Payout queue */}
       {!loading && payouts && (
         <section
           className="rounded-2xl overflow-hidden"
@@ -233,9 +328,28 @@ export default function AdminReferralsPage() {
                         <span className="font-mono">#{p.id.slice(0, 8)}</span>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2 shrink-0">
+                    <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
+                      <button
+                        onClick={() => handleSendViaPaypal(p)}
+                        disabled={sendingId === p.id || !paypalConfig?.overall_ok}
+                        title={!paypalConfig?.overall_ok
+                          ? 'PayPal is not configured. Click the diagnostic above for details.'
+                          : paypalConfig.config.mode === 'live'
+                            ? 'Sends real money via PayPal Payouts API (live mode).'
+                            : 'Sends fake money via PayPal sandbox.'}
+                        className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                        style={{ background: 'rgba(59,130,246,0.15)', color: '#60a5fa', border: '1px solid rgba(59,130,246,0.35)' }}
+                      >
+                        <Send className="h-3 w-3" />
+                        {sendingId === p.id
+                          ? 'Sending…'
+                          : paypalConfig?.config.mode === 'live'
+                            ? 'Send via PayPal'
+                            : 'Send (sandbox)'}
+                      </button>
                       <button
                         onClick={() => handleMarkPaid(p)}
+                        title="Mark paid without calling PayPal — use if you sent via bank transfer or already paid manually."
                         className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition-all"
                         style={{ background: 'rgba(52,211,153,0.15)', color: '#34d399', border: '1px solid rgba(52,211,153,0.3)' }}
                       >

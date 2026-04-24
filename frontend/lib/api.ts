@@ -287,11 +287,42 @@ export const adminListPayouts = (status?: string) =>
 export const adminMarkPayoutPaid = (id: string) =>
   api.post<{ ok: true }>(`/api/admin/referrals/payouts/${id}/mark-paid`, {});
 
+// Fires the actual PayPal Payouts API — real money moves in live mode,
+// fake money in sandbox. Returns the batch_id and PayPal batch_status
+// so the admin UI can reflect success/failure immediately.
+export const adminSendPayoutViaPaypal = (id: string) =>
+  api.post<{
+    ok: boolean;
+    status: 'paid' | 'failed';
+    batch_id: string | null;
+    batch_status: string | null;
+    mode: 'sandbox' | 'live';
+  }>(`/api/admin/referrals/payouts/${id}/send-via-paypal`, {});
+
 export const adminRejectPayout = (id: string, reason?: string) =>
   api.post<{ ok: true }>(
     `/api/admin/referrals/payouts/${id}/reject`,
     { reason: reason || null }
   );
+
+// Admin-gated diagnostic. Returns shape-only info about the PayPal
+// configuration (which mode, whether credentials are present, key
+// lengths) plus a live ping to confirm the OAuth token works. Never
+// returns the secret values.
+export interface PaypalConfigCheck {
+  config: {
+    mode: 'sandbox' | 'live';
+    api_base: string;
+    client_id_present: boolean;
+    client_id_length: number;
+    client_secret_present: boolean;
+    client_secret_length: number;
+  };
+  ping: { ok: boolean; status: number; hint: string };
+  overall_ok: boolean;
+}
+export const adminPaypalConfigCheck = () =>
+  api.get<PaypalConfigCheck>('/api/admin/referrals/paypal/config-check');
 
 // Referrals — Hired & Help
 export interface ReferralRecent {

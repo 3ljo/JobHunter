@@ -5,6 +5,7 @@
 // UI prompts for on load.
 
 const supabase = require('../services/supabaseClient');
+const paypal = require('../services/paypalService');
 const { logEvent } = require('../lib/events');
 
 function requireAdminPassword(req, res, next) {
@@ -94,8 +95,10 @@ const rejectFlagged = async (req, res) => {
 };
 
 // POST /api/admin/referrals/payouts/:id/mark-paid
-// Admin confirms they've sent the PayPal payment manually. Moves the
-// payout row to 'paid' and fires the payout_sent event.
+// Manual "I already sent it via PayPal in another tab" acknowledgement.
+// Flips the payout row to 'paid' without calling any external API. Use
+// sendPayoutViaPaypal below when you want the backend to actually fire
+// the PayPal Payouts API for you.
 const markPayoutSent = async (req, res) => {
   try {
     const { id } = req.params;
@@ -109,10 +112,149 @@ const markPayoutSent = async (req, res) => {
     if (payout) {
       await logEvent('payout_sent', {
         userId: payout.user_id,
-        metadata: { payout_id: id, amount_cents: payout.amount_cents },
+        metadata: { payout_id: id, amount_cents: payout.amount_cents, method: 'manual' },
       });
     }
     return res.json({ ok: true });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+};
+
+// POST /api/admin/referrals/payouts/:id/send-via-paypal
+// Actually fires the PayPal Payouts API using PAYPAL_CLIENT_ID /
+// PAYPAL_CLIENT_SECRET / PAYPAL_MODE. Idempotent via the payout row's
+// UUID as sender_batch_id — replaying a request for the same payout id
+// either succeeds (first call) or PayPal returns DUPLICATE_REQUEST_ID
+// which we surface as 409 without flipping state twice.
+//
+// State flow:
+//   pending/approved → processing (set before the API call so a racing
+//                                   double-click sees 'processing' and bails)
+//   processing → paid (success)
+//   processing → failed (PayPal 4xx/5xx; paypal_error stores the body)
+const sendPayoutViaPaypal = async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    // Load the row and verify it's in a sendable state.
+    const { data: payout, error: selErr } = await supabase
+      .from('referral_payouts')
+      .select('id, user_id, amount_cents, status, paypal_email, paypal_batch_id')
+      .eq('id', id)
+      .maybeSingle();
+    if (selErr) throw selErr;
+    if (!payout) return res.status(404).json({ error: 'Payout not found' });
+    if (!payout.paypal_email) return res.status(400).json({ error: 'Payout row has no PayPal email on file' });
+    if (payout.status === 'paid') {
+      return res.status(409).json({ error: 'Payout already marked paid', code: 'already_paid' });
+    }
+    if (payout.status === 'rejected') {
+      return res.status(409).json({ error: 'Payout was rejected — cannot send', code: 'already_rejected' });
+    }
+    if (payout.status === 'processing' && payout.paypal_batch_id) {
+      return res.status(409).json({
+        error: 'Already in flight with PayPal. Use the sync button to check status.',
+        code: 'already_processing',
+        batch_id: payout.paypal_batch_id,
+      });
+    }
+
+    // Lock the row to 'processing' BEFORE we call PayPal so a racing
+    // second click sees processing and exits above.
+    const { error: lockErr } = await supabase
+      .from('referral_payouts')
+      .update({ status: 'processing' })
+      .eq('id', id)
+      .in('status', ['pending', 'approved']); // only if still in a sendable state
+    if (lockErr) throw lockErr;
+
+    let result;
+    try {
+      result = await paypal.createPayout({
+        email: payout.paypal_email,
+        amountCents: payout.amount_cents,
+        senderBatchId: payout.id, // UUID = stable idempotency key
+        recipientNote: 'Thanks for sharing CvClimber!',
+      });
+    } catch (ppErr) {
+      // Flip to failed and stash the error body so admin can see what
+      // went wrong in the UI (invalid recipient, insufficient funds, etc).
+      console.error(`PayPal payout API error for payout ${id}:`, ppErr.message, ppErr.ppBody);
+      await supabase
+        .from('referral_payouts')
+        .update({
+          status: 'failed',
+          paypal_error: ppErr.ppBody || { message: ppErr.message },
+          paypal_mode: paypal._mode(),
+        })
+        .eq('id', id);
+      return res.status(502).json({
+        error: 'PayPal rejected the payout.',
+        code: ppErr.ppHint || 'paypal_error',
+        paypal_status: ppErr.ppStatus || 0,
+      });
+    }
+
+    // Save the batch id so the reconciliation job can check status later.
+    // We mark status='paid' only if PayPal accepted the batch (SUCCESS/PENDING
+    // both mean the send is in motion). 'DENIED' means PayPal refused to
+    // even queue it — revert to failed.
+    const batchStatus = (result.batchStatus || '').toUpperCase();
+    const accepted = batchStatus === 'SUCCESS' || batchStatus === 'PENDING' || batchStatus === 'PROCESSING';
+    const finalStatus = accepted ? 'paid' : 'failed';
+
+    const { error: updErr } = await supabase
+      .from('referral_payouts')
+      .update({
+        status: finalStatus,
+        paid_at: finalStatus === 'paid' ? new Date().toISOString() : null,
+        paypal_batch_id: result.batchId,
+        paypal_item_id: result.itemId,
+        paypal_mode: paypal._mode(),
+        paypal_error: accepted ? null : result.raw,
+      })
+      .eq('id', id);
+    if (updErr) throw updErr;
+
+    await logEvent('payout_sent', {
+      userId: payout.user_id,
+      metadata: {
+        payout_id: id,
+        amount_cents: payout.amount_cents,
+        method: 'paypal_api',
+        mode: paypal._mode(),
+        batch_id: result.batchId,
+        batch_status: batchStatus,
+      },
+    });
+
+    return res.json({
+      ok: accepted,
+      status: finalStatus,
+      batch_id: result.batchId,
+      batch_status: batchStatus,
+      mode: paypal._mode(),
+    });
+  } catch (err) {
+    console.error('sendPayoutViaPaypal error:', err.message);
+    return res.status(500).json({ error: 'Could not send payout' });
+  }
+};
+
+// GET /api/admin/referrals/paypal/config-check
+// Shape-only diagnostic for the admin UI. Returns whether credentials
+// are set + a live OAuth round-trip to confirm they actually work.
+// Never returns the secret values.
+const paypalConfigCheck = async (req, res) => {
+  try {
+    const config = paypal.inspectConfig();
+    const ping = await paypal.pingApi();
+    return res.json({
+      config,
+      ping,
+      overall_ok: config.client_id_present && config.client_secret_present && ping.ok,
+    });
   } catch (err) {
     return res.status(500).json({ error: err.message });
   }
@@ -270,6 +412,8 @@ module.exports = {
   rejectFlagged,
   listPayouts,
   markPayoutSent,
+  sendPayoutViaPaypal,
   rejectPayout,
+  paypalConfigCheck,
   getFunnel,
 };

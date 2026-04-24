@@ -13,7 +13,8 @@ const {
 const { listPromos, createPromo, updatePromo, deletePromo } = require('../controllers/promoController');
 const {
   requireAdminPassword, listFlagged, approveFlagged, rejectFlagged,
-  listPayouts, markPayoutSent, rejectPayout, getFunnel,
+  listPayouts, markPayoutSent, sendPayoutViaPaypal, rejectPayout,
+  paypalConfigCheck, getFunnel,
 } = require('../controllers/adminReferralController');
 
 // All routes require admin
@@ -40,10 +41,12 @@ router.delete('/promos/:id', deletePromo);
 router.get('/referrals/flagged',                 listFlagged);
 router.post('/referrals/:id/approve',            approveFlagged);
 router.post('/referrals/:id/reject',             rejectFlagged);
-router.get('/referrals/payouts',                 listPayouts);
-router.post('/referrals/payouts/:id/mark-paid',  markPayoutSent);
-router.post('/referrals/payouts/:id/reject',     rejectPayout);
-router.get('/referrals/funnel',                  getFunnel);
+router.get('/referrals/payouts',                    listPayouts);
+router.post('/referrals/payouts/:id/mark-paid',     markPayoutSent);
+router.post('/referrals/payouts/:id/send-via-paypal', sendPayoutViaPaypal);
+router.post('/referrals/payouts/:id/reject',        rejectPayout);
+router.get('/referrals/paypal/config-check',        paypalConfigCheck);
+router.get('/referrals/funnel',                     getFunnel);
 
 // Silence the unused-import warning while the 2nd-layer gate is off.
 // eslint-disable-next-line no-unused-expressions
