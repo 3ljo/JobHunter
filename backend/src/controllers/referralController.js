@@ -163,25 +163,32 @@ async function attributeOnSignup({ refCode, newUserId, newUserEmail, ipHash, fin
 
     const status = isSelfRef ? 'fraud' : 'signed_up';
 
-    const { error: upsertErr } = await supabase.from('referrals').upsert(
-      {
-        referrer_id: codeRow.user_id,
-        referee_id: newUserId,
-        referee_email: newUserEmail.toLowerCase(),
-        referral_code: codeRow.code,
-        status,
-        ip_address_hash: ipHash || null,
-        device_fingerprint: fingerprint || null,
-      },
-      { onConflict: 'referrer_id, referee_email' }
-    );
+    // Plain INSERT — the unique index on (referrer_id, referee_email)
+    // enforces idempotency at the DB level. We swallow the 23505
+    // unique-violation so duplicate signups are a silent no-op
+    // instead of a 500. Switched away from upsert because PostgREST's
+    // on_conflict handling doesn't match unique indexes cleanly across
+    // all Supabase versions (error 42P10).
+    const { error: insertErr } = await supabase.from('referrals').insert({
+      referrer_id: codeRow.user_id,
+      referee_id: newUserId,
+      referee_email: newUserEmail.toLowerCase(),
+      referral_code: codeRow.code,
+      status,
+      ip_address_hash: ipHash || null,
+      device_fingerprint: fingerprint || null,
+    });
 
-    if (upsertErr) {
+    if (insertErr && insertErr.code !== '23505') {
       return {
-        ok: false, stage: 'upsert',
-        msg: upsertErr.message, code: upsertErr.code,
-        details: upsertErr.details, hint: upsertErr.hint,
+        ok: false, stage: 'insert',
+        msg: insertErr.message, code: insertErr.code,
+        details: insertErr.details, hint: insertErr.hint,
       };
+    }
+    if (insertErr && insertErr.code === '23505') {
+      // Already attributed — not an error, just idempotent.
+      return { ok: true, status: 'already_attributed', referrer_id: codeRow.user_id };
     }
 
     await logEvent('referral_signup', {
