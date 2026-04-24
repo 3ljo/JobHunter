@@ -62,12 +62,18 @@ function LoginForm() {
       // endpoint is idempotent — safe to call every login.
       const refCode = getReferralCookie();
       if (refCode) {
+        let shouldClear = true;
         try {
           await attributeReferral(refCode, getDeviceFingerprint());
-          clearReferralCookie();
-        } catch {
-          // Attribution is best-effort — never block the login flow.
+        } catch (e: any) {
+          // 4xx is deterministic (bad code, account too old, already
+          // attributed) — clear the cookie so we don't hit the backend
+          // every login. Keep it on network errors / 5xx so a transient
+          // outage doesn't cost us the attribution.
+          const status = e?.response?.status;
+          shouldClear = typeof status === 'number' && status >= 400 && status < 500;
         }
+        if (shouldClear) clearReferralCookie();
       }
 
       toast.success('Signed in successfully');

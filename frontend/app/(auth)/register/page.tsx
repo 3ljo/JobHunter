@@ -5,7 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { registerUser, resendVerification } from '@/lib/api';
+import { registerUser, resendVerification, trackReferralClick } from '@/lib/api';
 import toast from 'react-hot-toast';
 import { Mail, Lock, ShieldCheck, Check, Eye, EyeOff, MailCheck, Gift } from 'lucide-react';
 import { GoogleSignInButton } from '@/components/auth/GoogleSignInButton';
@@ -68,9 +68,23 @@ function RegisterForm() {
   useEffect(() => {
     const ref = searchParams.get('ref');
     if (ref) {
-      setReferralCookie(ref);
-      setRefCodeInput(ref.toUpperCase());
+      const upper = ref.trim().toUpperCase();
+      setReferralCookie(upper);
+      setRefCodeInput(upper);
       setRefCodeShown(true);
+      // Fire-and-forget click validation. Confirmed-invalid codes get
+      // dropped so a stale share link doesn't quietly fail at signup
+      // time. Transient errors leave state alone — signup will still
+      // try to attribute, and the backend is the source of truth.
+      trackReferralClick(upper)
+        .then((res) => {
+          if (res.data?.valid === false) {
+            clearReferralCookie();
+            setRefCodeInput('');
+            setRefCodeShown(false);
+          }
+        })
+        .catch(() => { /* best-effort */ });
       return;
     }
     // No URL param, but they may have visited a /?ref=... link earlier.
@@ -101,10 +115,6 @@ function RegisterForm() {
       const cookieRef = getReferralCookie();
       const refCode = manualRef || cookieRef;
       const fingerprint = getDeviceFingerprint();
-      // Flat-string logs so automated browser agents capture the value
-      // instead of showing the collapsed [object Object] marker.
-      // eslint-disable-next-line no-console
-      console.log(`[register] manualRef="${manualRef}" cookieRef="${cookieRef || ''}" refCode="${refCode || ''}" refCodeInputState="${refCodeInput}"`);
       await registerUser(email, password, refCode, fingerprint);
       // Clear the cookie so it can't re-attribute on repeat signups
       // from the same browser (e.g. the user making a second account).
@@ -116,6 +126,11 @@ function RegisterForm() {
       // already registered (see authController). Surface an actionable
       // message with a link to the sign-in page instead of the generic.
       if (err.response?.status === 409 && err.response?.data?.code === 'email_exists') {
+        // The pending referral belongs to whoever intended to sign up here.
+        // If the email already exists, this attempt won't produce a row,
+        // so drop the cookie — otherwise it sticks around and silently
+        // attributes whatever account next logs in from this browser.
+        clearReferralCookie();
         toast.error(
           (t) => (
             <span className="flex items-center gap-3">

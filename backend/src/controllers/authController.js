@@ -70,20 +70,9 @@ const register = async (req, res) => {
       });
     }
 
-    // Background post-signup work. Wrapped in a try/catch so referral
-    // plumbing never blocks or fails a signup. The attribution result
-    // is stashed in `_debug` on the response temporarily so we can
-    // diagnose attribution failures from the frontend Network tab.
-    // TODO: remove _debug once referral attribution is verified working.
-    let _debug = null;
-    // Snapshot of what the backend actually received so we can
-    // distinguish "frontend didn't send it" from "backend didn't read it".
-    const _body_seen = {
-      keys: Object.keys(req.body || {}),
-      ref_code_type: typeof req.body?.ref_code,
-      ref_code_len: typeof req.body?.ref_code === 'string' ? req.body.ref_code.length : null,
-      content_type: req.headers['content-type'] || null,
-    };
+    // Post-signup referral work. Failures here must never bubble up to
+    // block the signup response — a broken referral row is recoverable,
+    // a broken signup is not.
     if (data.user) {
       try {
         await ensureCodeForUser(data.user.id);
@@ -102,26 +91,25 @@ const register = async (req, res) => {
 
         if (normalizedRef) {
           const ipHash = hashIp(getClientIp(req));
-          _debug = await attributeOnSignup({
+          const result = await attributeOnSignup({
             refCode: normalizedRef,
             newUserId: data.user.id,
             newUserEmail: data.user.email || email,
             ipHash,
             fingerprint: fp,
           });
-        } else {
-          _debug = { ok: false, stage: 'no_ref_code_in_body' };
+          if (!result?.ok) {
+            console.warn('attributeOnSignup returned !ok:', result);
+          }
         }
       } catch (bgErr) {
-        _debug = { ok: false, stage: 'register_catch', msg: bgErr.message };
+        console.warn('post-signup referral work failed:', bgErr.message);
       }
     }
 
     return res.status(201).json({
       message: 'Verification email sent',
       user: data.user,
-      _debug,
-      _body_seen,
     });
   } catch (err) {
     return res.status(400).json({ error: err.message });

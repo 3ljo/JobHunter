@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import axios from 'axios';
 import { CheckCircle2, AlertTriangle, Loader2 } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 import { getMe, attributeReferral } from '@/lib/api';
@@ -71,6 +72,25 @@ export default function AuthCallbackPage() {
 
     // Email-confirmation success (type=signup or type=email).
     if (accessToken) {
+      // Safety net for attribution: the referral row is normally created
+      // at /api/auth/register time, but if that call was missed (network
+      // flake, race with Supabase signUp returning before we saw the id,
+      // etc.) and the cookie is still on this browser, retry now that we
+      // have a confirmed session. Backend's /api/referral/attribute is
+      // idempotent — a no-op if the row already exists. We use the
+      // verification access_token directly rather than going through the
+      // auth store so this screen doesn't accidentally sign them in.
+      const refCode = getReferralCookie();
+      if (refCode) {
+        axios
+          .post(
+            `${process.env.NEXT_PUBLIC_API_URL}/api/referral/attribute`,
+            { ref_code: refCode, device_fingerprint: getDeviceFingerprint() },
+            { headers: { Authorization: `Bearer ${accessToken}` } }
+          )
+          .then(() => clearReferralCookie())
+          .catch(() => { /* best-effort; never block verification UX */ });
+      }
       setStatus('verified');
       window.history.replaceState(null, '', window.location.pathname);
       return;

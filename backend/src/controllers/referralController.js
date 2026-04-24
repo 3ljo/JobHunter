@@ -119,19 +119,9 @@ async function looksLikeSelfReferral({ referrerId, refereeEmail, refereeIpHash }
 // Called from authController.register AFTER Supabase createUser succeeds.
 // Idempotent per (referrer, email) — uq_referrals_referrer_email prevents
 // duplicates. Never throws — referral attribution must not block signup.
-// Verbose logging turned ON here so silent production failures become
-// visible in Render logs (attribution bugs are otherwise invisible —
-// nothing shows up on the referrer's dashboard and the signup response
-// looks fine to the user).
-// Returns a debug trace string so authController can surface the result
-// in the register response during diagnosis. Remove the trace return
-// value once attribution is known to work end-to-end.
 async function attributeOnSignup({ refCode, newUserId, newUserEmail, ipHash, fingerprint }) {
-  console.log('[attributeOnSignup] called', { refCode, newUserId, newUserEmail, hasIpHash: !!ipHash });
   if (!refCode || !newUserId || !newUserEmail) {
-    const msg = `missing args refCode=${!!refCode} newUserId=${!!newUserId} newUserEmail=${!!newUserEmail}`;
-    console.warn('[attributeOnSignup]', msg);
-    return { ok: false, stage: 'args', msg };
+    return { ok: false, stage: 'args' };
   }
 
   try {
@@ -150,6 +140,9 @@ async function attributeOnSignup({ refCode, newUserId, newUserEmail, ipHash, fin
     if (!codeRow.is_active) return { ok: false, stage: 'code_inactive', msg: normalizedCode };
     if (codeRow.user_id === newUserId) return { ok: false, stage: 'trivial_self_ref' };
 
+    // Self-ref check is defensive; a transient failure here must NOT
+    // abort the whole attribution. Worst case we skip the flag and let
+    // the nightly `flagSuspiciousReferrers` cron catch it later.
     let isSelfRef = false;
     try {
       isSelfRef = await looksLikeSelfReferral({
@@ -158,7 +151,7 @@ async function attributeOnSignup({ refCode, newUserId, newUserEmail, ipHash, fin
         refereeIpHash: ipHash,
       });
     } catch (e) {
-      return { ok: false, stage: 'self_ref_check_threw', msg: e.message };
+      console.warn('looksLikeSelfReferral threw — proceeding as not-fraud:', e.message);
     }
 
     const status = isSelfRef ? 'fraud' : 'signed_up';
