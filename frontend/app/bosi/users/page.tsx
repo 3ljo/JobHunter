@@ -85,28 +85,18 @@ export default function BosiUsers() {
   return (
     <div className="space-y-6">
 
-      {/* Summary bar */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
-        <div className="rounded-xl p-4" style={{ background: '#1a1e42', border: '1px solid rgba(255,255,255,0.10)' }}>
-          <p className="text-white/70 text-[10px] uppercase tracking-widest font-semibold mb-1">Total Users</p>
-          <p className="text-white text-2xl font-black">{users.length}</p>
-        </div>
-        <div className="rounded-xl p-4" style={{ background: 'rgba(192,132,252,0.08)', border: '1px solid rgba(192,132,252,0.22)' }}>
-          <p className="text-[10px] uppercase tracking-widest font-semibold mb-1" style={{ color: '#c084fc' }}>Paid</p>
-          <p className="text-white text-2xl font-black">{paidCount}</p>
-        </div>
-        <div className="rounded-xl p-4" style={{ background: '#1a1e42', border: '1px solid rgba(255,255,255,0.10)' }}>
-          <p className="text-white/70 text-[10px] uppercase tracking-widest font-semibold mb-1">Total CVs</p>
-          <p className="text-white text-2xl font-black">{users.reduce((s, u) => s + u.cv_count, 0)}</p>
-        </div>
-        <div className="rounded-xl p-4" style={{ background: '#1a1e42', border: '1px solid rgba(255,255,255,0.10)' }}>
-          <p className="text-white/70 text-[10px] uppercase tracking-widest font-semibold mb-1">Total Jobs</p>
-          <p className="text-white text-2xl font-black">{users.reduce((s, u) => s + u.job_count, 0)}</p>
-        </div>
-        <div className="rounded-xl p-4" style={{ background: '#1a1e42', border: '1px solid rgba(255,255,255,0.10)' }}>
-          <p className="text-white/70 text-[10px] uppercase tracking-widest font-semibold mb-1">API Cost</p>
-          <p className="text-white text-2xl font-black">${totalCost.toFixed(4)}</p>
-        </div>
+      {/* Summary bar — 2 cols on the tiniest screens, 3 on sm, 5 on lg.
+          Avoids the stranded-5th-card-on-its-own-row look on mid widths. */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 md:gap-4">
+        <SummaryCard label="Total Users" value={users.length.toString()} />
+        <SummaryCard
+          label="Paid"
+          value={paidCount.toString()}
+          tint={{ bg: 'rgba(192,132,252,0.08)', border: 'rgba(192,132,252,0.22)', fg: '#c084fc' }}
+        />
+        <SummaryCard label="Total CVs" value={users.reduce((s, u) => s + u.cv_count, 0).toString()} />
+        <SummaryCard label="Total Jobs" value={users.reduce((s, u) => s + u.job_count, 0).toString()} />
+        <SummaryCard label="API Cost" value={`$${totalCost.toFixed(4)}`} />
       </div>
 
       {/* Search */}
@@ -125,14 +115,14 @@ export default function BosiUsers() {
         />
       </div>
 
-      {/* Users Table */}
+      {/* Users Table — desktop grid / mobile card stack */}
       <div
         className="rounded-xl overflow-hidden"
         style={{ background: '#1a1e42', border: '1px solid rgba(255,255,255,0.10)' }}
       >
-        {/* Header */}
+        {/* Header row — desktop only; mobile cards have inline labels */}
         <div
-          className="grid grid-cols-12 gap-3 px-5 py-3 text-[10px] text-white/60 uppercase tracking-widest font-bold"
+          className="hidden md:grid grid-cols-12 gap-3 px-5 py-3 text-[10px] text-white/60 uppercase tracking-widest font-bold"
           style={{ borderBottom: '1px solid rgba(255,255,255,0.10)' }}
         >
           <div className="col-span-4">User</div>
@@ -143,7 +133,6 @@ export default function BosiUsers() {
           <div className="col-span-2 text-center">Cost</div>
         </div>
 
-        {/* Rows */}
         {filtered.length === 0 ? (
           <div className="px-5 py-12 text-center text-white/50 text-sm">
             {search ? 'No users match your search' : 'No users yet'}
@@ -152,64 +141,165 @@ export default function BosiUsers() {
           filtered.map((user, i) => {
             const pc = planColor(user.plan);
             const verified = !!user.email_confirmed_at;
+            const isLast = i >= filtered.length - 1;
             return (
-            <div
-              key={user.id}
-              className="grid grid-cols-12 gap-3 px-5 py-3.5 items-center hover:bg-white/[0.04] transition-colors"
-              style={{
-                borderBottom: i < filtered.length - 1 ? '1px solid rgba(255,255,255,0.07)' : 'none',
-              }}
-            >
-              <div className="col-span-4 flex items-center gap-3 min-w-0">
-                <div
-                  className="h-8 w-8 rounded-lg flex items-center justify-center text-xs font-bold shrink-0"
-                  style={{ background: 'rgba(118,77,240,0.2)', color: '#a78bfa' }}
-                >
-                  {(user.full_name || user.email)?.charAt(0)?.toUpperCase()}
+              <div
+                key={user.id}
+                className="px-4 md:px-5 py-3.5 md:py-3 hover:bg-white/[0.04] transition-colors"
+                style={{
+                  borderBottom: isLast ? 'none' : '1px solid rgba(255,255,255,0.07)',
+                }}
+              >
+                {/* ── Desktop: 12-col grid (original layout, slightly wider User col) */}
+                <div className="hidden md:grid grid-cols-12 gap-3 items-center">
+                  <div className="col-span-4 flex items-center gap-3 min-w-0">
+                    <div
+                      className="h-8 w-8 rounded-lg flex items-center justify-center text-xs font-bold shrink-0"
+                      style={{ background: 'rgba(118,77,240,0.2)', color: '#a78bfa' }}
+                    >
+                      {(user.full_name || user.email)?.charAt(0)?.toUpperCase()}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-white text-sm font-semibold truncate flex items-center gap-1.5">
+                        {user.full_name || user.email}
+                        {verified
+                          ? <MailCheck className="h-3 w-3 shrink-0" style={{ color: '#34d399' }} />
+                          : <MailX className="h-3 w-3 shrink-0" style={{ color: '#fbbf24' }} />}
+                      </p>
+                      {user.full_name && (
+                        <p className="text-white/50 text-xs truncate">{user.email}</p>
+                      )}
+                    </div>
+                  </div>
+                  <div className="col-span-2 text-center">
+                    <span
+                      className="inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full whitespace-nowrap"
+                      style={{ background: pc.bg, color: pc.fg }}
+                    >
+                      {user.plan !== 'free' && <Crown className="h-2.5 w-2.5" />}
+                      {planLabel(user.plan)}
+                    </span>
+                  </div>
+                  <div className="col-span-2 text-center text-white/60 text-xs">
+                    {new Date(user.created_at).toLocaleDateString()}
+                  </div>
+                  <div className="col-span-1 text-center">
+                    <span className="inline-flex items-center gap-1 text-white/80 text-xs">
+                      <FileText className="h-3 w-3 text-white/40" /> {user.cv_count}
+                    </span>
+                  </div>
+                  <div className="col-span-1 text-center">
+                    <span className="inline-flex items-center gap-1 text-white/80 text-xs">
+                      <Briefcase className="h-3 w-3 text-white/40" /> {user.job_count}
+                    </span>
+                  </div>
+                  <div className="col-span-2 text-center">
+                    <span
+                      className="inline-flex items-center gap-1 text-xs font-mono"
+                      style={{ color: user.api_cost > 0 ? '#34d399' : 'rgba(255,255,255,0.5)' }}
+                    >
+                      <DollarSign className="h-3 w-3" /> {user.api_cost.toFixed(4)}
+                    </span>
+                  </div>
                 </div>
-                <div className="min-w-0">
-                  <p className="text-white text-sm font-semibold truncate flex items-center gap-1.5">
-                    {user.full_name || user.email}
-                    {verified
-                      ? <MailCheck className="h-3 w-3 shrink-0" style={{ color: '#34d399' }} />
-                      : <MailX className="h-3 w-3 shrink-0" style={{ color: '#fbbf24' }} />}
-                  </p>
-                  {user.full_name && (
-                    <p className="text-white/50 text-xs truncate">{user.email}</p>
-                  )}
+
+                {/* ── Mobile: card layout with full email + labeled chips */}
+                <div className="md:hidden">
+                  <div className="flex items-start gap-3 mb-3">
+                    <div
+                      className="h-9 w-9 rounded-lg flex items-center justify-center text-xs font-bold shrink-0"
+                      style={{ background: 'rgba(118,77,240,0.2)', color: '#a78bfa' }}
+                    >
+                      {(user.full_name || user.email)?.charAt(0)?.toUpperCase()}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      {/* Name or email (wraps full on mobile — no truncate) */}
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <p className="text-white text-sm font-semibold break-all">
+                          {user.full_name || user.email}
+                        </p>
+                        {verified
+                          ? <MailCheck className="h-3 w-3 shrink-0" style={{ color: '#34d399' }} />
+                          : <MailX className="h-3 w-3 shrink-0" style={{ color: '#fbbf24' }} />}
+                      </div>
+                      {user.full_name && (
+                        <p className="text-white/50 text-xs mt-0.5 break-all">{user.email}</p>
+                      )}
+                      <p className="text-white/35 text-[10px] mt-1">
+                        Joined {new Date(user.created_at).toLocaleDateString()}
+                      </p>
+                    </div>
+                    <span
+                      className="inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-wider px-2 py-1 rounded-full whitespace-nowrap shrink-0"
+                      style={{ background: pc.bg, color: pc.fg }}
+                    >
+                      {user.plan !== 'free' && <Crown className="h-2.5 w-2.5" />}
+                      {planLabel(user.plan)}
+                    </span>
+                  </div>
+                  {/* Stats strip — 3 equal chips */}
+                  <div
+                    className="grid grid-cols-3 gap-2 rounded-lg p-2"
+                    style={{ background: 'rgba(0,0,0,0.25)' }}
+                  >
+                    <StatChip icon={FileText} value={user.cv_count.toString()} label="CVs" />
+                    <StatChip icon={Briefcase} value={user.job_count.toString()} label="Jobs" />
+                    <StatChip
+                      icon={DollarSign}
+                      value={`$${user.api_cost.toFixed(4)}`}
+                      label="Cost"
+                      highlight={user.api_cost > 0}
+                    />
+                  </div>
                 </div>
               </div>
-              <div className="col-span-2 text-center">
-                <span
-                  className="inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full"
-                  style={{ background: pc.bg, color: pc.fg }}
-                >
-                  {user.plan !== 'free' && <Crown className="h-2.5 w-2.5" />}
-                  {planLabel(user.plan)}
-                </span>
-              </div>
-              <div className="col-span-2 text-center text-white/60 text-xs">
-                {new Date(user.created_at).toLocaleDateString()}
-              </div>
-              <div className="col-span-1 text-center">
-                <span className="inline-flex items-center gap-1 text-white/80 text-xs">
-                  <FileText className="h-3 w-3 text-white/40" /> {user.cv_count}
-                </span>
-              </div>
-              <div className="col-span-1 text-center">
-                <span className="inline-flex items-center gap-1 text-white/80 text-xs">
-                  <Briefcase className="h-3 w-3 text-white/40" /> {user.job_count}
-                </span>
-              </div>
-              <div className="col-span-2 text-center">
-                <span className="inline-flex items-center gap-1 text-xs font-mono" style={{ color: user.api_cost > 0 ? '#34d399' : 'rgba(255,255,255,0.5)' }}>
-                  <DollarSign className="h-3 w-3" /> {user.api_cost.toFixed(4)}
-                </span>
-              </div>
-            </div>
-          )})
+            );
+          })
         )}
       </div>
+    </div>
+  );
+}
+
+function SummaryCard({
+  label, value, tint,
+}: {
+  label: string;
+  value: string;
+  tint?: { bg: string; border: string; fg: string };
+}) {
+  return (
+    <div
+      className="rounded-xl p-3 md:p-4"
+      style={{
+        background: tint?.bg || '#1a1e42',
+        border: `1px solid ${tint?.border || 'rgba(255,255,255,0.10)'}`,
+      }}
+    >
+      <p
+        className="text-[10px] uppercase tracking-widest font-semibold mb-1 truncate"
+        style={{ color: tint?.fg || 'rgba(255,255,255,0.7)' }}
+      >
+        {label}
+      </p>
+      <p className="text-white text-xl md:text-2xl font-black tabular-nums">{value}</p>
+    </div>
+  );
+}
+
+function StatChip({
+  icon: Icon, value, label, highlight,
+}: { icon: any; value: string; label: string; highlight?: boolean }) {
+  return (
+    <div className="text-center">
+      <div
+        className="flex items-center justify-center gap-1 text-xs font-mono tabular-nums"
+        style={{ color: highlight ? '#34d399' : 'rgba(255,255,255,0.85)' }}
+      >
+        <Icon className="h-3 w-3" style={{ color: highlight ? '#34d399' : 'rgba(255,255,255,0.45)' }} />
+        {value}
+      </div>
+      <p className="text-[9px] uppercase tracking-widest text-white/40 font-bold mt-0.5">{label}</p>
     </div>
   );
 }
