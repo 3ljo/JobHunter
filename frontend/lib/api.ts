@@ -67,7 +67,7 @@ export const getMe = () =>
 
 // Profile
 export const getProfile = () =>
-  api.get<{ profile: Profile }>('/api/profile');
+  api.get<{ profile: Profile | null }>('/api/profile');
 
 export const updateProfile = (data: Partial<Profile>) =>
   api.put<{ message: string; profile: Profile }>('/api/profile', data);
