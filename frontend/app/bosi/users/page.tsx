@@ -1,9 +1,9 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
 import { getAdminUsers } from '@/lib/api';
-import { Search, FileText, Briefcase, Zap, DollarSign, Crown, MailCheck, MailX } from 'lucide-react';
+import { Search, FileText, Briefcase, DollarSign, Crown, MailCheck, MailX, Filter } from 'lucide-react';
 
 interface AdminUser {
   id: string;
@@ -32,11 +32,41 @@ const planColor = (plan: string) =>
     : plan === 'starter' ? { bg: 'rgba(52,211,153,0.15)', fg: '#34d399' }
     : { bg: 'rgba(255,255,255,0.06)', fg: 'rgba(255,255,255,0.55)' };
 
+type PlanFilter = 'all' | 'paid' | 'free' | 'pro_voice' | 'pro' | 'starter';
+type VerifiedFilter = 'all' | 'verified' | 'unverified';
+type SortKey = 'newest' | 'oldest' | 'cost' | 'cvs' | 'jobs';
+
+const PLAN_FILTERS: { key: PlanFilter; label: string }[] = [
+  { key: 'all', label: 'All' },
+  { key: 'paid', label: 'Paid' },
+  { key: 'pro_voice', label: 'Pro Voice' },
+  { key: 'pro', label: 'Pro' },
+  { key: 'starter', label: 'Pass' },
+  { key: 'free', label: 'Free' },
+];
+
+const VERIFIED_FILTERS: { key: VerifiedFilter; label: string }[] = [
+  { key: 'all', label: 'All' },
+  { key: 'verified', label: 'Verified' },
+  { key: 'unverified', label: 'Unverified' },
+];
+
+const SORT_OPTIONS: { key: SortKey; label: string }[] = [
+  { key: 'newest', label: 'Newest' },
+  { key: 'oldest', label: 'Oldest' },
+  { key: 'cost', label: 'Top cost' },
+  { key: 'cvs', label: 'Most CVs' },
+  { key: 'jobs', label: 'Most jobs' },
+];
+
 export default function BosiUsers() {
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [planFilter, setPlanFilter] = useState<PlanFilter>('all');
+  const [verifiedFilter, setVerifiedFilter] = useState<VerifiedFilter>('all');
+  const [sortBy, setSortBy] = useState<SortKey>('newest');
 
   useEffect(() => {
     getAdminUsers()
@@ -73,14 +103,43 @@ export default function BosiUsers() {
   }
 
   const q = search.trim().toLowerCase();
-  const filtered = !q ? users : users.filter((u) =>
-    (u.email || '').toLowerCase().includes(q) ||
-    (u.full_name || '').toLowerCase().includes(q) ||
-    (u.id || '').toLowerCase().includes(q)
-  );
+
+  const filtered = useMemo(() => {
+    const matchesPlan = (u: AdminUser) => {
+      if (planFilter === 'all') return true;
+      if (planFilter === 'paid') return u.plan && u.plan !== 'free';
+      if (planFilter === 'pro_voice') return u.plan === 'pro_voice' || u.plan === 'pro_plus';
+      return u.plan === planFilter;
+    };
+    const matchesVerified = (u: AdminUser) => {
+      if (verifiedFilter === 'all') return true;
+      const v = !!u.email_confirmed_at;
+      return verifiedFilter === 'verified' ? v : !v;
+    };
+    const matchesSearch = (u: AdminUser) => !q ||
+      (u.email || '').toLowerCase().includes(q) ||
+      (u.full_name || '').toLowerCase().includes(q) ||
+      (u.id || '').toLowerCase().includes(q);
+
+    const result = users.filter((u) => matchesPlan(u) && matchesVerified(u) && matchesSearch(u));
+
+    const ts = (s: string | null) => (s ? new Date(s).getTime() : 0);
+    result.sort((a, b) => {
+      switch (sortBy) {
+        case 'oldest': return ts(a.created_at) - ts(b.created_at);
+        case 'cost':   return b.api_cost - a.api_cost;
+        case 'cvs':    return b.cv_count - a.cv_count;
+        case 'jobs':   return b.job_count - a.job_count;
+        case 'newest':
+        default:       return ts(b.created_at) - ts(a.created_at);
+      }
+    });
+    return result;
+  }, [users, q, planFilter, verifiedFilter, sortBy]);
 
   const totalCost = users.reduce((sum, u) => sum + u.api_cost, 0);
   const paidCount = users.filter((u) => u.plan && u.plan !== 'free').length;
+  const activeFilters = (planFilter !== 'all' ? 1 : 0) + (verifiedFilter !== 'all' ? 1 : 0);
 
   return (
     <div className="space-y-6">
@@ -115,6 +174,66 @@ export default function BosiUsers() {
         />
       </div>
 
+      {/* Filters */}
+      <div
+        className="rounded-xl p-3 md:p-4 space-y-3"
+        style={{ background: '#1a1e42', border: '1px solid rgba(255,255,255,0.10)' }}
+      >
+        <div className="flex items-center gap-2 flex-wrap">
+          <Filter className="h-3.5 w-3.5 text-white/50" />
+          <span className="text-[10px] font-black uppercase tracking-widest text-white/60 mr-1">Plan</span>
+          {PLAN_FILTERS.map((f) => (
+            <FilterPill
+              key={f.key}
+              active={planFilter === f.key}
+              onClick={() => setPlanFilter(f.key)}
+              label={f.label}
+            />
+          ))}
+        </div>
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-[10px] font-black uppercase tracking-widest text-white/60 mr-1 pl-[22px] md:pl-[22px]">Email</span>
+          {VERIFIED_FILTERS.map((f) => (
+            <FilterPill
+              key={f.key}
+              active={verifiedFilter === f.key}
+              onClick={() => setVerifiedFilter(f.key)}
+              label={f.label}
+            />
+          ))}
+        </div>
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-[10px] font-black uppercase tracking-widest text-white/60 mr-1 pl-[22px] md:pl-[22px]">Sort</span>
+          {SORT_OPTIONS.map((f) => (
+            <FilterPill
+              key={f.key}
+              active={sortBy === f.key}
+              onClick={() => setSortBy(f.key)}
+              label={f.label}
+            />
+          ))}
+        </div>
+        <div className="flex items-center justify-between gap-3 pt-1 text-[11px] text-white/45">
+          <span>
+            Showing <span className="text-white/80 font-bold tabular-nums">{filtered.length}</span>
+            <span className="text-white/35"> / {users.length}</span>
+          </span>
+          {(activeFilters > 0 || !!q) && (
+            <button
+              onClick={() => {
+                setPlanFilter('all');
+                setVerifiedFilter('all');
+                setSortBy('newest');
+                setSearch('');
+              }}
+              className="text-white/55 hover:text-white transition-colors underline-offset-2 hover:underline"
+            >
+              Reset filters
+            </button>
+          )}
+        </div>
+      </div>
+
       {/* Users Table — desktop grid / mobile card stack */}
       <div
         className="rounded-xl overflow-hidden"
@@ -135,7 +254,11 @@ export default function BosiUsers() {
 
         {filtered.length === 0 ? (
           <div className="px-5 py-12 text-center text-white/50 text-sm">
-            {search ? 'No users match your search' : 'No users yet'}
+            {users.length === 0
+              ? 'No users yet'
+              : q || activeFilters > 0
+                ? 'No users match the current filters'
+                : 'No users yet'}
           </div>
         ) : (
           filtered.map((user, i) => {
@@ -284,6 +407,24 @@ function SummaryCard({
       </p>
       <p className="text-white text-xl md:text-2xl font-black tabular-nums">{value}</p>
     </div>
+  );
+}
+
+function FilterPill({
+  active, onClick, label,
+}: { active: boolean; onClick: () => void; label: string }) {
+  return (
+    <button
+      onClick={onClick}
+      className="px-3 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap"
+      style={{
+        background: active ? 'rgba(118,77,240,0.2)' : 'rgba(255,255,255,0.04)',
+        color: active ? '#a78bfa' : 'rgba(255,255,255,0.5)',
+        border: active ? '1px solid rgba(118,77,240,0.3)' : '1px solid rgba(255,255,255,0.10)',
+      }}
+    >
+      {label}
+    </button>
   );
 }
 
