@@ -93,49 +93,74 @@ const getDashboardStats = async (req, res) => {
 
 const getUsers = async (req, res) => {
   try {
-    const { data: profiles, error } = await supabase
-      .from('profiles')
-      .select('*')
-      .order('created_at', { ascending: false });
+    // Source of truth is auth.users (every signup lands here), NOT the
+    // profiles table (which only exists once the user completes
+    // onboarding or edits their profile). The old implementation queried
+    // profiles directly and silently hid every fresh signup — admin
+    // page looked empty until someone hand-filled their profile.
+    //
+    // listUsers() is paginated (default 50/page, max 1000/page). We
+    // walk until exhausted so the admin actually sees everyone.
+    const allUsers = [];
+    const perPage = 1000;
+    for (let page = 1; page <= 20; page++) { // cap at 20k — enough for the launch phase
+      const { data, error } = await supabase.auth.admin.listUsers({ page, perPage });
+      if (error) throw error;
+      const batch = data?.users || [];
+      allUsers.push(...batch);
+      if (batch.length < perPage) break;
+    }
 
-    if (error) throw error;
+    // Pull profiles + counts + usage + subscriptions in parallel; all are
+    // optional lookups keyed by user_id, so we merge them in after.
+    const [profilesRes, cvRes, jobRes, usageRes, subsRes] = await Promise.all([
+      supabase.from('profiles').select('id, full_name, updated_at'),
+      supabase.from('cvs').select('user_id'),
+      supabase.from('job_tracker').select('user_id'),
+      supabase.from('api_usage').select('user_id, estimated_cost'),
+      supabase.from('subscriptions').select('user_id, plan, status'),
+    ]);
 
-    // Enrich with CV count and job count per user
-    const userIds = profiles.map((p) => p.id);
+    const profileMap = {};
+    (profilesRes.data || []).forEach((p) => { profileMap[p.id] = p; });
 
-    const { data: cvCounts } = await supabase
-      .from('cvs')
-      .select('user_id');
-
-    const { data: jobCounts } = await supabase
-      .from('job_tracker')
-      .select('user_id');
-
-    // Count per user
     const cvMap = {};
-    const jobMap = {};
-    (cvCounts || []).forEach((c) => { cvMap[c.user_id] = (cvMap[c.user_id] || 0) + 1; });
-    (jobCounts || []).forEach((j) => { jobMap[j.user_id] = (jobMap[j.user_id] || 0) + 1; });
+    (cvRes.data || []).forEach((c) => { cvMap[c.user_id] = (cvMap[c.user_id] || 0) + 1; });
 
-    // Get usage stats per user
-    const { data: usageData } = await supabase
-      .from('api_usage')
-      .select('user_id, estimated_cost');
+    const jobMap = {};
+    (jobRes.data || []).forEach((j) => { jobMap[j.user_id] = (jobMap[j.user_id] || 0) + 1; });
 
     const usageMap = {};
-    (usageData || []).forEach((u) => {
+    (usageRes.data || []).forEach((u) => {
       if (!usageMap[u.user_id]) usageMap[u.user_id] = { calls: 0, cost: 0 };
       usageMap[u.user_id].calls += 1;
       usageMap[u.user_id].cost += parseFloat(u.estimated_cost || 0);
     });
 
-    const users = profiles.map((p) => ({
-      ...p,
-      cv_count: cvMap[p.id] || 0,
-      job_count: jobMap[p.id] || 0,
-      api_calls: usageMap[p.id]?.calls || 0,
-      api_cost: usageMap[p.id]?.cost || 0,
-    }));
+    const subMap = {};
+    (subsRes.data || []).forEach((s) => { subMap[s.user_id] = s; });
+
+    // Sort newest-first. auth.users has created_at as an ISO string.
+    allUsers.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
+    const users = allUsers.map((u) => {
+      const profile = profileMap[u.id];
+      const sub = subMap[u.id];
+      return {
+        id: u.id,
+        email: u.email || u.user_metadata?.email || '',
+        full_name: profile?.full_name || u.user_metadata?.full_name || null,
+        created_at: u.created_at,
+        email_confirmed_at: u.email_confirmed_at || null,
+        last_sign_in_at: u.last_sign_in_at || null,
+        plan: sub?.plan || 'free',
+        subscription_status: sub?.status || null,
+        cv_count: cvMap[u.id] || 0,
+        job_count: jobMap[u.id] || 0,
+        api_calls: usageMap[u.id]?.calls || 0,
+        api_cost: usageMap[u.id]?.cost || 0,
+      };
+    });
 
     res.json({ users });
   } catch (err) {
