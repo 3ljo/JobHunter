@@ -20,17 +20,10 @@ const COOKIE_NAME = 'cv_ref';
 const MAX_AGE = 90 * 24 * 60 * 60; // 90 days, matches client helper
 const CODE_RE = /^[A-Z0-9]{4,16}$/;
 
-export function middleware(request: NextRequest) {
-  const ref = request.nextUrl.searchParams.get('ref');
-  if (!ref) return NextResponse.next();
-
-  const clean = ref.trim().toUpperCase();
-  if (!CODE_RE.test(clean)) return NextResponse.next();
-
-  const response = NextResponse.next();
+function writeCookie(response: NextResponse, code: string): void {
   response.cookies.set({
     name: COOKIE_NAME,
-    value: clean,
+    value: code,
     maxAge: MAX_AGE,
     path: '/',
     sameSite: 'lax',
@@ -39,6 +32,31 @@ export function middleware(request: NextRequest) {
     httpOnly: false,
     secure: process.env.NODE_ENV === 'production',
   });
+}
+
+export function middleware(request: NextRequest) {
+  const ref = request.nextUrl.searchParams.get('ref');
+  if (!ref) return NextResponse.next();
+
+  const clean = ref.trim().toUpperCase();
+  if (!CODE_RE.test(clean)) return NextResponse.next();
+
+  // A bare /?ref=CODE link should drop the visitor straight on the signup
+  // form — the referrer already sold them on the product, no need to make
+  // them scroll the marketing page. Handles legacy share URLs still
+  // floating around in chats / emails.
+  if (request.nextUrl.pathname === '/') {
+    const url = request.nextUrl.clone();
+    url.pathname = '/register';
+    // Keep ?ref= on the URL so the register form's URL-param branch
+    // pre-fills it (belt-and-braces with the cookie we're about to set).
+    const redirect = NextResponse.redirect(url);
+    writeCookie(redirect, clean);
+    return redirect;
+  }
+
+  const response = NextResponse.next();
+  writeCookie(response, clean);
   return response;
 }
 
