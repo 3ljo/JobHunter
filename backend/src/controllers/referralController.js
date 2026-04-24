@@ -72,7 +72,11 @@ async function ensureCodeForUser(userId) {
 // combo looks like someone trying to refer themselves.
 //
 //   - referee's email shares a local-part-before-plus with the referrer
-//   - OR the IP hash matches a referral row the referrer themselves owns
+//   - OR the IP hash matches a RECENT referral from this same referrer
+//     (24h window — avoids false positives for legitimate referrals
+//     from shared networks: dorms, offices, households on the same NAT).
+const IP_FRAUD_WINDOW_MS = 24 * 60 * 60 * 1000;
+
 async function looksLikeSelfReferral({ referrerId, refereeEmail, refereeIpHash }) {
   if (!referrerId || !refereeEmail) return false;
 
@@ -93,13 +97,18 @@ async function looksLikeSelfReferral({ referrerId, refereeEmail, refereeIpHash }
     /* non-fatal — fall through to IP check */
   }
 
-  // Same device (IP hash) as a prior referral from this same referrer?
+  // Same device (IP hash) as a prior referral from this same referrer
+  // WITHIN THE LAST 24h? Previously this matched forever, which wrongly
+  // flagged legitimate referrals from households/offices behind a shared
+  // NAT. The fraudCheck cron still catches long-running abuse patterns.
   if (refereeIpHash) {
+    const since = new Date(Date.now() - IP_FRAUD_WINDOW_MS).toISOString();
     const { data: sameIp } = await supabase
       .from('referrals')
       .select('id')
       .eq('referrer_id', referrerId)
       .eq('ip_address_hash', refereeIpHash)
+      .gte('created_at', since)
       .limit(1);
     if (sameIp && sameIp.length > 0) return true;
   }
@@ -185,6 +194,29 @@ async function attributeOnSignup({ refCode, newUserId, newUserEmail, ipHash, fin
   }
 }
 
+// On-demand promoter: flips any of this user's 'paid' referrals whose
+// 14-day vesting clock has expired over to 'confirmed'. Called right
+// before any read or payout action that depends on the 'confirmed'
+// status, so the UI and payout endpoint never disagree because of a
+// cron-job lag. The nightly cron (/api/cron/approve-vested) still runs
+// as a safety net.
+async function promoteVestedReferrals(referrerId) {
+  if (!referrerId) return 0;
+  const nowIso = new Date().toISOString();
+  const { data, error } = await supabase
+    .from('referrals')
+    .update({ status: 'confirmed' })
+    .eq('referrer_id', referrerId)
+    .eq('status', 'paid')
+    .lte('reward_vested_at', nowIso)
+    .select('id');
+  if (error) {
+    console.warn('promoteVestedReferrals failed:', error.message);
+    return 0;
+  }
+  return (data || []).length;
+}
+
 // ─────────────────────────────────────────
 // GET /api/referral/me — everything the user's dashboard needs.
 const getMyReferralInfo = async (req, res) => {
@@ -198,6 +230,10 @@ const getMyReferralInfo = async (req, res) => {
         error: `Could not generate a referral code for this user: ${detail}`,
       });
     }
+
+    // Flip any due-for-vesting rows before we compute stats so the UI
+    // and payout endpoint see consistent state.
+    await promoteVestedReferrals(userId);
 
     // Aggregate referrals by status for the dashboard stats block.
     const { data: rows } = await supabase
@@ -310,6 +346,11 @@ const requestPayout = async (req, res) => {
       return res.status(400).json({ error: 'Valid paypal_email is required' });
     }
 
+    // Promote vested rows first — otherwise a user whose reward vested
+    // after the nightly cron ran would see "vested" on the dashboard
+    // (the UI computes vesting in real time) but get a $0 balance here.
+    await promoteVestedReferrals(userId);
+
     // Find every confirmed referral with a reward and no prior payout row.
     const { data: confirmed } = await supabase
       .from('referrals')
@@ -362,12 +403,74 @@ const requestPayout = async (req, res) => {
   }
 };
 
+// ─────────────────────────────────────────
+// POST /api/referral/attribute — authenticated. Called from the frontend
+// AFTER a signup/login flow that couldn't pass the referral code via
+// /api/auth/register (notably Google OAuth, which creates the Supabase
+// user outside our backend entirely). Idempotent: no-op if this user
+// already has a referrals row. Attribution only succeeds if the account
+// was created in the last 24h, so a long-time user can't retroactively
+// "claim" to have been referred.
+const POSTSIGNUP_WINDOW_MS = 24 * 60 * 60 * 1000;
+
+const attributePostSignup = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { ref_code, device_fingerprint } = req.body || {};
+
+    if (typeof ref_code !== 'string' || !ref_code.trim()) {
+      return res.status(400).json({ ok: false, stage: 'bad_ref_code' });
+    }
+
+    // Already attributed? Cheap no-op.
+    const { data: existing } = await supabase
+      .from('referrals')
+      .select('id, status')
+      .eq('referee_id', userId)
+      .maybeSingle();
+    if (existing) {
+      return res.json({ ok: true, stage: 'already_attributed', status: existing.status });
+    }
+
+    // Only allow fresh accounts to be attributed — stops a user who's
+    // been around for months from suddenly "remembering" a referral.
+    const createdAt = req.user.created_at ? new Date(req.user.created_at).getTime() : 0;
+    if (!createdAt || Date.now() - createdAt > POSTSIGNUP_WINDOW_MS) {
+      return res.status(403).json({ ok: false, stage: 'account_too_old' });
+    }
+
+    // Ensure this user has their own code row too (usually a no-op — they
+    // get one on first /api/referral/me, but OAuth users might hit
+    // /attribute before /me).
+    await ensureCodeForUser(userId);
+
+    const ipHash = hashIp(getClientIp(req));
+    const result = await attributeOnSignup({
+      refCode: ref_code,
+      newUserId: userId,
+      newUserEmail: req.user.email,
+      ipHash,
+      fingerprint: typeof device_fingerprint === 'string' ? device_fingerprint : null,
+    });
+
+    if (!result.ok) {
+      return res.status(400).json(result);
+    }
+    return res.json(result);
+  } catch (err) {
+    console.error('attributePostSignup error:', err.message);
+    return res.status(500).json({ ok: false, stage: 'threw', msg: err.message });
+  }
+};
+
 module.exports = {
   ensureCodeForUser,
   attributeOnSignup,
   getMyReferralInfo,
   trackClick,
   requestPayout,
+  attributePostSignup,
   // Helpers exported for testing / direct use
   generateCode,
+  promoteVestedReferrals,
 };

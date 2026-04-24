@@ -5,7 +5,8 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { CheckCircle2, AlertTriangle, Loader2 } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
-import { getMe } from '@/lib/api';
+import { getMe, attributeReferral } from '@/lib/api';
+import { getReferralCookie, clearReferralCookie, getDeviceFingerprint } from '@/lib/referralCookie';
 
 type Status = 'loading' | 'verified' | 'error';
 
@@ -44,6 +45,21 @@ export default function AuthCallbackPage() {
         try {
           const res = await getMe();
           setUser(res.data.user);
+
+          // OAuth signups bypass /api/auth/register entirely, so the
+          // referral never gets attributed there. Do it here: if the
+          // visitor has a `cv_ref` cookie, POST it to /api/referral/attribute
+          // (idempotent on the backend — no-op if already attributed).
+          const refCode = getReferralCookie();
+          if (refCode) {
+            try {
+              await attributeReferral(refCode, getDeviceFingerprint());
+              clearReferralCookie();
+            } catch {
+              // Attribution is best-effort — never block the login flow.
+            }
+          }
+
           router.replace('/cv');
         } catch {
           setErrorMessage('Could not complete sign-in. Try again.');

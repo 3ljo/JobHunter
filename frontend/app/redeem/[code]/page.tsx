@@ -16,6 +16,7 @@ import toast from 'react-hot-toast';
 import axios from 'axios';
 import { CheckCircle2, Gift, AlertCircle, ArrowRight } from 'lucide-react';
 import { lookupGift, redeemGift, type GiftLookup } from '@/lib/api';
+import { getReferralCookie } from '@/lib/referralCookie';
 
 interface Props {
   params: Promise<{ code: string }>;
@@ -138,7 +139,7 @@ export default function RedeemGiftPage({ params }: Props) {
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-2">
               <Link
-                href={`/register?email=${encodeURIComponent(gift.recipient_email)}&redeem=${encodeURIComponent(code)}`}
+                href={buildAuthHref('/register', gift.recipient_email, code)}
                 className="btn-aivent fx-slide"
                 data-hover="CREATE ACCOUNT"
                 style={{ minWidth: '170px', height: '44px' }}
@@ -146,7 +147,7 @@ export default function RedeemGiftPage({ params }: Props) {
                 <span>Create account</span>
               </Link>
               <Link
-                href={`/login?email=${encodeURIComponent(gift.recipient_email)}&redeem=${encodeURIComponent(code)}`}
+                href={buildAuthHref('/login', gift.recipient_email, code)}
                 className="inline-flex items-center justify-center rounded-xl px-4 py-2.5 text-sm font-bold"
                 style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.7)' }}
               >
@@ -177,6 +178,17 @@ export default function RedeemGiftPage({ params }: Props) {
       </p>
     </Shell>
   );
+}
+
+// Preserve the referral cookie into the auth-page URL as a ?ref=... param.
+// Middleware on the destination route re-sets the cookie; this belt-and-
+// braces approach keeps attribution alive even if the cookie was somehow
+// lost (privacy mode, third-party cookie block) between pages.
+function buildAuthHref(base: '/login' | '/register', email: string, redeemCode: string): string {
+  const refCode = getReferralCookie();
+  const qs = new URLSearchParams({ email, redeem: redeemCode });
+  if (refCode) qs.set('ref', refCode);
+  return `${base}?${qs.toString()}`;
 }
 
 function Shell({ children }: { children: React.ReactNode }) {

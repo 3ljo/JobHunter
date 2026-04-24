@@ -6,6 +6,7 @@ const {
   getMyReferralInfo,
   trackClick,
   requestPayout,
+  attributePostSignup,
 } = require('../controllers/referralController');
 const { logEvent, KNOWN_EVENTS } = require('../lib/events');
 
@@ -33,9 +34,10 @@ function rateLimit(req, res, next) {
   next();
 }
 
-router.get('/me',       requireAuth, getMyReferralInfo);
-router.post('/track',   rateLimit,   trackClick);
-router.post('/payout',  requireAuth, requestPayout);
+router.get('/me',        requireAuth, getMyReferralInfo);
+router.post('/track',    rateLimit,   trackClick);
+router.post('/payout',   requireAuth, requestPayout);
+router.post('/attribute', requireAuth, rateLimit, attributePostSignup);
 
 // Client-side telemetry sink for share-card opens (ats_share, hire_share).
 // Authenticated so we get the user_id. Ignores unknown event names silently.

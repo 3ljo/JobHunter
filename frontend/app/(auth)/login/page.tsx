@@ -1,18 +1,33 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { loginUser, resendVerification } from '@/lib/api';
+import { loginUser, resendVerification, attributeReferral } from '@/lib/api';
 import { useAuthStore } from '@/store/authStore';
 import toast from 'react-hot-toast';
 import { Mail, Lock, Eye, EyeOff } from 'lucide-react';
 import { GoogleSignInButton } from '@/components/auth/GoogleSignInButton';
+import {
+  setReferralCookie,
+  getReferralCookie,
+  clearReferralCookie,
+  getDeviceFingerprint,
+} from '@/lib/referralCookie';
 
 export default function LoginPage() {
+  return (
+    <Suspense>
+      <LoginForm />
+    </Suspense>
+  );
+}
+
+function LoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { setToken, setUser } = useAuthStore();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -20,6 +35,16 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [unconfirmed, setUnconfirmed] = useState(false);
   const [resending, setResending] = useState(false);
+
+  // Pre-fill email when arriving from /redeem or /register (account-exists toast).
+  // Capture ?ref=CODE into the cookie so the attribution survives login too —
+  // middleware covers the first hit, but client effects handle SPA-nav edges.
+  useEffect(() => {
+    const qEmail = searchParams.get('email');
+    if (qEmail) setEmail(qEmail);
+    const ref = searchParams.get('ref');
+    if (ref) setReferralCookie(ref);
+  }, [searchParams]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -29,6 +54,22 @@ export default function LoginPage() {
       const res = await loginUser(email, password);
       setToken(res.data.session.access_token);
       setUser(res.data.user);
+
+      // Opportunistic referral attribution: if this user has a pending
+      // ref cookie but no referral row yet (e.g. they signed up via
+      // Google OAuth before the ref flow was wired up, or the register
+      // request missed the code), the backend will attribute now. The
+      // endpoint is idempotent — safe to call every login.
+      const refCode = getReferralCookie();
+      if (refCode) {
+        try {
+          await attributeReferral(refCode, getDeviceFingerprint());
+          clearReferralCookie();
+        } catch {
+          // Attribution is best-effort — never block the login flow.
+        }
+      }
+
       toast.success('Signed in successfully');
       router.push('/cv');
     } catch (err: any) {

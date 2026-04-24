@@ -281,6 +281,17 @@ export const getMyReferralInfo = () =>
 export const trackReferralClick = (code: string) =>
   api.post<{ valid: boolean }>('/api/referral/track', { code });
 
+// Post-signup attribution — authenticated. Covers flows where the
+// referral couldn't be attached at /api/auth/register time (Google OAuth,
+// pre-existing accounts logging in with a fresh ref cookie, etc).
+// Idempotent on the backend: ignores the call if the user already has a
+// referral row.
+export const attributeReferral = (refCode: string, deviceFingerprint?: string | null) =>
+  api.post<{ ok: boolean; stage?: string }>('/api/referral/attribute', {
+    ref_code: refCode,
+    device_fingerprint: deviceFingerprint || undefined,
+  });
+
 export const requestReferralPayout = (paypal_email: string) =>
   api.post<{ payout: { id: string; amount_cents: number; status: string } }>(
     '/api/referral/payout',

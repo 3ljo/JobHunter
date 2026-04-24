@@ -88,14 +88,26 @@ const register = async (req, res) => {
       try {
         await ensureCodeForUser(data.user.id);
 
-        if (ref_code) {
+        // Accept only a string with a plausible code shape. Reject
+        // numbers, booleans, objects, and empty strings silently so a
+        // malformed client payload never blocks the signup.
+        const normalizedRef =
+          typeof ref_code === 'string' && /^[A-Z0-9]{4,16}$/i.test(ref_code.trim())
+            ? ref_code.trim().toUpperCase()
+            : null;
+        const fp =
+          typeof device_fingerprint === 'string' && device_fingerprint.length > 0
+            ? device_fingerprint
+            : null;
+
+        if (normalizedRef) {
           const ipHash = hashIp(getClientIp(req));
           _debug = await attributeOnSignup({
-            refCode: ref_code,
+            refCode: normalizedRef,
             newUserId: data.user.id,
             newUserEmail: data.user.email || email,
             ipHash,
-            fingerprint: device_fingerprint || null,
+            fingerprint: fp,
           });
         } else {
           _debug = { ok: false, stage: 'no_ref_code_in_body' };
