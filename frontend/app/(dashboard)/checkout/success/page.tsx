@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useSubscriptionStore } from '@/store/subscriptionStore';
 import {
   CheckCircle2, ArrowRight, Sparkles, FileText, PenLine, Settings,
-  Crown, Zap, Loader2,
+  Crown, Zap, Loader2, AlertCircle, RefreshCw, Mail,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
@@ -42,36 +42,42 @@ const PLAN_META: Record<
   },
 };
 
+type Phase = 'polling' | 'ready' | 'delayed';
+
 export default function CheckoutSuccessPage() {
   const { subscription, refresh } = useSubscriptionStore();
-  // Hold back the banner until we have a non-free plan from the backend,
-  // otherwise the first paint flashes "Welcome to Free!" (zustand store
-  // is null on mount; the force-refresh below takes ~300ms to resolve).
-  const [ready, setReady] = useState(false);
+  // Explicit three-state machine rather than a single "ready" boolean:
+  //   polling  → still waiting for the webhook to upgrade our plan row
+  //   ready    → plan row flipped off 'free', show the welcome
+  //   delayed  → polled long enough, webhook still hasn't landed —
+  //              show an honest "payment received, activation delayed"
+  //              card instead of faking a welcome to a plan we don't
+  //              actually have (which the Network tab & navbar exposed).
+  const [phase, setPhase] = useState<Phase>('polling');
+  const [attempts, setAttempts] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
 
-    // Webhooks from Lemon Squeezy aren't instantaneous — poll subscription
-    // status until the plan upgrades off 'free' or we hit the retry cap.
-    // Without this, the banner either flashes "Free" or sits empty until
-    // the 60s store-TTL naturally expires.
     const poll = async () => {
-      for (let attempt = 0; attempt < 12; attempt++) {
+      // Max ~30s wall clock: 10 attempts at 1s → 3s backoff. Beats the
+      // old 500ms-hammer loop that was firing ~12 requests in 10s, and
+      // gives LS webhooks a realistic delivery window.
+      for (let attempt = 0; attempt < 10; attempt++) {
         if (cancelled) return;
+        setAttempts(attempt + 1);
         await refresh();
         const current = useSubscriptionStore.getState().subscription;
         const planKey = current?.plan;
         if (planKey && planKey !== 'free') {
-          if (!cancelled) setReady(true);
+          if (!cancelled) setPhase('ready');
           return;
         }
-        // Back off: 500ms → 1s → 1.5s ... capped ~1.5s
-        await new Promise((r) => setTimeout(r, Math.min(500 + attempt * 200, 1500)));
+        await new Promise((r) => setTimeout(r, Math.min(1000 + attempt * 250, 3000)));
       }
-      // Webhook still hadn't arrived — unblock the UI anyway. The user
-      // paid; we'd rather show a slightly-stale banner than a spinner.
-      if (!cancelled) setReady(true);
+      // Webhook never arrived. Don't lie about which plan they have —
+      // tell them the payment went through and activation is pending.
+      if (!cancelled) setPhase('delayed');
     };
 
     poll();
@@ -83,6 +89,22 @@ export default function CheckoutSuccessPage() {
       cancelled = true;
     };
   }, [refresh]);
+
+  const manualRefresh = async () => {
+    setPhase('polling');
+    setAttempts(0);
+    for (let attempt = 0; attempt < 5; attempt++) {
+      setAttempts(attempt + 1);
+      await refresh();
+      const current = useSubscriptionStore.getState().subscription;
+      if (current?.plan && current.plan !== 'free') {
+        setPhase('ready');
+        return;
+      }
+      await new Promise((r) => setTimeout(r, 1500));
+    }
+    setPhase('delayed');
+  };
 
   const meta = PLAN_META[subscription?.plan || ''] || PLAN_META.pro;
 
@@ -127,17 +149,15 @@ export default function CheckoutSuccessPage() {
       />
 
       <div className="relative z-10 max-w-3xl mx-auto px-6 py-16">
-        {!ready ? (
-          <LoadingState />
-        ) : (
-          <SuccessContent meta={meta} />
-        )}
+        {phase === 'polling' && <LoadingState attempts={attempts} />}
+        {phase === 'ready' && <SuccessContent meta={meta} />}
+        {phase === 'delayed' && <DelayedState onRetry={manualRefresh} />}
       </div>
     </div>
   );
 }
 
-function LoadingState() {
+function LoadingState({ attempts }: { attempts: number }) {
   return (
     <div className="flex flex-col items-center justify-center text-center py-24">
       <div
@@ -149,7 +169,9 @@ function LoadingState() {
       >
         <Loader2 className="h-7 w-7 animate-spin" style={{ color: 'oklch(0.72 0.19 291)' }} />
       </div>
-      <span className="aivent-subtitle s2">Activating your plan</span>
+      <span className="aivent-subtitle s2">
+        Activating your plan{attempts > 0 ? ` · ${attempts}/10` : ''}
+      </span>
       <h2
         className="text-white tracking-tight"
         style={{ fontSize: 'clamp(24px, 3vw, 32px)', fontWeight: 800 }}
@@ -160,6 +182,103 @@ function LoadingState() {
         This only takes a moment. Your payment is processed; we're just provisioning
         your new plan.
       </p>
+    </div>
+  );
+}
+
+// Shown when we've polled for ~30s and the plan is still 'free'. Almost
+// always means the Lemon Squeezy webhook hasn't been delivered (test-mode
+// webhook not configured, signature mismatch, or LS is still queuing the
+// retry). Give the user an honest status and a way to retry — do NOT show
+// "Welcome to Pro" when we don't actually know which plan they bought.
+function DelayedState({ onRetry }: { onRetry: () => void }) {
+  const [retrying, setRetrying] = useState(false);
+  const handleRetry = async () => {
+    setRetrying(true);
+    try {
+      await onRetry();
+    } finally {
+      setRetrying(false);
+    }
+  };
+
+  return (
+    <div className="text-center">
+      <div className="mb-6 flex justify-center">
+        <div
+          className="flex h-16 w-16 items-center justify-center rounded-2xl"
+          style={{
+            background: 'rgba(251,191,36,0.10)',
+            border: '1px solid rgba(251,191,36,0.28)',
+            boxShadow: '0 0 28px rgba(251,191,36,0.18)',
+          }}
+        >
+          <AlertCircle className="h-8 w-8" style={{ color: '#fbbf24' }} />
+        </div>
+      </div>
+
+      <span className="aivent-subtitle s2">Payment received</span>
+
+      <h1
+        className="text-white tracking-tight mb-4"
+        style={{ fontSize: 'clamp(28px, 3.6vw, 40px)', fontWeight: 800, lineHeight: 1.1 }}
+      >
+        We got your payment —{' '}
+        <span style={{ color: '#fbbf24' }}>activation is pending</span>
+      </h1>
+
+      <p
+        className="text-white/55 text-base max-w-lg mx-auto mb-8"
+        style={{ fontWeight: 400, lineHeight: 1.65 }}
+      >
+        Your card was charged and a receipt is on its way. Our payment provider
+        sometimes takes a minute to finalise the upgrade — this usually clears
+        in under 2 minutes.
+      </p>
+
+      <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mb-10">
+        <button
+          onClick={handleRetry}
+          disabled={retrying}
+          className="btn-aivent fx-slide"
+          data-hover={retrying ? 'CHECKING...' : 'CHECK AGAIN'}
+          style={{ height: '44px', borderRadius: '10px', minWidth: '180px' }}
+        >
+          <span className="flex items-center gap-2">
+            <RefreshCw className={`h-4 w-4 ${retrying ? 'animate-spin' : ''}`} />
+            {retrying ? 'Checking...' : 'Check again'}
+          </span>
+        </button>
+        <Link
+          href="/settings"
+          className="btn-aivent btn-line fx-slide"
+          data-hover="BILLING"
+          style={{ height: '44px', borderRadius: '10px', minWidth: '140px' }}
+        >
+          <span>View billing</span>
+        </Link>
+      </div>
+
+      <div
+        className="rounded-2xl p-5 text-left max-w-xl mx-auto"
+        style={{
+          background: 'rgba(0,0,0,0.28)',
+          backdropFilter: 'blur(12px)',
+          WebkitBackdropFilter: 'blur(12px)',
+          border: '1px solid rgba(255,255,255,0.07)',
+        }}
+      >
+        <div className="flex items-start gap-3">
+          <Mail className="h-4 w-4 mt-0.5 shrink-0" style={{ color: 'oklch(0.72 0.19 291)' }} />
+          <div>
+            <p className="text-sm text-white font-bold mb-1">Still not active after 5 minutes?</p>
+            <p className="text-xs text-white/55 leading-relaxed" style={{ fontWeight: 400 }}>
+              Email support with your payment receipt. Your money is safe — we just
+              need to manually reconcile the subscription on our side.
+            </p>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
