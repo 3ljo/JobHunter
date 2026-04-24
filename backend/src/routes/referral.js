@@ -6,6 +6,7 @@ const {
   getMyReferralInfo,
   trackClick,
   requestPayout,
+  listMyPayouts,
   attributePostSignup,
 } = require('../controllers/referralController');
 const { logEvent, KNOWN_EVENTS } = require('../lib/events');
@@ -37,6 +38,7 @@ function rateLimit(req, res, next) {
 router.get('/me',        requireAuth, getMyReferralInfo);
 router.post('/track',    rateLimit,   trackClick);
 router.post('/payout',   requireAuth, requestPayout);
+router.get('/payouts',   requireAuth, listMyPayouts);
 router.post('/attribute', requireAuth, rateLimit, attributePostSignup);
 
 // Client-side telemetry sink for share-card opens (ats_share, hire_share).

@@ -266,6 +266,39 @@ export const adminRejectReferral = (id: string, password: string) =>
     headers: { 'X-Admin-Password': password },
   });
 
+// Admin — payout queue
+export interface AdminPayout {
+  id: string;
+  user_id: string;
+  user_email: string;
+  amount_cents: number;
+  status: 'pending' | 'approved' | 'paid' | 'rejected' | 'failed';
+  payout_method: string | null;
+  paypal_email: string | null;
+  created_at: string;
+  paid_at: string | null;
+}
+
+// Default returns pending+approved (= anything unpaid the admin still
+// owns). Pass ?status=paid|rejected to filter the history view.
+export const adminListPayouts = (password: string, status?: string) =>
+  api.get<{ payouts: AdminPayout[] }>(
+    `/api/admin/referrals/payouts${status ? `?status=${encodeURIComponent(status)}` : ''}`,
+    { headers: { 'X-Admin-Password': password } }
+  );
+
+export const adminMarkPayoutPaid = (id: string, password: string) =>
+  api.post<{ ok: true }>(`/api/admin/referrals/payouts/${id}/mark-paid`, {}, {
+    headers: { 'X-Admin-Password': password },
+  });
+
+export const adminRejectPayout = (id: string, password: string, reason?: string) =>
+  api.post<{ ok: true }>(
+    `/api/admin/referrals/payouts/${id}/reject`,
+    { reason: reason || null },
+    { headers: { 'X-Admin-Password': password } }
+  );
+
 // Referrals — Hired & Help
 export interface ReferralRecent {
   id: string;
@@ -316,6 +349,21 @@ export const requestReferralPayout = (paypal_email: string) =>
     '/api/referral/payout',
     { paypal_email }
   );
+
+export interface MyPayout {
+  id: string;
+  amount_cents: number;
+  status: 'pending' | 'approved' | 'paid' | 'rejected' | 'failed';
+  payout_method: string | null;
+  paypal_email: string | null;
+  created_at: string;
+  paid_at: string | null;
+}
+
+// User-facing list of the caller's own payout requests. Used by the
+// /referrals page to render a "Payouts" section with status pills.
+export const listMyReferralPayouts = () =>
+  api.get<{ payouts: MyPayout[] }>('/api/referral/payouts');
 
 export const logReferralEvent = (event_name: 'ats_share' | 'hire_share', metadata: Record<string, unknown> = {}) =>
   api.post<{ ok: true }>('/api/referral/event', { event_name, metadata });

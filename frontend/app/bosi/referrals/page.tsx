@@ -10,10 +10,11 @@ import { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import {
   adminListFlaggedReferrals, adminApproveReferral, adminRejectReferral,
+  adminListPayouts, adminMarkPayoutPaid, adminRejectPayout,
   adminGetFunnel,
-  type FlaggedReferral,
+  type FlaggedReferral, type AdminPayout,
 } from '@/lib/api';
-import { Shield, AlertTriangle, Check, X, Users, BarChart3 } from 'lucide-react';
+import { Shield, AlertTriangle, Check, X, Users, BarChart3, DollarSign, Copy } from 'lucide-react';
 
 const PW_KEY = 'bosi_referrals_pw';
 const dollars = (cents: number) => `$${(cents / 100).toFixed(2)}`;
@@ -22,6 +23,7 @@ export default function AdminReferralsPage() {
   const [password, setPassword] = useState<string | null>(null);
   const [entry, setEntry] = useState('');
   const [rows, setRows] = useState<FlaggedReferral[] | null>(null);
+  const [payouts, setPayouts] = useState<AdminPayout[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [funnel, setFunnel] = useState<Array<{ event_name: string; count: number }> | null>(null);
   const [funnelSince, setFunnelSince] = useState<string | null>(null);
@@ -33,32 +35,35 @@ export default function AdminReferralsPage() {
     if (pw) setPassword(pw);
   }, []);
 
-  // Load flagged referrals + funnel whenever we have a password.
-  useEffect(() => {
-    if (!password) return;
+  // Load flagged referrals + payouts + funnel whenever we have a password.
+  const reloadAll = async (pw: string) => {
     setLoading(true);
-    Promise.all([
-      adminListFlaggedReferrals(password),
-      adminGetFunnel(password).catch(() => null),
-    ])
-      .then(([flaggedRes, funnelRes]) => {
-        setRows(flaggedRes.data.flagged);
-        if (funnelRes) {
-          setFunnel(funnelRes.data.funnel);
-          setFunnelSince(funnelRes.data.since);
-        }
-      })
-      .catch((err) => {
-        if (err.response?.status === 401) {
-          // Bad password — drop it and reprompt.
-          sessionStorage.removeItem(PW_KEY);
-          setPassword(null);
-          toast.error('Wrong admin password');
-        } else {
-          toast.error(err.response?.data?.error || 'Failed to load admin data');
-        }
-      })
-      .finally(() => setLoading(false));
+    try {
+      const [flaggedRes, payoutsRes, funnelRes] = await Promise.all([
+        adminListFlaggedReferrals(pw),
+        adminListPayouts(pw).catch(() => null),
+        adminGetFunnel(pw).catch(() => null),
+      ]);
+      setRows(flaggedRes.data.flagged);
+      if (payoutsRes) setPayouts(payoutsRes.data.payouts);
+      if (funnelRes) {
+        setFunnel(funnelRes.data.funnel);
+        setFunnelSince(funnelRes.data.since);
+      }
+    } catch (err: any) {
+      if (err.response?.status === 401) {
+        sessionStorage.removeItem(PW_KEY);
+        setPassword(null);
+        toast.error('Wrong admin password');
+      } else {
+        toast.error(err.response?.data?.error || 'Failed to load admin data');
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+  useEffect(() => {
+    if (password) reloadAll(password);
   }, [password]);
 
   const handleUnlock = () => {
@@ -89,6 +94,40 @@ export default function AdminReferralsPage() {
       toast.success('Rejected — row is permanent fraud.');
     } catch (err: any) {
       toast.error(err.response?.data?.error || 'Reject failed');
+    }
+  };
+
+  const handleMarkPaid = async (p: AdminPayout) => {
+    if (!password) return;
+    if (!confirm(`Confirm $${(p.amount_cents / 100).toFixed(2)} sent to ${p.paypal_email} via PayPal?`)) return;
+    try {
+      await adminMarkPayoutPaid(p.id, password);
+      setPayouts((prev) => (prev || []).filter((x) => x.id !== p.id));
+      toast.success('Marked paid — user dashboard will reflect this.');
+    } catch (err: any) {
+      toast.error(err.response?.data?.error || 'Mark-paid failed');
+    }
+  };
+
+  const handleRejectPayout = async (p: AdminPayout) => {
+    if (!password) return;
+    const reason = prompt('Reason for rejecting? (Shown in internal logs; not sent to user.)', '');
+    if (reason === null) return;
+    try {
+      await adminRejectPayout(p.id, password, reason || undefined);
+      setPayouts((prev) => (prev || []).filter((x) => x.id !== p.id));
+      toast.success('Rejected — referrals reverted to Confirmed so they can be re-paid.');
+    } catch (err: any) {
+      toast.error(err.response?.data?.error || 'Reject failed');
+    }
+  };
+
+  const copyToClipboard = (text: string) => {
+    try {
+      navigator.clipboard.writeText(text);
+      toast.success('Copied');
+    } catch {
+      toast.error('Copy failed');
     }
   };
 
@@ -205,6 +244,87 @@ export default function AdminReferralsPage() {
           </section>
         );
       })()}
+
+      {/* Payout queue — pending manual PayPal sends */}
+      {!loading && payouts && (
+        <section
+          className="rounded-2xl overflow-hidden"
+          style={{
+            background: 'rgba(251,191,36,0.04)',
+            border: '1px solid rgba(251,191,36,0.22)',
+          }}
+        >
+          <div
+            className="px-5 py-3 flex items-center gap-2"
+            style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}
+          >
+            <DollarSign className="h-3.5 w-3.5" style={{ color: '#fbbf24' }} />
+            <span className="text-[11px] font-black uppercase tracking-widest text-white/70">
+              Payout queue · {payouts.length} pending
+            </span>
+            {payouts.length > 0 && (
+              <span className="text-[10px] text-white/45 ml-auto">
+                Total owed:{' '}
+                <span className="text-white/80 font-bold tabular-nums">
+                  {dollars(payouts.reduce((n, p) => n + p.amount_cents, 0))}
+                </span>
+              </span>
+            )}
+          </div>
+
+          {payouts.length === 0 ? (
+            <div className="p-6 text-center">
+              <p className="text-white/50 text-xs">No payouts waiting. Come back after users cash out.</p>
+            </div>
+          ) : (
+            <ul className="divide-y divide-white/[0.05]">
+              {payouts.map((p) => (
+                <li key={p.id} className="px-5 py-4">
+                  <div className="flex items-start justify-between gap-3 flex-wrap">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1 flex-wrap">
+                        <span className="text-lg font-black text-white tabular-nums">{dollars(p.amount_cents)}</span>
+                        <span className="text-[11px] text-white/40">to</span>
+                        <button
+                          onClick={() => p.paypal_email && copyToClipboard(p.paypal_email)}
+                          className="inline-flex items-center gap-1 text-sm font-mono text-white/85 hover:text-white transition-colors"
+                          title="Click to copy PayPal email"
+                        >
+                          {p.paypal_email || '—'}
+                          <Copy className="h-3 w-3 opacity-50" />
+                        </button>
+                      </div>
+                      <div className="flex items-center gap-3 text-[11px] text-white/45 flex-wrap">
+                        <span>User: <span className="text-white/70">{p.user_email}</span></span>
+                        <span>Requested {new Date(p.created_at).toLocaleString([], {
+                          day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit',
+                        })}</span>
+                        <span className="font-mono">#{p.id.slice(0, 8)}</span>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <button
+                        onClick={() => handleMarkPaid(p)}
+                        className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition-all"
+                        style={{ background: 'rgba(52,211,153,0.15)', color: '#34d399', border: '1px solid rgba(52,211,153,0.3)' }}
+                      >
+                        <Check className="h-3 w-3" /> Mark paid
+                      </button>
+                      <button
+                        onClick={() => handleRejectPayout(p)}
+                        className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition-all"
+                        style={{ background: 'rgba(239,68,68,0.12)', color: '#f87171', border: '1px solid rgba(239,68,68,0.3)' }}
+                      >
+                        <X className="h-3 w-3" /> Reject
+                      </button>
+                    </div>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+      )}
 
       {!loading && rows && rows.length === 0 && (
         <div

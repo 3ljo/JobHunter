@@ -496,12 +496,34 @@ const attributePostSignup = async (req, res) => {
   }
 };
 
+// ─────────────────────────────────────────
+// GET /api/referral/payouts — caller's own payout history.
+// Returns the last 20 payouts most-recent-first. Used by the
+// /referrals dashboard to show "Payout #123 · pending" rows so the
+// user has visibility into what's been requested + what's been sent.
+const listMyPayouts = async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('referral_payouts')
+      .select('id, amount_cents, status, payout_method, paypal_email, created_at, paid_at')
+      .eq('user_id', req.user.id)
+      .order('created_at', { ascending: false })
+      .limit(20);
+    if (error) throw error;
+    return res.json({ payouts: data || [] });
+  } catch (err) {
+    console.error('listMyPayouts error:', err.message);
+    return res.status(500).json({ error: 'Could not load payout history' });
+  }
+};
+
 module.exports = {
   ensureCodeForUser,
   attributeOnSignup,
   getMyReferralInfo,
   trackClick,
   requestPayout,
+  listMyPayouts,
   attributePostSignup,
   // Helpers exported for testing / direct use
   generateCode,

@@ -13,7 +13,7 @@ const {
 const { listPromos, createPromo, updatePromo, deletePromo } = require('../controllers/promoController');
 const {
   requireAdminPassword, listFlagged, approveFlagged, rejectFlagged,
-  markPayoutSent, getFunnel,
+  listPayouts, markPayoutSent, rejectPayout, getFunnel,
 } = require('../controllers/adminReferralController');
 
 // All routes require admin
@@ -36,7 +36,9 @@ router.delete('/promos/:id', deletePromo);
 router.get('/referrals/flagged',                 requireAdminPassword, listFlagged);
 router.post('/referrals/:id/approve',            requireAdminPassword, approveFlagged);
 router.post('/referrals/:id/reject',             requireAdminPassword, rejectFlagged);
+router.get('/referrals/payouts',                 requireAdminPassword, listPayouts);
 router.post('/referrals/payouts/:id/mark-paid',  requireAdminPassword, markPayoutSent);
+router.post('/referrals/payouts/:id/reject',     requireAdminPassword, rejectPayout);
 router.get('/referrals/funnel',                  requireAdminPassword, getFunnel);
 
 module.exports = router;
