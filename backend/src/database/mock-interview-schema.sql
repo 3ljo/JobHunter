@@ -19,9 +19,17 @@ CREATE TABLE IF NOT EXISTS mock_interviews (
 -- RLS
 ALTER TABLE mock_interviews ENABLE ROW LEVEL SECURITY;
 
--- Users can only read their own interviews; all writes go through backend service role
 CREATE POLICY "Users read own interviews" ON mock_interviews
   FOR SELECT USING (auth.uid() = user_id);
+
+CREATE POLICY "Users insert own interviews" ON mock_interviews
+  FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users update own interviews" ON mock_interviews
+  FOR UPDATE USING (auth.uid() = user_id);
+
+CREATE POLICY "Users delete own interviews" ON mock_interviews
+  FOR DELETE USING (auth.uid() = user_id);
 
 -- Indexes for fast lookups
 CREATE INDEX IF NOT EXISTS idx_mock_interviews_user_id ON mock_interviews(user_id);

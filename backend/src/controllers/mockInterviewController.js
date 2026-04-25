@@ -165,7 +165,8 @@ const submitAnswer = async (req, res) => {
       .eq('user_id', req.user.id);
 
     if (updateErr) {
-      return res.status(500).json({ error: 'Failed to save answer' });
+      console.error('Failed to save answer:', updateErr);
+      return res.status(500).json({ error: `Failed to save answer: ${updateErr.message}` });
     }
 
     return res.status(200).json({
@@ -216,7 +217,8 @@ const finishInterview = async (req, res) => {
       .eq('user_id', req.user.id);
 
     if (updateErr) {
-      return res.status(500).json({ error: 'Failed to save report' });
+      console.error('Failed to save report:', updateErr);
+      return res.status(500).json({ error: `Failed to save report: ${updateErr.message}` });
     }
 
     return res.status(200).json({ id, final_report: report });
