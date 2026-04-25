@@ -41,6 +41,7 @@ export default function CoverLetterPage() {
   const clUsed  = usage?.cover_letter.used  ?? 0;
   const clLimit = usage?.cover_letter.limit ?? 5;
   const clOverLimit = clLimit < 999999 && clUsed >= clLimit;
+  const isPro = subscription?.plan === 'pro' || subscription?.plan === 'pro_plus';
 
   const [file,         setFile]         = useState<File | null>(null);
   const [copied,       setCopied]       = useState(false);
@@ -400,43 +401,70 @@ export default function CoverLetterPage() {
                 </div>
               </div>
 
-              {/* refine bar */}
-              <div className="rounded-2xl p-4 sm:p-5" style={{ background: 'rgba(118,77,240,0.05)', border: '1px solid rgba(118,77,240,0.15)' }}>
-                <p className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: 'rgba(255,255,255,0.3)' }}>
-                  Refine with AI
-                </p>
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    value={refineInput}
-                    onChange={(e) => setRefineInput(e.target.value)}
-                    onKeyDown={(e) => { if (e.key === 'Enter' && !refining) handleRefine(); }}
-                    placeholder="e.g. Make it shorter, more confident, emphasize leadership..."
-                    disabled={refining}
-                    className="flex-1 h-10 rounded-xl px-4 text-sm outline-none transition-all"
-                    style={{
-                      background: 'rgba(255,255,255,0.04)',
-                      border: '1px solid rgba(255,255,255,0.09)',
-                      color: 'rgba(255,255,255,0.8)',
-                    }}
-                    onFocus={e => { e.currentTarget.style.borderColor = 'rgba(118,77,240,0.45)'; }}
-                    onBlur={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.09)'; }}
-                  />
-                  <button
-                    onClick={handleRefine}
-                    disabled={refining || !refineInput.trim()}
-                    className="flex h-10 w-10 items-center justify-center rounded-xl transition-all disabled:opacity-35"
-                    style={{ background: 'rgba(118,77,240,0.25)', border: '1px solid rgba(118,77,240,0.4)', color: '#c4b5fd' }}
-                    onMouseEnter={e => { if (!refining) (e.currentTarget as HTMLElement).style.background = 'rgba(118,77,240,0.38)'; }}
-                    onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(118,77,240,0.25)'; }}
-                  >
-                    {refining
-                      ? <span className="lds-roller-sm" style={{ color: '#c4b5fd' }}><span /><span /><span /><span /><span /><span /><span /><span /></span>
-                      : <Send className="h-3.5 w-3.5" />
-                    }
-                  </button>
+              {/* refine bar — Pro only */}
+              {isPro ? (
+                <div className="rounded-2xl p-4 sm:p-5" style={{ background: 'rgba(118,77,240,0.05)', border: '1px solid rgba(118,77,240,0.15)' }}>
+                  <p className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: 'rgba(255,255,255,0.3)' }}>
+                    Refine with AI
+                  </p>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={refineInput}
+                      onChange={(e) => setRefineInput(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === 'Enter' && !refining) handleRefine(); }}
+                      placeholder="e.g. Make it shorter, more confident, emphasize leadership..."
+                      disabled={refining}
+                      className="flex-1 h-10 rounded-xl px-4 text-sm outline-none transition-all"
+                      style={{
+                        background: 'rgba(255,255,255,0.04)',
+                        border: '1px solid rgba(255,255,255,0.09)',
+                        color: 'rgba(255,255,255,0.8)',
+                      }}
+                      onFocus={e => { e.currentTarget.style.borderColor = 'rgba(118,77,240,0.45)'; }}
+                      onBlur={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.09)'; }}
+                    />
+                    <button
+                      onClick={handleRefine}
+                      disabled={refining || !refineInput.trim()}
+                      className="flex h-10 w-10 items-center justify-center rounded-xl transition-all disabled:opacity-35"
+                      style={{ background: 'rgba(118,77,240,0.25)', border: '1px solid rgba(118,77,240,0.4)', color: '#c4b5fd' }}
+                      onMouseEnter={e => { if (!refining) (e.currentTarget as HTMLElement).style.background = 'rgba(118,77,240,0.38)'; }}
+                      onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(118,77,240,0.25)'; }}
+                    >
+                      {refining
+                        ? <span className="lds-roller-sm" style={{ color: '#c4b5fd' }}><span /><span /><span /><span /><span /><span /><span /><span /></span>
+                        : <Send className="h-3.5 w-3.5" />
+                      }
+                    </button>
+                  </div>
                 </div>
-              </div>
+              ) : (
+                <a
+                  href="/pricing"
+                  className="group block rounded-2xl p-4 sm:p-5 transition-all"
+                  style={{ background: 'rgba(118,77,240,0.05)', border: '1px solid rgba(118,77,240,0.15)' }}
+                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(118,77,240,0.10)'; }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(118,77,240,0.05)'; }}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl" style={{ background: 'rgba(118,77,240,0.25)', border: '1px solid rgba(118,77,240,0.4)', color: '#c4b5fd' }}>
+                      <Sparkles className="h-4 w-4" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-bold uppercase tracking-widest mb-0.5" style={{ color: '#c4b5fd' }}>
+                        Refine with AI — Pro
+                      </p>
+                      <p className="text-sm" style={{ color: 'rgba(255,255,255,0.55)' }}>
+                        Upgrade to fine-tune your letter with custom instructions.
+                      </p>
+                    </div>
+                    <span className="rounded-lg px-3 py-1.5 text-xs font-bold transition-all" style={{ background: 'rgba(118,77,240,0.35)', color: '#fff' }}>
+                      Upgrade
+                    </span>
+                  </div>
+                </a>
+              )}
             </div>
           )}
 
