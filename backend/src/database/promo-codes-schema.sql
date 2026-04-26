@@ -1,8 +1,5 @@
 -- PROMO CODES TABLE
--- Admin-created discount codes for campaigns (New Year, Black Friday, etc.)
--- The legacy referral tables (referral_codes, referrals) that used to live in
--- this file were dropped on 2026-04-23; see drop-referral-tables-migration.sql
--- and the new "Hired & Help" referral schema (added in a separate migration).
+-- Admin-created discount codes for campaigns (New Year, Black Friday, etc.).
 CREATE TABLE IF NOT EXISTS promo_codes (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   code TEXT NOT NULL UNIQUE,

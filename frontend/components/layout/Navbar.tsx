@@ -13,7 +13,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Menu, X, LogOut, Settings, ChevronDown, Crown, Gift } from 'lucide-react';
+import { Menu, X, LogOut, Settings, ChevronDown, Crown } from 'lucide-react';
 
 const navItems = [
   { href: '/dashboard',    label: 'Dashboard'    },
@@ -245,15 +245,8 @@ export default function Navbar() {
                 </div>
                 <DropdownMenuSeparator style={{ background: 'rgba(255,255,255,0.06)' }} />
                 <DropdownMenuItem
-                  onClick={() => router.push('/referrals')}
-                  className="flex items-center gap-2.5 rounded-xl px-3 py-2 text-sm cursor-pointer mt-1 text-white/75 hover:text-white focus:text-white"
-                >
-                  <Gift className="h-4 w-4 opacity-70" style={{ color: '#34d399' }} />
-                  Refer &amp; earn
-                </DropdownMenuItem>
-                <DropdownMenuItem
                   onClick={() => router.push('/pricing')}
-                  className="flex items-center gap-2.5 rounded-xl px-3 py-2 text-sm cursor-pointer text-white/75 hover:text-white focus:text-white"
+                  className="flex items-center gap-2.5 rounded-xl px-3 py-2 text-sm cursor-pointer mt-1 text-white/75 hover:text-white focus:text-white"
                 >
                   <Crown className="h-4 w-4 opacity-70" />
                   Pricing
@@ -338,14 +331,6 @@ export default function Navbar() {
             </div>
 
             <div className="mt-4 pt-4 space-y-1" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
-              <Link
-                href="/referrals"
-                onClick={() => setMobileOpen(false)}
-                className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-white/70 hover:text-white hover:bg-white/[0.04] transition-all"
-              >
-                <Gift className="h-4 w-4" style={{ color: '#34d399' }} />
-                Refer &amp; earn
-              </Link>
               <Link
                 href="/pricing"
                 onClick={() => setMobileOpen(false)}

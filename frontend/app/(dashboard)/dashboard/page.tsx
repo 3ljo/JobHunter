@@ -136,31 +136,6 @@ export default function DashboardPage() {
       <section className="pt-10 sm:pt-14 px-4 sm:px-6" style={{ background: '#101435', position: 'relative', zIndex: 1 }}>
         <div className="mx-auto max-w-5xl space-y-4">
           <UsageSummaryCard />
-          {/* Refer-and-earn banner — leading into Hired & Help */}
-          <Link
-            href="/referrals"
-            className="flex items-center justify-between gap-3 rounded-2xl px-5 py-4 transition-all group"
-            style={{
-              background: 'linear-gradient(135deg, rgba(52,211,153,0.08), rgba(118,77,240,0.06))',
-              border: '1px solid rgba(52,211,153,0.25)',
-            }}
-          >
-            <div className="flex items-center gap-3">
-              <div
-                className="flex h-9 w-9 items-center justify-center rounded-xl shrink-0"
-                style={{ background: 'rgba(52,211,153,0.15)', border: '1px solid rgba(52,211,153,0.35)' }}
-              >
-                <span style={{ color: '#34d399', fontSize: '16px' }}>🎁</span>
-              </div>
-              <div>
-                <p className="text-sm font-bold text-white">Earn $10 for every friend who subscribes</p>
-                <p className="text-xs text-white/55">Share your code. 14-day vesting. Cash out via PayPal at $20.</p>
-              </div>
-            </div>
-            <span className="shrink-0 text-sm font-bold text-white/70 group-hover:text-white transition-colors">
-              Refer &amp; earn <ArrowRight className="h-3.5 w-3.5 inline ml-1" />
-            </span>
-          </Link>
         </div>
       </section>
 

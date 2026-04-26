@@ -3,8 +3,6 @@
 
 const { body, validationResult } = require('express-validator');
 const supabase = require('../services/supabaseClient');
-const { ensureCodeForUser, attributeOnSignup } = require('./referralController');
-const { hashIp, getClientIp } = require('../lib/referrals/hashIp');
 
 // FRONTEND_URL may be a comma-separated CORS list — pick the first canonical
 // origin for building auth redirect links.
@@ -44,7 +42,7 @@ const register = async (req, res) => {
     return res.status(400).json({ error: errors.array()[0].msg });
   }
 
-  const { email, password, ref_code, device_fingerprint } = req.body;
+  const { email, password } = req.body;
 
   try {
     const { data, error } = await supabase.auth.signUp({
@@ -68,43 +66,6 @@ const register = async (req, res) => {
         error: 'An account with this email already exists. Please sign in instead.',
         code: 'email_exists',
       });
-    }
-
-    // Post-signup referral work. Failures here must never bubble up to
-    // block the signup response — a broken referral row is recoverable,
-    // a broken signup is not.
-    if (data.user) {
-      try {
-        await ensureCodeForUser(data.user.id);
-
-        // Accept only a string with a plausible code shape. Reject
-        // numbers, booleans, objects, and empty strings silently so a
-        // malformed client payload never blocks the signup.
-        const normalizedRef =
-          typeof ref_code === 'string' && /^[A-Z0-9]{4,16}$/i.test(ref_code.trim())
-            ? ref_code.trim().toUpperCase()
-            : null;
-        const fp =
-          typeof device_fingerprint === 'string' && device_fingerprint.length > 0
-            ? device_fingerprint
-            : null;
-
-        if (normalizedRef) {
-          const ipHash = hashIp(getClientIp(req));
-          const result = await attributeOnSignup({
-            refCode: normalizedRef,
-            newUserId: data.user.id,
-            newUserEmail: data.user.email || email,
-            ipHash,
-            fingerprint: fp,
-          });
-          if (!result?.ok) {
-            console.warn('attributeOnSignup returned !ok:', result);
-          }
-        }
-      } catch (bgErr) {
-        console.warn('post-signup referral work failed:', bgErr.message);
-      }
     }
 
     return res.status(201).json({

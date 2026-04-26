@@ -24,9 +24,7 @@ require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
     'LEMONSQUEEZY_API_KEY',
     'LEMONSQUEEZY_STORE_ID',
     'LEMONSQUEEZY_WEBHOOK_SECRET',
-    'REFERRAL_SALT',
     'ADMIN_PASSWORD',
-    'CRON_SECRET',
   ];
   const missing = required.filter((k) => !process.env[k] || !String(process.env[k]).trim());
   if (missing.length > 0) {
@@ -52,17 +50,14 @@ const adminRoutes = require('./routes/admin');
 
 const subscriptionRoutes = require('./routes/subscription');
 const promoRoutes = require('./routes/promo');
-const referralRoutes = require('./routes/referral');
 const giftRoutes = require('./routes/gift');
-const cronRoutes = require('./routes/cron');
 const { handleWebhook } = require('./controllers/subscriptionController');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 
 // Trust the platform proxy (Render, etc.) so req.ip + X-Forwarded-For
-// resolve to the real client IP. Required by the referral IP-hash fraud
-// check and by the rate limiter.
+// resolve to the real client IP. Required by the rate limiter.
 app.set('trust proxy', 1);
 
 // Configure CORS to allow requests from the frontend
@@ -96,9 +91,7 @@ app.use('/api/interview', interviewRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/subscription', subscriptionRoutes);
 app.use('/api/promo', promoRoutes);
-app.use('/api/referral', referralRoutes);
 app.use('/api/gift', giftRoutes);
-app.use('/api/cron', cronRoutes);
 
 // Global error handler
 app.use((err, req, res, next) => {

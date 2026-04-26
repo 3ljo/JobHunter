@@ -4,8 +4,7 @@
 //   1. Anonymous visitor lands here → we call GET /api/gift/:code (public)
 //      to show the gift info.
 //   2. If not signed in → prompt them to register/login with the specific
-//      recipient email. We deep-link /register?ref=... and also stash the
-//      pass_code in sessionStorage so we can auto-redeem after login.
+//      recipient email.
 //   3. If signed in AND email matches → "Redeem now" button calls
 //      POST /api/gift/:code/redeem, flips to activated view.
 //   4. If signed in with the wrong email → explain the mismatch.
@@ -16,7 +15,6 @@ import toast from 'react-hot-toast';
 import axios from 'axios';
 import { CheckCircle2, Gift, AlertCircle, ArrowRight } from 'lucide-react';
 import { lookupGift, redeemGift, type GiftLookup } from '@/lib/api';
-import { getReferralCookie } from '@/lib/referralCookie';
 
 interface Props {
   params: Promise<{ code: string }>;
@@ -180,14 +178,8 @@ export default function RedeemGiftPage({ params }: Props) {
   );
 }
 
-// Preserve the referral cookie into the auth-page URL as a ?ref=... param.
-// Middleware on the destination route re-sets the cookie; this belt-and-
-// braces approach keeps attribution alive even if the cookie was somehow
-// lost (privacy mode, third-party cookie block) between pages.
 function buildAuthHref(base: '/login' | '/register', email: string, redeemCode: string): string {
-  const refCode = getReferralCookie();
   const qs = new URLSearchParams({ email, redeem: redeemCode });
-  if (refCode) qs.set('ref', refCode);
   return `${base}?${qs.toString()}`;
 }
 

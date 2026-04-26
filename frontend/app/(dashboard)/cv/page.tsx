@@ -18,7 +18,6 @@ import { useCVAnalysisStore } from '@/store/cvAnalysisStore';
 import { useCoverLetterStore } from '@/store/coverLetterStore';
 import { useSubscriptionStore } from '@/store/subscriptionStore';
 import { useAccountStore } from '@/store/accountStore';
-import { getMyReferralInfo } from '@/lib/api';
 import ShareCardModal from '@/components/share/ShareCardModal';
 import toast from 'react-hot-toast';
 import {
@@ -74,28 +73,19 @@ export default function CVPage() {
   const { profile } = useAccountStore();
   const [shareOpen, setShareOpen] = useState(false);
   const [shareImgUrl, setShareImgUrl] = useState('');
-  const [shareRefUrl, setShareRefUrl] = useState('');
   const [shareScore, setShareScore] = useState(0);
 
   const activeTemplateMeta = TEMPLATES[template];
   const showPhotoSlot = activeTemplateMeta?.supportsPhoto;
 
-  const openShareCard = async (score: number) => {
+  const openShareCard = (score: number) => {
     const firstName = (profile?.full_name || '').split(' ')[0] || '';
-    try {
-      const refRes = await getMyReferralInfo();
-      const code = refRes.data.code;
-      const params = new URLSearchParams();
-      if (firstName) params.set('name', firstName);
-      params.set('score', String(score));
-      if (code) params.set('ref', code);
-      setShareImgUrl(`/api/og/score?${params.toString()}`);
-      setShareRefUrl(refRes.data.share_url);
-      setShareScore(score);
-      setShareOpen(true);
-    } catch {
-      toast.error('Could not load your referral code — try again in a moment.');
-    }
+    const params = new URLSearchParams();
+    if (firstName) params.set('name', firstName);
+    params.set('score', String(score));
+    setShareImgUrl(`/api/og/score?${params.toString()}`);
+    setShareScore(score);
+    setShareOpen(true);
   };
 
   const {
@@ -348,13 +338,11 @@ export default function CVPage() {
       open={shareOpen}
       onClose={() => setShareOpen(false)}
       title={`${shareScore}% ATS — share your win`}
-      description="Download the card or post it to LinkedIn/X. Every click on your referral link in the post earns you $10+ if it converts."
+      description="Download the card or post it to LinkedIn/X."
       imageUrl={shareImgUrl}
       downloadFilename={`cvclimber-ats-${shareScore}.png`}
       shareText={`Just hit ${shareScore}% ATS compatibility on my CV 🎯\n\nCvClimber's AI does the keyword match, formatting check, and bullet-quality audit for me. Try it free:`}
-      referralUrl={shareRefUrl}
-      eventName="ats_share"
-      eventMeta={{ score: shareScore }}
+      shareUrl="https://cvclimber.lol"
     />
     <div
       style={{

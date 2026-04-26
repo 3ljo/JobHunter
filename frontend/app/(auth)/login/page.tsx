@@ -5,18 +5,12 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { loginUser, resendVerification, attributeReferral } from '@/lib/api';
+import { loginUser, resendVerification } from '@/lib/api';
 import { friendlyError } from '@/lib/errorMessages';
 import { useAuthStore } from '@/store/authStore';
 import toast from 'react-hot-toast';
 import { Mail, Lock, Eye, EyeOff } from 'lucide-react';
 import { GoogleSignInButton } from '@/components/auth/GoogleSignInButton';
-import {
-  setReferralCookie,
-  getReferralCookie,
-  clearReferralCookie,
-  getDeviceFingerprint,
-} from '@/lib/referralCookie';
 
 export default function LoginPage() {
   return (
@@ -38,13 +32,9 @@ function LoginForm() {
   const [resending, setResending] = useState(false);
 
   // Pre-fill email when arriving from /redeem or /register (account-exists toast).
-  // Capture ?ref=CODE into the cookie so the attribution survives login too —
-  // middleware covers the first hit, but client effects handle SPA-nav edges.
   useEffect(() => {
     const qEmail = searchParams.get('email');
     if (qEmail) setEmail(qEmail);
-    const ref = searchParams.get('ref');
-    if (ref) setReferralCookie(ref);
   }, [searchParams]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -55,27 +45,6 @@ function LoginForm() {
       const res = await loginUser(email, password);
       setToken(res.data.session.access_token);
       setUser(res.data.user);
-
-      // Opportunistic referral attribution: if this user has a pending
-      // ref cookie but no referral row yet (e.g. they signed up via
-      // Google OAuth before the ref flow was wired up, or the register
-      // request missed the code), the backend will attribute now. The
-      // endpoint is idempotent — safe to call every login.
-      const refCode = getReferralCookie();
-      if (refCode) {
-        let shouldClear = true;
-        try {
-          await attributeReferral(refCode, getDeviceFingerprint());
-        } catch (e: any) {
-          // 4xx is deterministic (bad code, account too old, already
-          // attributed) — clear the cookie so we don't hit the backend
-          // every login. Keep it on network errors / 5xx so a transient
-          // outage doesn't cost us the attribution.
-          const status = e?.response?.status;
-          shouldClear = typeof status === 'number' && status >= 400 && status < 500;
-        }
-        if (shouldClear) clearReferralCookie();
-      }
 
       toast.success('Signed in successfully');
       router.push('/cv');

@@ -1,16 +1,15 @@
 'use client';
 
-// Generic share-card modal used by both the post-hire flow (Phase 7) and
-// the ATS ≥90% flow (Phase 8). Given an OG image URL + a LinkedIn-friendly
-// caption + referral link, it renders the preview, lets the user download
-// the PNG, and opens LinkedIn's share dialog pre-populated.
+// Generic share-card modal used by both the post-hire flow and the
+// ATS ≥90% flow. Given an OG image URL + a LinkedIn-friendly caption
+// + share link, it renders the preview, lets the user download the PNG,
+// and opens LinkedIn's share dialog pre-populated.
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import toast from 'react-hot-toast';
 import { Download, Share2, Copy, Check } from 'lucide-react';
-import { logReferralEvent } from '@/lib/api';
 
 export interface ShareCardModalProps {
   open: boolean;
@@ -23,31 +22,15 @@ export interface ShareCardModalProps {
   downloadFilename: string;
   /** Pre-filled LinkedIn/Twitter caption. */
   shareText: string;
-  /** Referral link that goes into the share post (also shown as copy). */
-  referralUrl: string;
-  /** Telemetry: which canonical event to fire when the modal opens. */
-  eventName?: 'ats_share' | 'hire_share';
-  /** Optional extra metadata to include with the event. */
-  eventMeta?: Record<string, unknown>;
+  /** Link that goes into the share post (also shown as copy). */
+  shareUrl: string;
 }
 
 export default function ShareCardModal({
-  open, onClose, title, description, imageUrl, downloadFilename, shareText, referralUrl,
-  eventName, eventMeta,
+  open, onClose, title, description, imageUrl, downloadFilename, shareText, shareUrl,
 }: ShareCardModalProps) {
   const [downloading, setDownloading] = useState(false);
   const [copiedText, setCopiedText] = useState(false);
-
-  // Fire the telemetry event once per open transition. Non-blocking;
-  // failures are swallowed so a telemetry outage never breaks the share.
-  useEffect(() => {
-    if (open && eventName) {
-      logReferralEvent(eventName, eventMeta || {}).catch(() => {});
-    }
-    // Intentionally exclude eventMeta from deps — callers typically pass a
-    // fresh object each render which would double-fire. One event per open.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, eventName]);
 
   const absoluteImage = imageUrl.startsWith('http')
     ? imageUrl
@@ -76,23 +59,21 @@ export default function ShareCardModal({
 
   const handleLinkedIn = () => {
     // LinkedIn's share-URL API only accepts a URL — it scrapes OG tags
-    // from the target page. So we open the share dialog pointing at the
-    // user's referral link (which serves a <meta og:image> that could
-    // later point at this same card). Caption goes into clipboard for
-    // manual paste since LinkedIn no longer honours the `summary` param.
-    const encoded = encodeURIComponent(referralUrl);
+    // from the target page. Caption goes into clipboard for manual paste
+    // since LinkedIn no longer honours the `summary` param.
+    const encoded = encodeURIComponent(shareUrl);
     navigator.clipboard.writeText(shareText).catch(() => {});
     toast.success('Caption copied to clipboard — paste into LinkedIn');
     window.open(`https://www.linkedin.com/sharing/share-offsite/?url=${encoded}`, '_blank', 'noopener,noreferrer');
   };
 
   const handleTwitter = () => {
-    const text = encodeURIComponent(`${shareText}\n\n${referralUrl}`);
+    const text = encodeURIComponent(`${shareText}\n\n${shareUrl}`);
     window.open(`https://twitter.com/intent/tweet?text=${text}`, '_blank', 'noopener,noreferrer');
   };
 
   const handleCopyText = () => {
-    navigator.clipboard.writeText(`${shareText}\n\n${referralUrl}`);
+    navigator.clipboard.writeText(`${shareText}\n\n${shareUrl}`);
     setCopiedText(true);
     toast.success('Copied!');
     setTimeout(() => setCopiedText(false), 1800);
@@ -140,10 +121,6 @@ export default function ShareCardModal({
             {copiedText ? 'Copied' : 'Copy text'}
           </Button>
         </div>
-
-        <p className="text-[11px] text-muted-foreground/60 mt-2">
-          Every click on your referral link in the post is worth <span className="text-emerald-400 font-semibold">$10+</span> if it converts.
-        </p>
       </DialogContent>
     </Dialog>
   );

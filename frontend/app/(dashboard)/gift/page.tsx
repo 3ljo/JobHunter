@@ -111,18 +111,16 @@ export default function GiftPage() {
 
       <p className="text-center text-[11px] text-white/35">
         Payment via Lemon Squeezy. Your friend redeems at{' '}
-        <Link href="/referrals" className="text-white/60 underline hover:text-white">
-          cvclimber.lol/redeem/&lt;code&gt;
-        </Link>
-        . The code is emailed after checkout (and available in your Referrals dashboard).
+        <span className="text-white/60">cvclimber.lol/redeem/&lt;code&gt;</span>
+        . The code is emailed after checkout.
       </p>
 
       <div className="text-center">
         <Link
-          href="/referrals"
+          href="/dashboard"
           className="inline-flex items-center gap-1.5 text-sm text-white/55 hover:text-white"
         >
-          Back to Referrals <ArrowRight className="h-3.5 w-3.5" />
+          Back to dashboard <ArrowRight className="h-3.5 w-3.5" />
         </Link>
       </div>
     </div>

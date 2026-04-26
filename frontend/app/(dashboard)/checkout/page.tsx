@@ -145,7 +145,6 @@ function CheckoutForm() {
       : 'Yearly';
   const perMonth = !isOneTime && interval === 'year' ? (plan.yearly / 12).toFixed(2) : null;
 
-  // Only promo discounts exist now — referrals are out.
   const activeDiscount = discount;
 
   const discountAmount = activeDiscount

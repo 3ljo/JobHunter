@@ -1,16 +1,14 @@
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useState, Suspense } from 'react';
 import Link from 'next/link';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { registerUser, resendVerification, trackReferralClick } from '@/lib/api';
+import { registerUser, resendVerification } from '@/lib/api';
 import { friendlyError } from '@/lib/errorMessages';
 import toast from 'react-hot-toast';
-import { Mail, Lock, ShieldCheck, Check, X as XIcon, Eye, EyeOff, MailCheck, Gift } from 'lucide-react';
+import { Mail, Lock, ShieldCheck, Check, X as XIcon, Eye, EyeOff, MailCheck } from 'lucide-react';
 import { GoogleSignInButton } from '@/components/auth/GoogleSignInButton';
-import { getReferralCookie, setReferralCookie, clearReferralCookie, getDeviceFingerprint } from '@/lib/referralCookie';
 
 function getPasswordStrength(password: string): number {
   let score = 0;
@@ -59,43 +57,6 @@ function RegisterForm() {
   const [submitted, setSubmitted] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
-  const [refCodeInput, setRefCodeInput] = useState('');
-  const [refCodeShown, setRefCodeShown] = useState(false);
-  const searchParams = useSearchParams();
-
-  // If the user landed directly on /register?ref=CODE (bypassing the
-  // landing page), capture the code into the cookie on mount AND
-  // pre-fill the referral-code field so they see who invited them.
-  useEffect(() => {
-    const ref = searchParams.get('ref');
-    if (ref) {
-      const upper = ref.trim().toUpperCase();
-      setReferralCookie(upper);
-      setRefCodeInput(upper);
-      setRefCodeShown(true);
-      // Fire-and-forget click validation. Confirmed-invalid codes get
-      // dropped so a stale share link doesn't quietly fail at signup
-      // time. Transient errors leave state alone — signup will still
-      // try to attribute, and the backend is the source of truth.
-      trackReferralClick(upper)
-        .then((res) => {
-          if (res.data?.valid === false) {
-            clearReferralCookie();
-            setRefCodeInput('');
-            setRefCodeShown(false);
-          }
-        })
-        .catch(() => { /* best-effort */ });
-      return;
-    }
-    // No URL param, but they may have visited a /?ref=... link earlier.
-    // Surface the cookie value so they can see / edit it before signup.
-    const cookieRef = getReferralCookie();
-    if (cookieRef) {
-      setRefCodeInput(cookieRef);
-      setRefCodeShown(true);
-    }
-  }, [searchParams]);
 
   const strength = getPasswordStrength(password);
 
@@ -111,15 +72,7 @@ function RegisterForm() {
     }
     setLoading(true);
     try {
-      // Manual input wins over the cookie (user may correct a stale cookie).
-      const manualRef = refCodeInput.trim().toUpperCase();
-      const cookieRef = getReferralCookie();
-      const refCode = manualRef || cookieRef;
-      const fingerprint = getDeviceFingerprint();
-      await registerUser(email, password, refCode, fingerprint);
-      // Clear the cookie so it can't re-attribute on repeat signups
-      // from the same browser (e.g. the user making a second account).
-      clearReferralCookie();
+      await registerUser(email, password);
       setSubmitted(true);
       toast.success('Verification email sent');
     } catch (err: any) {
@@ -127,11 +80,6 @@ function RegisterForm() {
       // already registered (see authController). Surface an actionable
       // message with a link to the sign-in page instead of the generic.
       if (err.response?.status === 409 && err.response?.data?.code === 'email_exists') {
-        // The pending referral belongs to whoever intended to sign up here.
-        // If the email already exists, this attempt won't produce a row,
-        // so drop the cookie — otherwise it sticks around and silently
-        // attributes whatever account next logs in from this browser.
-        clearReferralCookie();
         toast.error(
           (t) => (
             <span className="flex items-center gap-3">
@@ -373,44 +321,6 @@ function RegisterForm() {
                 <p className="text-[11px] text-red-400 pt-1" style={{ fontWeight: 500 }}>
                   Passwords don't match.
                 </p>
-              )}
-            </div>
-
-            {/* Referral code — collapsible. Pre-expanded + pre-filled if
-                the visitor arrived via a ?ref=... link or has the cookie. */}
-            <div>
-              {!refCodeShown ? (
-                <button
-                  type="button"
-                  onClick={() => setRefCodeShown(true)}
-                  className="flex items-center gap-2 text-xs font-bold transition-colors hover:text-white"
-                  style={{ color: 'oklch(0.59 0.245 291)' }}
-                >
-                  <Gift className="h-3.5 w-3.5" />
-                  Have a referral code?
-                </button>
-              ) : (
-                <div className="space-y-1.5">
-                  <Label htmlFor="refcode" className="text-xs font-bold uppercase tracking-widest text-white/50">
-                    Referral code <span className="text-white/30 font-normal">(optional)</span>
-                  </Label>
-                  <div className="group relative">
-                    <Gift className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-white/30 transition-colors group-focus-within:text-violet-400" />
-                    <Input
-                      id="refcode"
-                      type="text"
-                      placeholder="e.g. WADE8MCK"
-                      value={refCodeInput}
-                      onChange={(e) => setRefCodeInput(e.target.value.toUpperCase())}
-                      maxLength={16}
-                      className="h-12 rounded-xl border-white/10 bg-white/[0.04] pl-10 pr-3 text-sm font-mono tracking-widest text-white placeholder:text-white/25 transition-all focus:border-violet-500/50 focus:ring-2 focus:ring-violet-500/20"
-                      style={{ backdropFilter: 'blur(10px)' }}
-                    />
-                  </div>
-                  <p className="text-[11px] text-white/35">
-                    Got one from a friend? Drop it in — they earn a reward when you subscribe.
-                  </p>
-                </div>
               )}
             </div>
 

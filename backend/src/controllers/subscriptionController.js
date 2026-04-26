@@ -13,8 +13,6 @@ const supabase = require('../services/supabaseClient');
 const { /* stripe, */ PLANS, getPlanLimits, canonicalPlan } = require('../services/stripeService');
 const { getTodayCount } = require('../services/usageService');
 const ls = require('../services/lemonSqueezyService');
-const { onPaidConversion, onRefund } = require('../lib/referrals/webhookHooks');
-const { logEvent } = require('../lib/events');
 
 // FRONTEND_URL may be a comma-separated list (used by CORS). For redirect URLs
 // we only want the canonical first entry, otherwise we'd redirect users to a
@@ -220,23 +218,6 @@ const resyncSubscription = async (req, res) => {
       return res.status(500).json({ error: 'Could not update subscription row' });
     }
 
-    // If this looks like a first-time paid conversion and the user was
-    // referred, run the referral hook the missed webhook would have.
-    // Idempotent — onPaidConversion early-exits if the referral isn't
-    // in 'signed_up'/'clicked' state.
-    if (row.status === 'active') {
-      try {
-        await onPaidConversion(userId);
-      } catch (err) {
-        console.warn('resync: onPaidConversion failed (non-fatal):', err.message);
-      }
-    }
-
-    await logEvent('subscription_resynced', {
-      userId,
-      metadata: { plan, interval, status: row.status, ls_sub_id: row.lemonsqueezy_subscription_id },
-    });
-
     return res.json({
       ok: true,
       changed: true,
@@ -373,9 +354,7 @@ const handleWebhook = async (req, res) => {
         // Previously we didn't surface upsert errors here, so a silent
         // failure (RLS, FK violation, column mismatch) left the user
         // stuck on 'free' even though the webhook had fired. Log loudly
-        // so the next occurrence is visible in Render logs, and don't
-        // short-circuit the referral reward — onPaidConversion reads
-        // from `referrals`, not `subscriptions`, so it works independently.
+        // so the next occurrence is visible in Render logs.
         const { error: upsertErr } = await supabase
           .from('subscriptions')
           .upsert(upsertRow, { onConflict: 'user_id' });
@@ -386,12 +365,6 @@ const handleWebhook = async (req, res) => {
           );
         } else {
           console.log(`LS ${eventName} subscriptions upserted for user ${userId} → plan=${plan}`);
-        }
-
-        // Referral reward — only trigger on subscription_created (first paid
-        // conversion). Renewals / updates are a no-op for the referrer.
-        if (eventName === 'subscription_created' && ls.mapStatus(attrs.status) === 'active') {
-          await onPaidConversion(userId);
         }
         break;
       }
@@ -488,10 +461,6 @@ const handleWebhook = async (req, res) => {
             message: giftMessage,
             lemonsqueezy_order_id: subId,
           }, { onConflict: 'recipient_email' });
-          await logEvent('gift_pass_purchased', {
-            userId: buyerId,
-            metadata: { recipient_email: recipient, order_id: subId, pass_code: passCode },
-          });
           // (Email notification to recipient is a TODO — the record is
           // the source of truth; the UI will let the buyer copy the
           // redeem link manually until an email service is wired up.)
@@ -516,21 +485,6 @@ const handleWebhook = async (req, res) => {
           cancel_at_period_end: false,
         }, { onConflict: 'user_id' });
 
-        // NOTE: 7-Day Pass purchases do NOT trigger referral rewards — a
-        // $10 reward on $9 revenue is a loss leader. Only Pro/Pro Voice
-        // subscriptions (subscription_created case above) credit the referrer.
-        // If this user later upgrades to a subscription, the normal
-        // subscription_created flow will still find their 'signed_up'
-        // referral row and reward the referrer properly.
-        break;
-      }
-
-      case 'subscription_payment_refunded':
-      case 'order_refunded': {
-        // Either a subscription refund or a one-time order refund. Reverse
-        // the referral reward if we're still inside the 14-day vesting window.
-        const userId = await lookupUser();
-        if (userId) await onRefund(userId);
         break;
       }
 

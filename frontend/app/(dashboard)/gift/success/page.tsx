@@ -1,10 +1,8 @@
 'use client';
 
 // Post-checkout landing after a Gift-a-Pass purchase. The webhook creates
-// the gifted_passes row asynchronously — we can't show the pass_code here
-// reliably, so we direct the buyer to their Referrals dashboard where
-// sent gifts will surface (via an RLS-protected query — coming in a
-// follow-up). For v1 we just confirm the purchase succeeded.
+// the gifted_passes row asynchronously, so for v1 we just confirm the
+// purchase succeeded.
 
 import Link from 'next/link';
 import { CheckCircle2, Gift, ArrowRight } from 'lucide-react';
@@ -32,12 +30,12 @@ export default function GiftSuccessPage() {
 
       <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
         <Link
-          href="/referrals"
+          href="/dashboard"
           className="btn-aivent fx-slide"
-          data-hover="VIEW REFERRALS"
+          data-hover="GO TO DASHBOARD"
           style={{ minWidth: '180px', height: '44px' }}
         >
-          <span>View your referrals</span>
+          <span>Go to dashboard</span>
         </Link>
         <Link
           href="/gift"
