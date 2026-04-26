@@ -409,11 +409,14 @@ export default function Home() {
         <div className="relative mx-auto max-w-7xl px-4 sm:px-6 pb-16 sm:pb-24" style={{ zIndex: 2 }}>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 items-center">
 
-            {/* Left — landingrobot.png hero robot image */}
+            {/* Left — robot CV hero video */}
             <div className="wow fadeInUp order-first lg:order-none text-center lg:text-left" data-wow-delay=".3s">
-              <img
-                src="/aivent/misc/landingrobot.png"
-                alt="AI Job Search"
+              <video
+                src="/vid/robotcvonahnd.mp4"
+                autoPlay
+                loop
+                muted
+                playsInline
                 className="w-full mx-auto max-h-[280px] sm:max-h-[400px] lg:max-h-[560px]"
                 style={{ objectFit: 'contain' }}
               />
