@@ -39,11 +39,25 @@ import {
 // elsewhere in the dashboard so this page doesn't feel like a foreign
 // island. New sources should pick a distinct hue from this palette.
 const SOURCE_STYLE: Record<string, { bg: string; color: string; border: string; label: string }> = {
-  remotive:  { bg: 'rgba(52,211,153,0.15)',  color: '#34d399', border: 'rgba(52,211,153,0.3)',  label: 'Remotive'  },
-  arbeitnow: { bg: 'rgba(96,165,250,0.15)',  color: '#60a5fa', border: 'rgba(96,165,250,0.3)',  label: 'Arbeitnow' },
-  adzuna:    { bg: 'rgba(251,146,60,0.15)',  color: '#fb923c', border: 'rgba(251,146,60,0.3)',  label: 'Adzuna'    },
-  jooble:    { bg: 'rgba(192,132,252,0.15)', color: '#c084fc', border: 'rgba(192,132,252,0.3)', label: 'Jooble'    },
+  remotive:      { bg: 'rgba(52,211,153,0.15)',  color: '#34d399', border: 'rgba(52,211,153,0.3)',  label: 'Remotive'       },
+  remoteok:      { bg: 'rgba(244,114,182,0.15)', color: '#f472b6', border: 'rgba(244,114,182,0.3)', label: 'RemoteOK'       },
+  workingnomads: { bg: 'rgba(20,184,166,0.15)',  color: '#14b8a6', border: 'rgba(20,184,166,0.3)',  label: 'Working Nomads' },
+  themuse:       { bg: 'rgba(236,72,153,0.15)',  color: '#ec4899', border: 'rgba(236,72,153,0.3)',  label: 'The Muse'       },
+  hackernews:    { bg: 'rgba(255,102,0,0.15)',   color: '#ff6600', border: 'rgba(255,102,0,0.3)',   label: 'HN Hiring'      },
+  arbeitnow:     { bg: 'rgba(96,165,250,0.15)',  color: '#60a5fa', border: 'rgba(96,165,250,0.3)',  label: 'Arbeitnow'      },
+  adzuna:        { bg: 'rgba(251,146,60,0.15)',  color: '#fb923c', border: 'rgba(251,146,60,0.3)',  label: 'Adzuna'         },
+  jooble:        { bg: 'rgba(192,132,252,0.15)', color: '#c084fc', border: 'rgba(192,132,252,0.3)', label: 'Jooble'         },
+  jsearch:       { bg: 'rgba(129,140,248,0.15)', color: '#818cf8', border: 'rgba(129,140,248,0.3)', label: 'JSearch'        },
+  linkedin:      { bg: 'rgba(10,102,194,0.18)',  color: '#60a5fa', border: 'rgba(10,102,194,0.4)',  label: 'LinkedIn'       },
+  indeed:        { bg: 'rgba(45,100,200,0.15)',  color: '#7aa2f7', border: 'rgba(45,100,200,0.3)',  label: 'Indeed'         },
+  glassdoor:     { bg: 'rgba(13,170,127,0.15)',  color: '#0daa7f', border: 'rgba(13,170,127,0.3)',  label: 'Glassdoor'      },
+  upwork:        { bg: 'rgba(20,164,77,0.15)',   color: '#14a44d', border: 'rgba(20,164,77,0.3)',   label: 'Upwork'         },
 };
+
+// Sources that ONLY publish remote jobs. The location string on individual
+// listings can say "USA Only" / "EU" / etc — it's a hiring restriction,
+// not an on-site flag. Trust the source over the string for these.
+const REMOTE_ONLY_SOURCES = new Set(['remotive', 'remoteok', 'workingnomads']);
 
 const sourceMeta = (s: string) =>
   SOURCE_STYLE[s] || { bg: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.65)', border: 'rgba(255,255,255,0.1)', label: s };
@@ -68,12 +82,20 @@ const relativeTime = (iso?: string | null) => {
   return `${yr}y ago`;
 };
 
-// Location-type heuristics. Remotive / Arbeitnow flag remote in the
-// location string ("Worldwide", "Anywhere", "Remote — EU"); hybrid is
-// rarer but does appear. Anything else we treat as on-site.
+// Location-type heuristics. Most boards flag remote in the location
+// string ("Worldwide", "Anywhere", "Remote — EU"); hybrid is rarer but
+// does appear. Anything else we treat as on-site.
 const isRemoteLoc = (loc?: string | null) => !!loc && /remote|anywhere|worldwide/i.test(loc);
 const isHybridLoc = (loc?: string | null) => !!loc && /hybrid/i.test(loc);
 const isOnsiteLoc = (loc?: string | null) => !!loc && !isRemoteLoc(loc) && !isHybridLoc(loc);
+
+// Source-aware variants — for remote-only boards, the location string is
+// a hiring restriction (e.g. "USA Only"), not an on-site flag. Trust the
+// source and call those Remote regardless of the string.
+const isRemoteJob = (j: JobHunterJob) =>
+  REMOTE_ONLY_SOURCES.has(j.source) || isRemoteLoc(j.location);
+const isOnsiteJob = (j: JobHunterJob) =>
+  !REMOTE_ONLY_SOURCES.has(j.source) && isOnsiteLoc(j.location);
 
 type Recency = 'any' | '24h' | '7d' | '30d';
 type LocType = 'any' | 'remote' | 'hybrid' | 'onsite';
@@ -224,9 +246,9 @@ export default function JobHunterPage() {
 
     if (locType !== 'any') {
       out = out.filter((j) => {
-        if (locType === 'remote') return isRemoteLoc(j.location);
+        if (locType === 'remote') return isRemoteJob(j);
         if (locType === 'hybrid') return isHybridLoc(j.location);
-        return isOnsiteLoc(j.location);
+        return isOnsiteJob(j);
       });
     }
 
@@ -263,7 +285,7 @@ export default function JobHunterPage() {
   const sourceCounts = useMemo(() => {
     const list = match?.results || [];
     const counts: Record<string, number> = { all: list.length };
-    for (const src of ['remotive', 'arbeitnow', 'adzuna', 'jooble']) {
+    for (const src of ['remotive', 'remoteok', 'workingnomads', 'themuse', 'hackernews', 'arbeitnow', 'adzuna', 'jooble', 'jsearch', 'linkedin', 'indeed', 'glassdoor', 'upwork']) {
       counts[src] = list.filter((j) => j.source === src).length;
     }
     return counts;
@@ -273,9 +295,9 @@ export default function JobHunterPage() {
     const list = match?.results || [];
     return {
       any: list.length,
-      remote: list.filter((j) => isRemoteLoc(j.location)).length,
+      remote: list.filter(isRemoteJob).length,
       hybrid: list.filter((j) => isHybridLoc(j.location)).length,
-      onsite: list.filter((j) => isOnsiteLoc(j.location)).length,
+      onsite: list.filter(isOnsiteJob).length,
     };
   }, [match]);
 
@@ -604,11 +626,20 @@ interface FilterBarProps {
 
 function FilterBar(p: FilterBarProps) {
   const sourceOpts = [
-    { key: 'all',       label: 'All sources', count: p.sourceCounts.all       },
-    { key: 'remotive',  label: 'Remotive',    count: p.sourceCounts.remotive  },
-    { key: 'arbeitnow', label: 'Arbeitnow',   count: p.sourceCounts.arbeitnow },
-    { key: 'adzuna',    label: 'Adzuna',      count: p.sourceCounts.adzuna    },
-    { key: 'jooble',    label: 'Jooble',      count: p.sourceCounts.jooble    },
+    { key: 'all',           label: 'All sources',   count: p.sourceCounts.all           },
+    { key: 'linkedin',      label: 'LinkedIn',      count: p.sourceCounts.linkedin      },
+    { key: 'indeed',        label: 'Indeed',        count: p.sourceCounts.indeed        },
+    { key: 'glassdoor',     label: 'Glassdoor',     count: p.sourceCounts.glassdoor     },
+    { key: 'jsearch',       label: 'JSearch',       count: p.sourceCounts.jsearch       },
+    { key: 'upwork',        label: 'Upwork',        count: p.sourceCounts.upwork        },
+    { key: 'remotive',      label: 'Remotive',      count: p.sourceCounts.remotive      },
+    { key: 'remoteok',      label: 'RemoteOK',      count: p.sourceCounts.remoteok      },
+    { key: 'workingnomads', label: 'Working Nomads',count: p.sourceCounts.workingnomads },
+    { key: 'themuse',       label: 'The Muse',      count: p.sourceCounts.themuse       },
+    { key: 'hackernews',    label: 'HN Hiring',     count: p.sourceCounts.hackernews    },
+    { key: 'arbeitnow',     label: 'Arbeitnow',     count: p.sourceCounts.arbeitnow     },
+    { key: 'adzuna',        label: 'Adzuna',        count: p.sourceCounts.adzuna        },
+    { key: 'jooble',        label: 'Jooble',        count: p.sourceCounts.jooble        },
   ].filter((o) => o.key === 'all' || (o.count ?? 0) > 0);
 
   const recencyOpts: Array<{ key: Recency; label: string }> = [
@@ -783,7 +814,7 @@ function FilterDropdown<T extends string>({
 function JobCard({ job }: { job: JobHunterJob }) {
   const src = sourceMeta(job.source);
   const posted = relativeTime(job.posted_at);
-  const remote = isRemoteLoc(job.location);
+  const remote = isRemoteJob(job);
   const hybrid = isHybridLoc(job.location);
   const scorePct = Math.round((job.score ?? 0) * 100);
   const scoreTone =
