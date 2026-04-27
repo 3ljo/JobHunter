@@ -21,7 +21,7 @@ const navItems = [
   { href: '/create-cv',    label: 'Create CV'    },
   { href: '/job-hunter',   label: 'Job Hunter'   },
   { href: '/cover-letter', label: 'Cover Letter' },
-  { href: '/interview',    label: 'Interview', badge: 'PRO VOICE' },
+  { href: '/interview',    label: 'Interview'    },
   { href: '/tracker',      label: 'Tracker'      },
   { href: '/cv-history',   label: 'History'      },
 ];
@@ -134,7 +134,6 @@ export default function Navbar() {
           >
             {navItems.map((item) => {
               const isActive = pathname === item.href;
-              const badge = 'badge' in item ? item.badge : undefined;
               return (
                 <Link
                   key={item.href}
@@ -162,14 +161,6 @@ export default function Navbar() {
                   }}
                 >
                   {item.label}
-                  {badge && (
-                    <span
-                      className="text-[9px] font-black px-1.5 py-0.5 rounded"
-                      style={{ background: 'rgba(192,132,252,0.15)', color: '#c084fc', border: '1px solid rgba(192,132,252,0.3)' }}
-                    >
-                      {badge}
-                    </span>
-                  )}
                 </Link>
               );
             })}
@@ -302,7 +293,6 @@ export default function Navbar() {
             <div className="flex flex-col gap-1">
               {navItems.map((item) => {
                 const isActive = pathname === item.href;
-                const badge = 'badge' in item ? item.badge : undefined;
                 return (
                   <Link
                     key={item.href}
@@ -318,14 +308,6 @@ export default function Navbar() {
                     }}
                   >
                     {item.label}
-                    {badge && (
-                      <span
-                        className="text-[9px] font-black px-1.5 py-0.5 rounded"
-                        style={{ background: 'rgba(192,132,252,0.15)', color: '#c084fc', border: '1px solid rgba(192,132,252,0.3)' }}
-                      >
-                        {badge}
-                      </span>
-                    )}
                   </Link>
                 );
               })}
