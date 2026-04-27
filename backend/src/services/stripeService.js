@@ -55,6 +55,8 @@ const PLANS = {
       // One-time product (non-recurring) — create as a Single Payment variant in LS.
       once: process.env.LEMONSQUEEZY_VARIANT_STARTER_PASS,
     },
+    // PayPal does not support one-time products through the Subscriptions
+    // API. The 7-Day Pass stays LS-only for now.
   },
   pro: {
     name: 'Pro',
@@ -79,6 +81,10 @@ const PLANS = {
       month: process.env.LEMONSQUEEZY_VARIANT_PRO_MONTHLY,
       year: process.env.LEMONSQUEEZY_VARIANT_PRO_YEARLY,
     },
+    paypal_plans: {
+      month: process.env.PAYPAL_PLAN_PRO_MONTHLY,
+      year: process.env.PAYPAL_PLAN_PRO_YEARLY,
+    },
   },
   pro_voice: {
     name: 'Pro Voice',
@@ -101,6 +107,10 @@ const PLANS = {
     ls_variants: {
       month: process.env.LEMONSQUEEZY_VARIANT_PRO_VOICE_MONTHLY,
       year: process.env.LEMONSQUEEZY_VARIANT_PRO_VOICE_YEARLY,
+    },
+    paypal_plans: {
+      month: process.env.PAYPAL_PLAN_PRO_VOICE_MONTHLY,
+      year: process.env.PAYPAL_PLAN_PRO_VOICE_YEARLY,
     },
   },
 };

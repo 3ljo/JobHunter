@@ -52,7 +52,7 @@ const adminRoutes = require('./routes/admin');
 const subscriptionRoutes = require('./routes/subscription');
 const promoRoutes = require('./routes/promo');
 const giftRoutes = require('./routes/gift');
-const { handleWebhook } = require('./controllers/subscriptionController');
+const { handleWebhook, handlePaypalWebhook } = require('./controllers/subscriptionController');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -72,6 +72,11 @@ app.use(cors({
 // back to Stripe, keep this same route path and raw-body middleware — only
 // the handler logic inside subscriptionController changes.
 app.post('/api/subscription/webhook', express.raw({ type: 'application/json' }), handleWebhook);
+
+// PayPal webhook — also needs raw body. PayPal verifies the signature
+// asynchronously via /v1/notifications/verify-webhook-signature using
+// the unmodified payload bytes, so the same raw-body rule applies.
+app.post('/api/subscription/paypal/webhook', express.raw({ type: 'application/json' }), handlePaypalWebhook);
 
 // Parse JSON request bodies (2MB limit to accommodate base64 profile photos for CV templates)
 app.use(express.json({ limit: '2mb' }));

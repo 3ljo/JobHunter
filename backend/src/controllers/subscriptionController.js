@@ -13,6 +13,7 @@ const supabase = require('../services/supabaseClient');
 const { /* stripe, */ PLANS, getPlanLimits, canonicalPlan } = require('../services/stripeService');
 const { getTodayCount } = require('../services/usageService');
 const ls = require('../services/lemonSqueezyService');
+const pp = require('../services/paypalService');
 
 // FRONTEND_URL may be a comma-separated list (used by CORS). For redirect URLs
 // we only want the canonical first entry, otherwise we'd redirect users to a
@@ -83,10 +84,15 @@ const getSubscription = async (req, res) => {
   }
 };
 
-// POST /api/subscription/checkout — Create a Lemon Squeezy hosted checkout URL
+// POST /api/subscription/checkout — Create a hosted checkout URL.
+// `provider` selects the payment rail: 'lemonsqueezy' (default) or 'paypal'.
+// PayPal does NOT support one-time products through Subscriptions API,
+// so the 7-Day Pass is LS-only — passing provider=paypal with plan=starter
+// returns 400.
 const createCheckout = async (req, res) => {
   try {
-    const { plan, interval } = req.body; // payment_method is ignored — LS handles method selection on its hosted page
+    const { plan, interval, provider: providerRaw } = req.body;
+    const provider = providerRaw === 'paypal' ? 'paypal' : 'lemonsqueezy';
 
     if (!plan || !PLANS[plan] || plan === 'free') {
       return res.status(400).json({ error: 'Invalid plan' });
@@ -95,7 +101,6 @@ const createCheckout = async (req, res) => {
     const planConfig = PLANS[plan];
     const isOneTime = planConfig.billing_type === 'one_time';
 
-    // Subscriptions take 'month' | 'year'; one-time passes use 'once'.
     const validIntervals = isOneTime ? ['once'] : ['month', 'year'];
     if (!interval || !validIntervals.includes(interval)) {
       return res.status(400).json({
@@ -103,6 +108,33 @@ const createCheckout = async (req, res) => {
           ? 'One-time plans must use interval=once'
           : 'Invalid billing interval',
       });
+    }
+
+    if (provider === 'paypal') {
+      if (isOneTime) {
+        return res.status(400).json({
+          error: 'PayPal does not support one-time passes. Use Lemon Squeezy for the 7-Day Pass.',
+          code: 'paypal_one_time_unsupported',
+        });
+      }
+      const planId = pp.getPlanId(plan, interval);
+      if (!planId) {
+        return res.status(400).json({
+          error: `PayPal plan not configured for ${plan}/${interval}. Set PAYPAL_PLAN_* env vars.`,
+        });
+      }
+      const returnUrl = `${canonicalFrontend()}/checkout/success?provider=paypal`;
+      const cancelUrl = `${canonicalFrontend()}/pricing?checkout=canceled`;
+      const { approveUrl } = await pp.createSubscription({
+        planId,
+        userId: req.user.id,
+        email: req.user.email,
+        plan,
+        interval,
+        returnUrl,
+        cancelUrl,
+      });
+      return res.json({ url: approveUrl });
     }
 
     const variantId = ls.getVariantId(plan, interval);
@@ -124,11 +156,8 @@ const createCheckout = async (req, res) => {
 
     return res.json({ url: checkoutUrl });
   } catch (err) {
-    // Full error (with LS response body) goes to server logs only —
-    // a raw LS 401 body leaked to the client would both confuse the
-    // user and potentially echo IDs we don't need to expose.
-    console.error('LS checkout error:', err.message);
-    if (err.lsStatus === 401 || err.lsStatus === 403) {
+    console.error('Checkout error:', err.message);
+    if (err.lsStatus === 401 || err.lsStatus === 403 || err.ppStatus === 401 || err.ppStatus === 403) {
       return res.status(503).json({
         error: 'Payment provider is temporarily unavailable. Please try again in a moment or contact support.',
         code: 'payment_provider_unavailable',
@@ -245,29 +274,49 @@ const configCheck = async (req, res) => {
   if (!expected || !provided || provided !== expected) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
-  const config = ls.inspectConfig();
-  const ping = await ls.pingApi();
+  const lsConfig = ls.inspectConfig();
+  const lsPing = await ls.pingApi();
+  const ppConfig = pp.inspectConfig();
+  const ppPing = await pp.pingApi();
   return res.json({
-    config,
-    ping,
-    overall_ok: config.api_key_shape === 'ok' &&
-                config.store_id_shape === 'ok' &&
-                ping.ok,
+    lemonsqueezy: {
+      config: lsConfig,
+      ping: lsPing,
+      overall_ok: lsConfig.api_key_shape === 'ok' && lsConfig.store_id_shape === 'ok' && lsPing.ok,
+    },
+    paypal: {
+      config: ppConfig,
+      ping: ppPing,
+      overall_ok: ppConfig.client_id_present && ppConfig.client_secret_present && ppPing.ok,
+    },
   });
 };
 
-// POST /api/subscription/portal — Return the user's Lemon Squeezy customer portal URL.
-// LS doesn't have an API to *create* a portal session on demand; each subscription
-// comes with a pre-generated portal URL, which the webhook stored on the row.
+// POST /api/subscription/portal — Return a self-service URL for the
+// user's current subscription. LS rows return their pre-generated portal
+// URL; PayPal rows return a deep link to PayPal's autopay management
+// page (PayPal has no per-merchant portal URL — users manage all
+// subscriptions there). Sandbox rows go to the sandbox dashboard.
 const createPortal = async (req, res) => {
   try {
     const { data } = await supabase
       .from('subscriptions')
-      .select('lemonsqueezy_portal_url')
+      .select('provider, lemonsqueezy_portal_url, paypal_subscription_id')
       .eq('user_id', req.user.id)
       .single();
 
-    if (!data?.lemonsqueezy_portal_url) {
+    if (!data) {
+      return res.status(400).json({ error: 'No active subscription found' });
+    }
+
+    if (data.provider === 'paypal' && data.paypal_subscription_id) {
+      const sandboxBase = 'https://www.sandbox.paypal.com';
+      const liveBase = 'https://www.paypal.com';
+      const base = process.env.PAYPAL_MODE === 'live' ? liveBase : sandboxBase;
+      return res.json({ url: `${base}/myaccount/autopay/` });
+    }
+
+    if (!data.lemonsqueezy_portal_url) {
       return res.status(400).json({ error: 'No active subscription found' });
     }
 
@@ -501,6 +550,156 @@ const handleWebhook = async (req, res) => {
   res.json({ received: true });
 };
 
+// POST /api/subscription/paypal/webhook — PayPal webhook handler (no auth middleware).
+// Mounted with express.raw() in index.js so we can verify the signature
+// against the unmodified bytes. PayPal verifies asynchronously by calling
+// /v1/notifications/verify-webhook-signature back at PayPal — see
+// paypalService.verifyWebhook for the exact contract.
+const handlePaypalWebhook = async (req, res) => {
+  const rawBody = req.body;
+  const ok = await pp.verifyWebhook(req.headers, rawBody);
+  if (!ok) {
+    console.error('PayPal webhook signature verification failed');
+    return res.status(401).json({ error: 'Invalid signature' });
+  }
+
+  let event;
+  try {
+    event = JSON.parse(rawBody.toString('utf8'));
+  } catch {
+    return res.status(400).json({ error: 'Malformed JSON' });
+  }
+
+  const eventType = event?.event_type;
+  const resource = event?.resource || {};
+  const subId = resource.id;
+
+  // custom_id is the JSON blob we stashed at subscription create time.
+  // Used only for the very first event (when no DB row exists yet); after
+  // that we trust the DB lookup over the echoed string.
+  let customData = {};
+  try {
+    if (resource.custom_id) customData = JSON.parse(resource.custom_id);
+  } catch {
+    customData = {};
+  }
+
+  const lookupUser = async () => {
+    if (subId) {
+      const { data } = await supabase
+        .from('subscriptions')
+        .select('user_id')
+        .eq('paypal_subscription_id', subId)
+        .maybeSingle();
+      if (data?.user_id) return data.user_id;
+    }
+    if (customData.user_id) return customData.user_id;
+    return null;
+  };
+
+  try {
+    switch (eventType) {
+      case 'BILLING.SUBSCRIPTION.CREATED':
+      case 'BILLING.SUBSCRIPTION.ACTIVATED':
+      case 'BILLING.SUBSCRIPTION.UPDATED':
+      case 'BILLING.SUBSCRIPTION.RE-ACTIVATED': {
+        const userId = await lookupUser();
+        if (!userId) {
+          console.warn(`PayPal ${eventType} with no user_id match — sub ${subId}`);
+          break;
+        }
+        const planId = resource.plan_id;
+        const plan = customData.plan || pp.resolvePlanFromPlanId(planId);
+        const interval = customData.interval || pp.resolveIntervalFromPlanId(planId);
+
+        const upsertRow = {
+          user_id: userId,
+          provider: 'paypal',
+          paypal_subscription_id: subId,
+          paypal_plan_id: planId,
+          paypal_payer_id: resource?.subscriber?.payer_id || null,
+          plan,
+          billing_interval: interval,
+          status: pp.mapStatus(resource.status),
+          current_period_start: resource?.start_time || null,
+          current_period_end: resource?.billing_info?.next_billing_time || null,
+          cancel_at_period_end: false,
+        };
+
+        const { error: upsertErr } = await supabase
+          .from('subscriptions')
+          .upsert(upsertRow, { onConflict: 'user_id' });
+        if (upsertErr) {
+          console.error(
+            `PayPal ${eventType} subscriptions upsert failed for user ${userId}:`,
+            upsertErr.message, upsertErr.code, upsertErr.details, upsertErr.hint
+          );
+        } else {
+          console.log(`PayPal ${eventType} subscriptions upserted for user ${userId} → plan=${plan}`);
+        }
+        break;
+      }
+
+      case 'BILLING.SUBSCRIPTION.CANCELLED':
+      case 'BILLING.SUBSCRIPTION.SUSPENDED': {
+        const userId = await lookupUser();
+        if (!userId) {
+          console.warn(`PayPal ${eventType}: no user_id match for sub ${subId}`);
+          break;
+        }
+        const update = eventType === 'BILLING.SUBSCRIPTION.CANCELLED'
+          ? { status: 'canceled', cancel_at_period_end: true }
+          : { status: 'past_due' };
+        const { error } = await supabase.from('subscriptions').update(update).eq('user_id', userId);
+        if (error) {
+          console.error(`PayPal ${eventType} update failed for user ${userId}:`, error.message);
+        }
+        break;
+      }
+
+      case 'BILLING.SUBSCRIPTION.EXPIRED': {
+        const userId = await lookupUser();
+        if (!userId) break;
+        const { error } = await supabase.from('subscriptions').update({
+          plan: 'free',
+          status: 'canceled',
+          paypal_subscription_id: null,
+          cancel_at_period_end: false,
+        }).eq('user_id', userId);
+        if (error) {
+          console.error(`PayPal ${eventType} update failed for user ${userId}:`, error.message);
+        }
+        break;
+      }
+
+      case 'BILLING.SUBSCRIPTION.PAYMENT.FAILED':
+      case 'PAYMENT.SALE.DENIED': {
+        const userId = await lookupUser();
+        if (!userId) break;
+        const { error } = await supabase.from('subscriptions').update({
+          status: 'past_due',
+        }).eq('user_id', userId);
+        if (error) {
+          console.error(`PayPal ${eventType} update failed for user ${userId}:`, error.message);
+        }
+        break;
+      }
+
+      case 'PAYMENT.SALE.COMPLETED':
+      default:
+        // Renewal payments roll the period forward via SUBSCRIPTION.UPDATED;
+        // sale events are informational here. Log and move on.
+        break;
+    }
+  } catch (err) {
+    console.error('PayPal webhook processing error:', err.message);
+  }
+
+  // Always 200 so PayPal doesn't retry on internal bugs (it retries up
+  // to ~25 times over 3 days otherwise).
+  res.json({ received: true });
+};
+
 /* ════════════════════════════════════════════════════════════════════════════
    STRIPE HANDLERS — preserved for rollback. Not wired into any route.
    To re-enable: uncomment this block, swap the named exports below, and
@@ -704,4 +903,4 @@ function resolvePlanFromStripePriceId(priceId) {
 
    ════════════════════════════════════════════════════════════════════════════ */
 
-module.exports = { getSubscription, createCheckout, createPortal, handleWebhook, configCheck, resyncSubscription };
+module.exports = { getSubscription, createCheckout, createPortal, handleWebhook, handlePaypalWebhook, configCheck, resyncSubscription };

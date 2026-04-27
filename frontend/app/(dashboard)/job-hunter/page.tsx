@@ -18,6 +18,8 @@ import {
   Home,
   ArrowUpDown,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   Check,
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
@@ -182,6 +184,12 @@ export default function JobHunterPage() {
   const [scoreTier, setScoreTier] = useState<ScoreTier>('any');
   const [sortBy, setSortBy] = useState<SortKey>('best');
 
+  // Pagination — 20 per page is the sweet spot for this card height.
+  // Resets to 1 whenever the underlying filtered set changes (see useEffect
+  // below) so users don't end up on an empty page after narrowing filters.
+  const PAGE_SIZE = 20;
+  const [page, setPage] = useState(1);
+
   // Hydrate from cache on mount so revisiting the tab is instant.
   useEffect(() => {
     let mounted = true;
@@ -281,6 +289,19 @@ export default function JobHunterPage() {
     }
     return sorted;
   }, [match, search, sourceFilter, recency, locType, scoreTier, sortBy]);
+
+  // Reset to page 1 whenever the filtered set changes — otherwise narrowing
+  // a filter could leave the user staring at an empty page 7.
+  useEffect(() => { setPage(1); }, [search, sourceFilter, recency, locType, scoreTier, sortBy, match]);
+
+  const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const safePage = Math.min(page, pageCount);
+  const paged = useMemo(
+    () => filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE),
+    [filtered, safePage]
+  );
+  const rangeStart = filtered.length === 0 ? 0 : (safePage - 1) * PAGE_SIZE + 1;
+  const rangeEnd = Math.min(safePage * PAGE_SIZE, filtered.length);
 
   const sourceCounts = useMemo(() => {
     const list = match?.results || [];
@@ -419,9 +440,11 @@ export default function JobHunterPage() {
 
       <div className="flex items-center justify-between text-xs text-muted-foreground/60 px-1">
         <span>
-          {filtered.length === match.results.length
-            ? `${match.results.length} results`
-            : `${filtered.length} of ${match.results.length} results`}
+          {filtered.length === 0
+            ? '0 results'
+            : filtered.length === match.results.length
+              ? `Showing ${rangeStart}–${rangeEnd} of ${match.results.length}`
+              : `Showing ${rangeStart}–${rangeEnd} of ${filtered.length} (${match.results.length} total)`}
         </span>
       </div>
 
@@ -450,11 +473,23 @@ export default function JobHunterPage() {
           )}
         </div>
       ) : (
-        <div className="grid grid-cols-1 gap-3">
-          {filtered.map((job, i) => (
-            <JobCard key={`${job.source}-${i}-${job.url}`} job={job} />
-          ))}
-        </div>
+        <>
+          <div className="grid grid-cols-1 gap-3">
+            {paged.map((job, i) => (
+              <JobCard key={`${job.source}-${(safePage - 1) * PAGE_SIZE + i}-${job.url}`} job={job} />
+            ))}
+          </div>
+          {pageCount > 1 && (
+            <Pagination
+              page={safePage}
+              pageCount={pageCount}
+              onChange={(p) => {
+                setPage(p);
+                if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' });
+              }}
+            />
+          )}
+        </>
       )}
     </div>
   );
@@ -475,6 +510,89 @@ function Header() {
         </p>
       </div>
     </div>
+  );
+}
+
+// ─── Pagination ───────────────────────────────────────────────────────
+
+// Compact page nav. For ≤7 pages, shows all numbers. For more, shows
+// first/last + a window around the current page with "…" gaps so the
+// strip stays a fixed-ish width even with 30+ pages.
+function buildPageList(current: number, total: number): Array<number | 'gap'> {
+  if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
+  const out: Array<number | 'gap'> = [1];
+  const start = Math.max(2, current - 1);
+  const end = Math.min(total - 1, current + 1);
+  if (start > 2) out.push('gap');
+  for (let i = start; i <= end; i++) out.push(i);
+  if (end < total - 1) out.push('gap');
+  out.push(total);
+  return out;
+}
+
+function Pagination({
+  page,
+  pageCount,
+  onChange,
+}: {
+  page: number;
+  pageCount: number;
+  onChange: (p: number) => void;
+}) {
+  const pages = buildPageList(page, pageCount);
+  const btnBase =
+    'inline-flex items-center justify-center h-8 min-w-8 px-2 rounded-lg text-xs font-semibold transition-all outline-none';
+  const inactiveStyle = {
+    background: 'rgba(255,255,255,0.04)',
+    border: '1px solid rgba(255,255,255,0.07)',
+    color: 'rgba(255,255,255,0.7)',
+  } as const;
+  const activeStyle = {
+    background: 'linear-gradient(135deg, rgba(118,77,240,0.95), rgba(139,92,246,0.85))',
+    border: '1px solid rgba(139,92,246,0.4)',
+    color: '#fff',
+  } as const;
+  const disabledStyle = {
+    background: 'rgba(255,255,255,0.02)',
+    border: '1px solid rgba(255,255,255,0.04)',
+    color: 'rgba(255,255,255,0.25)',
+  } as const;
+  return (
+    <nav className="flex items-center justify-center gap-1.5 pt-2" aria-label="Pagination">
+      <button
+        onClick={() => onChange(Math.max(1, page - 1))}
+        disabled={page <= 1}
+        className={btnBase}
+        style={page <= 1 ? disabledStyle : inactiveStyle}
+        aria-label="Previous page"
+      >
+        <ChevronLeft className="h-3.5 w-3.5" />
+      </button>
+      {pages.map((p, i) =>
+        p === 'gap' ? (
+          <span key={`gap-${i}`} className="text-[11px] text-muted-foreground/50 px-1">…</span>
+        ) : (
+          <button
+            key={p}
+            onClick={() => onChange(p)}
+            className={btnBase}
+            style={p === page ? activeStyle : inactiveStyle}
+            aria-current={p === page ? 'page' : undefined}
+          >
+            {p}
+          </button>
+        )
+      )}
+      <button
+        onClick={() => onChange(Math.min(pageCount, page + 1))}
+        disabled={page >= pageCount}
+        className={btnBase}
+        style={page >= pageCount ? disabledStyle : inactiveStyle}
+        aria-label="Next page"
+      >
+        <ChevronRight className="h-3.5 w-3.5" />
+      </button>
+    </nav>
   );
 }
 
