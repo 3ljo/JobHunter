@@ -251,8 +251,13 @@ export const redeemGift = (code: string) =>
 export const getSubscription = () =>
   api.get<SubscriptionResponse>('/api/subscription');
 
-export const createCheckoutSession = (plan: string, interval: 'month' | 'year' | 'once', payment_method?: string) =>
-  api.post<{ url: string }>('/api/subscription/checkout', { plan, interval, payment_method });
+export const createCheckoutSession = (
+  plan: string,
+  interval: 'month' | 'year' | 'once',
+  payment_method?: string,
+  provider?: 'lemonsqueezy' | 'paypal',
+) =>
+  api.post<{ url: string }>('/api/subscription/checkout', { plan, interval, payment_method, provider });
 
 export const createPortalSession = () =>
   api.post<{ url: string }>('/api/subscription/portal');

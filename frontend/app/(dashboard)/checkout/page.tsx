@@ -195,7 +195,12 @@ function CheckoutForm() {
     setShowUsdtPayment(false);
     setLoading(true);
     try {
-      const res = await createCheckoutSession(planKey, interval, paymentMethod);
+      // PayPal Subscriptions API only handles recurring plans, so the
+      // 7-Day Pass and any other one-time SKU always go through Lemon
+      // Squeezy regardless of which payment-method tile is selected.
+      const provider: 'lemonsqueezy' | 'paypal' =
+        paymentMethod === 'paypal' && !isOneTime ? 'paypal' : 'lemonsqueezy';
+      const res = await createCheckoutSession(planKey, interval, paymentMethod, provider);
       window.location.href = res.data.url;
     } catch (err: any) {
       const msg = err.response?.data?.error || 'Failed to start checkout';
@@ -328,7 +333,9 @@ function CheckoutForm() {
             <div className="flex items-center gap-3 mt-3 px-1">
               <Smartphone className="h-4 w-4 shrink-0" style={{ color: 'rgba(255,255,255,0.25)' }} />
               <p className="text-[11px] text-white/30" style={{ fontWeight: 400 }}>
-                Apple Pay, Google Pay, PayPal, and other regional methods appear on the secure Lemon Squeezy checkout page after you click Buy Now.
+                {paymentMethod === 'paypal' && !isOneTime
+                  ? 'You’ll be redirected to PayPal to approve your subscription. PayPal manages billing, renewals, and cancellation directly from your PayPal account.'
+                  : 'After you click Buy Now you’ll be redirected to the secure checkout page. Apple Pay, Google Pay, and regional methods are offered there as available.'}
               </p>
             </div>
           </div>
@@ -555,7 +562,7 @@ function CheckoutForm() {
           {/* Security note */}
           <div className="mt-6 text-center">
             <p className="text-white op-5" style={{ fontSize: '0.75rem' }}>
-              Secure payment powered by Lemon Squeezy. Cancel anytime.
+              Secure payment. Cancel anytime.
             </p>
           </div>
         </div>
