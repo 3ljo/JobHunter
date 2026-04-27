@@ -13,6 +13,12 @@ import {
   Building2,
   Clock,
   AlertCircle,
+  SlidersHorizontal,
+  X,
+  Star,
+  Globe,
+  Home,
+  ArrowUpDown,
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
@@ -56,14 +62,43 @@ const relativeTime = (iso?: string | null) => {
   return `${yr}y ago`;
 };
 
+// Location-type heuristics. Remotive / Arbeitnow flag remote in the
+// location string ("Worldwide", "Anywhere", "Remote — EU"); hybrid is
+// rarer but does appear. Anything else we treat as on-site.
+const isRemoteLoc = (loc?: string | null) => !!loc && /remote|anywhere|worldwide/i.test(loc);
+const isHybridLoc = (loc?: string | null) => !!loc && /hybrid/i.test(loc);
+const isOnsiteLoc = (loc?: string | null) => !!loc && !isRemoteLoc(loc) && !isHybridLoc(loc);
+
+type Recency = 'any' | '24h' | '7d' | '30d';
+type LocType = 'any' | 'remote' | 'hybrid' | 'onsite';
+type ScoreTier = 'any' | 'good' | 'great' | 'excellent';
+type SortKey = 'best' | 'newest' | 'company';
+
+const RECENCY_MS: Record<Exclude<Recency, 'any'>, number> = {
+  '24h': 24 * 3600 * 1000,
+  '7d':  7 * 24 * 3600 * 1000,
+  '30d': 30 * 24 * 3600 * 1000,
+};
+
+const SCORE_MIN: Record<Exclude<ScoreTier, 'any'>, number> = {
+  good: 0.5,
+  great: 0.7,
+  excellent: 0.85,
+};
+
 export default function JobHunterPage() {
   const [match, setMatch] = useState<JobHunterMatch | null>(null);
   const [initialLoading, setInitialLoading] = useState(true);
   const [searching, setSearching] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [errorCode, setErrorCode] = useState<string | null>(null);
+
   const [search, setSearch] = useState('');
   const [sourceFilter, setSourceFilter] = useState<string>('all');
+  const [recency, setRecency] = useState<Recency>('any');
+  const [locType, setLocType] = useState<LocType>('any');
+  const [scoreTier, setScoreTier] = useState<ScoreTier>('any');
+  const [sortBy, setSortBy] = useState<SortKey>('best');
 
   // Hydrate from cache on mount so revisiting the tab is instant.
   useEffect(() => {
@@ -111,9 +146,33 @@ export default function JobHunterPage() {
   const filtered = useMemo(() => {
     const list = match?.results || [];
     let out = list;
+
     if (sourceFilter !== 'all') {
       out = out.filter((j) => j.source === sourceFilter);
     }
+
+    if (recency !== 'any') {
+      const cutoff = Date.now() - RECENCY_MS[recency];
+      out = out.filter((j) => {
+        if (!j.posted_at) return false;
+        const t = new Date(j.posted_at).getTime();
+        return !Number.isNaN(t) && t >= cutoff;
+      });
+    }
+
+    if (locType !== 'any') {
+      out = out.filter((j) => {
+        if (locType === 'remote') return isRemoteLoc(j.location);
+        if (locType === 'hybrid') return isHybridLoc(j.location);
+        return isOnsiteLoc(j.location);
+      });
+    }
+
+    if (scoreTier !== 'any') {
+      const min = SCORE_MIN[scoreTier];
+      out = out.filter((j) => (j.score ?? 0) >= min);
+    }
+
     if (search.trim()) {
       const q = search.toLowerCase();
       out = out.filter(
@@ -123,20 +182,55 @@ export default function JobHunterPage() {
           (j.location || '').toLowerCase().includes(q)
       );
     }
-    return out;
-  }, [match, search, sourceFilter]);
 
-  const sourceTabs = useMemo(() => {
-    if (!match) return [];
-    const counts = match.source_counts || {};
-    const tabs = [{ key: 'all', label: 'All', count: match.results.length }];
-    for (const src of ['remotive', 'arbeitnow', 'adzuna', 'jooble']) {
-      const c = match.results.filter((j) => j.source === src).length;
-      if (c > 0) tabs.push({ key: src, label: sourceMeta(src).label, count: c });
+    const sorted = [...out];
+    if (sortBy === 'newest') {
+      sorted.sort((a, b) => {
+        const ta = a.posted_at ? new Date(a.posted_at).getTime() : 0;
+        const tb = b.posted_at ? new Date(b.posted_at).getTime() : 0;
+        return tb - ta;
+      });
+    } else if (sortBy === 'company') {
+      sorted.sort((a, b) => a.company.localeCompare(b.company));
+    } else {
+      sorted.sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
     }
-    void counts;
-    return tabs;
+    return sorted;
+  }, [match, search, sourceFilter, recency, locType, scoreTier, sortBy]);
+
+  const sourceCounts = useMemo(() => {
+    const list = match?.results || [];
+    const counts: Record<string, number> = { all: list.length };
+    for (const src of ['remotive', 'arbeitnow', 'adzuna', 'jooble']) {
+      counts[src] = list.filter((j) => j.source === src).length;
+    }
+    return counts;
   }, [match]);
+
+  const locCounts = useMemo(() => {
+    const list = match?.results || [];
+    return {
+      any: list.length,
+      remote: list.filter((j) => isRemoteLoc(j.location)).length,
+      hybrid: list.filter((j) => isHybridLoc(j.location)).length,
+      onsite: list.filter((j) => isOnsiteLoc(j.location)).length,
+    };
+  }, [match]);
+
+  const activeFilterCount =
+    (sourceFilter !== 'all' ? 1 : 0) +
+    (recency !== 'any' ? 1 : 0) +
+    (locType !== 'any' ? 1 : 0) +
+    (scoreTier !== 'any' ? 1 : 0) +
+    (search.trim() ? 1 : 0);
+
+  const clearAllFilters = () => {
+    setSearch('');
+    setSourceFilter('all');
+    setRecency('any');
+    setLocType('any');
+    setScoreTier('any');
+  };
 
   if (initialLoading) {
     return <LoadingSpinner className="mt-32" />;
@@ -235,10 +329,10 @@ export default function JobHunterPage() {
 
   // ── Results ─────────────────────────────────────────────────────────
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <Header />
 
-      {/* Query summary + actions */}
+      {/* Query summary + refresh */}
       <div className="flex items-start justify-between gap-3 flex-wrap">
         <div>
           <p className="text-xs uppercase tracking-widest text-muted-foreground/60 font-semibold mb-1">
@@ -275,52 +369,33 @@ export default function JobHunterPage() {
         </button>
       </div>
 
-      {/* Source tabs */}
-      {sourceTabs.length > 1 && (
-        <div className="flex items-center gap-1.5 flex-wrap">
-          {sourceTabs.map((tab) => {
-            const isActive = sourceFilter === tab.key;
-            return (
-              <button
-                key={tab.key}
-                onClick={() => setSourceFilter(tab.key)}
-                className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition-all"
-                style={{
-                  background: isActive
-                    ? 'linear-gradient(135deg, rgba(118,77,240,0.9), rgba(139,92,246,0.75))'
-                    : 'rgba(255,255,255,0.04)',
-                  color: isActive ? '#fff' : 'rgba(255,255,255,0.65)',
-                  border: '1px solid',
-                  borderColor: isActive ? 'rgba(139,92,246,0.4)' : 'rgba(255,255,255,0.07)',
-                }}
-              >
-                {tab.label}
-                <span
-                  className="text-[10px] font-bold px-1.5 py-0.5 rounded-full"
-                  style={{
-                    background: isActive ? 'rgba(255,255,255,0.18)' : 'rgba(255,255,255,0.06)',
-                  }}
-                >
-                  {tab.count}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-      )}
+      <FilterBar
+        search={search}
+        onSearch={setSearch}
+        sortBy={sortBy}
+        onSort={setSortBy}
+        sourceFilter={sourceFilter}
+        onSource={setSourceFilter}
+        sourceCounts={sourceCounts}
+        recency={recency}
+        onRecency={setRecency}
+        locType={locType}
+        onLocType={setLocType}
+        locCounts={locCounts}
+        scoreTier={scoreTier}
+        onScoreTier={setScoreTier}
+        activeFilterCount={activeFilterCount}
+        onClearAll={clearAllFilters}
+      />
 
-      {/* Search */}
-      <div className="relative max-w-md">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/60" />
-        <Input
-          placeholder="Filter by title, company or location…"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="h-9 rounded-lg border-white/[0.08] bg-card pl-9 text-sm text-foreground placeholder:text-muted-foreground/50 focus:border-violet-500/40 focus:ring-1 focus:ring-violet-500/20"
-        />
+      <div className="flex items-center justify-between text-xs text-muted-foreground/60 px-1">
+        <span>
+          {filtered.length === match.results.length
+            ? `${match.results.length} results`
+            : `${filtered.length} of ${match.results.length} results`}
+        </span>
       </div>
 
-      {/* Job list */}
       {filtered.length === 0 ? (
         <div
           className="rounded-2xl p-10 text-center"
@@ -329,9 +404,21 @@ export default function JobHunterPage() {
             border: '1px solid rgba(255,255,255,0.06)',
           }}
         >
-          <p className="text-sm text-muted-foreground/70">
+          <p className="text-sm text-muted-foreground/70 mb-3">
             No jobs match the current filters.
           </p>
+          {activeFilterCount > 0 && (
+            <button
+              onClick={clearAllFilters}
+              className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold text-violet-300"
+              style={{
+                background: 'rgba(118,77,240,0.12)',
+                border: '1px solid rgba(118,77,240,0.25)',
+              }}
+            >
+              <X className="h-3 w-3" /> Clear filters
+            </button>
+          )}
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-3">
@@ -362,11 +449,209 @@ function Header() {
   );
 }
 
+// ─── Filter bar ───────────────────────────────────────────────────────
+
+interface FilterBarProps {
+  search: string;
+  onSearch: (v: string) => void;
+  sortBy: SortKey;
+  onSort: (v: SortKey) => void;
+  sourceFilter: string;
+  onSource: (v: string) => void;
+  sourceCounts: Record<string, number>;
+  recency: Recency;
+  onRecency: (v: Recency) => void;
+  locType: LocType;
+  onLocType: (v: LocType) => void;
+  locCounts: { any: number; remote: number; hybrid: number; onsite: number };
+  scoreTier: ScoreTier;
+  onScoreTier: (v: ScoreTier) => void;
+  activeFilterCount: number;
+  onClearAll: () => void;
+}
+
+function FilterBar(p: FilterBarProps) {
+  return (
+    <div
+      className="rounded-2xl p-4 sm:p-5 space-y-4"
+      style={{
+        background: 'rgba(255,255,255,0.025)',
+        border: '1px solid rgba(255,255,255,0.06)',
+      }}
+    >
+      <div className="flex items-center gap-2 flex-wrap">
+        <div className="relative flex-1 min-w-[220px]">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/60" />
+          <Input
+            placeholder="Filter by title, company or location…"
+            value={p.search}
+            onChange={(e) => p.onSearch(e.target.value)}
+            className="h-9 rounded-lg border-white/[0.08] bg-card pl-9 text-sm text-foreground placeholder:text-muted-foreground/50 focus:border-violet-500/40 focus:ring-1 focus:ring-violet-500/20"
+          />
+        </div>
+
+        <div className="flex items-center gap-1.5">
+          <ArrowUpDown className="h-3.5 w-3.5 text-muted-foreground/55" />
+          <SortChip active={p.sortBy === 'best'} onClick={() => p.onSort('best')}>Best match</SortChip>
+          <SortChip active={p.sortBy === 'newest'} onClick={() => p.onSort('newest')}>Newest</SortChip>
+          <SortChip active={p.sortBy === 'company'} onClick={() => p.onSort('company')}>Company</SortChip>
+        </div>
+      </div>
+
+      <div className="space-y-2.5">
+        <FilterRow
+          icon={<SlidersHorizontal className="h-3 w-3" />}
+          label="Source"
+          options={[
+            { key: 'all',       label: 'All',       count: p.sourceCounts.all       },
+            { key: 'remotive',  label: 'Remotive',  count: p.sourceCounts.remotive  },
+            { key: 'arbeitnow', label: 'Arbeitnow', count: p.sourceCounts.arbeitnow },
+            { key: 'adzuna',    label: 'Adzuna',    count: p.sourceCounts.adzuna    },
+            { key: 'jooble',    label: 'Jooble',    count: p.sourceCounts.jooble    },
+          ].filter((o) => o.key === 'all' || (o.count ?? 0) > 0)}
+          value={p.sourceFilter}
+          onChange={p.onSource}
+        />
+
+        <FilterRow
+          icon={<Clock className="h-3 w-3" />}
+          label="Posted"
+          options={[
+            { key: 'any', label: 'Any time'   },
+            { key: '24h', label: 'Last 24h'   },
+            { key: '7d',  label: 'Last week'  },
+            { key: '30d', label: 'Last month' },
+          ]}
+          value={p.recency}
+          onChange={(v) => p.onRecency(v as Recency)}
+        />
+
+        <FilterRow
+          icon={<MapPin className="h-3 w-3" />}
+          label="Type"
+          options={[
+            { key: 'any',    label: 'Any',     count: p.locCounts.any    },
+            { key: 'remote', label: 'Remote',  count: p.locCounts.remote },
+            { key: 'hybrid', label: 'Hybrid',  count: p.locCounts.hybrid },
+            { key: 'onsite', label: 'On-site', count: p.locCounts.onsite },
+          ]}
+          value={p.locType}
+          onChange={(v) => p.onLocType(v as LocType)}
+        />
+
+        <FilterRow
+          icon={<Star className="h-3 w-3" />}
+          label="Match"
+          options={[
+            { key: 'any',       label: 'Any'           },
+            { key: 'good',      label: 'Good 50%+'     },
+            { key: 'great',     label: 'Great 70%+'    },
+            { key: 'excellent', label: 'Excellent 85%+' },
+          ]}
+          value={p.scoreTier}
+          onChange={(v) => p.onScoreTier(v as ScoreTier)}
+        />
+      </div>
+
+      {p.activeFilterCount > 0 && (
+        <div className="flex items-center justify-between pt-2 border-t border-white/[0.05]">
+          <span className="text-[11px] text-muted-foreground/55">
+            {p.activeFilterCount} filter{p.activeFilterCount === 1 ? '' : 's'} active
+          </span>
+          <button
+            onClick={p.onClearAll}
+            className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-[11px] font-semibold text-violet-300 hover:bg-violet-500/10 transition-colors"
+          >
+            <X className="h-3 w-3" /> Clear all
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+interface FilterRowProps {
+  icon: React.ReactNode;
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  options: Array<{ key: string; label: string; count?: number }>;
+}
+
+function FilterRow({ icon, label, value, onChange, options }: FilterRowProps) {
+  return (
+    <div className="flex items-start gap-2 flex-wrap">
+      <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/55 min-w-[64px] pt-1">
+        {icon}
+        {label}
+      </span>
+      <div className="flex items-center gap-1.5 flex-wrap">
+        {options.map((o) => {
+          const active = value === o.key;
+          return (
+            <button
+              key={o.key}
+              onClick={() => onChange(o.key)}
+              className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold transition-all"
+              style={{
+                background: active
+                  ? 'linear-gradient(135deg, rgba(118,77,240,0.9), rgba(139,92,246,0.75))'
+                  : 'rgba(255,255,255,0.04)',
+                color: active ? '#fff' : 'rgba(255,255,255,0.65)',
+                border: '1px solid',
+                borderColor: active ? 'rgba(139,92,246,0.4)' : 'rgba(255,255,255,0.07)',
+              }}
+            >
+              {o.label}
+              {typeof o.count === 'number' && (
+                <span
+                  className="text-[9px] font-bold px-1 py-px rounded-full"
+                  style={{
+                    background: active ? 'rgba(255,255,255,0.18)' : 'rgba(255,255,255,0.06)',
+                  }}
+                >
+                  {o.count}
+                </span>
+              )}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function SortChip({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
+  return (
+    <button
+      onClick={onClick}
+      className="inline-flex items-center rounded-lg px-2.5 py-1 text-[11px] font-semibold transition-all"
+      style={{
+        background: active ? 'rgba(118,77,240,0.18)' : 'rgba(255,255,255,0.03)',
+        color: active ? '#c4b5fd' : 'rgba(255,255,255,0.6)',
+        border: '1px solid',
+        borderColor: active ? 'rgba(139,92,246,0.35)' : 'rgba(255,255,255,0.06)',
+      }}
+    >
+      {children}
+    </button>
+  );
+}
+
 // ─── Job card ─────────────────────────────────────────────────────────
 
 function JobCard({ job }: { job: JobHunterJob }) {
   const src = sourceMeta(job.source);
   const posted = relativeTime(job.posted_at);
+  const remote = isRemoteLoc(job.location);
+  const hybrid = isHybridLoc(job.location);
+  const scorePct = Math.round((job.score ?? 0) * 100);
+  const scoreTone =
+    scorePct >= 85 ? { color: '#34d399', bg: 'rgba(52,211,153,0.12)', border: 'rgba(52,211,153,0.3)' } :
+    scorePct >= 70 ? { color: '#a78bfa', bg: 'rgba(167,139,250,0.12)', border: 'rgba(167,139,250,0.3)' } :
+    scorePct >= 50 ? { color: '#60a5fa', bg: 'rgba(96,165,250,0.12)', border: 'rgba(96,165,250,0.3)' } :
+                     { color: 'rgba(255,255,255,0.6)', bg: 'rgba(255,255,255,0.05)', border: 'rgba(255,255,255,0.1)' };
+
   return (
     <a
       href={job.url}
@@ -397,6 +682,30 @@ function JobCard({ job }: { job: JobHunterJob }) {
             >
               {src.label}
             </span>
+            {scorePct > 0 && (
+              <span
+                className="inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded"
+                style={{ background: scoreTone.bg, color: scoreTone.color, border: `1px solid ${scoreTone.border}` }}
+              >
+                <Star className="h-2.5 w-2.5 fill-current" /> {scorePct}% match
+              </span>
+            )}
+            {remote && (
+              <span
+                className="inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded"
+                style={{ background: 'rgba(52,211,153,0.10)', color: '#34d399', border: '1px solid rgba(52,211,153,0.25)' }}
+              >
+                <Globe className="h-2.5 w-2.5" /> Remote
+              </span>
+            )}
+            {hybrid && !remote && (
+              <span
+                className="inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded"
+                style={{ background: 'rgba(251,146,60,0.10)', color: '#fb923c', border: '1px solid rgba(251,146,60,0.25)' }}
+              >
+                <Home className="h-2.5 w-2.5" /> Hybrid
+              </span>
+            )}
             {posted && (
               <span className="text-[10px] text-muted-foreground/55 flex items-center gap-1">
                 <Clock className="h-2.5 w-2.5" /> {posted}
