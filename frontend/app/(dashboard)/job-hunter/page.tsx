@@ -19,9 +19,17 @@ import {
   Globe,
   Home,
   ArrowUpDown,
+  ChevronDown,
+  Check,
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import {
   findJobsForCV,
   getLatestJobMatches,
@@ -340,9 +348,6 @@ export default function JobHunterPage() {
           </p>
           <p className="text-sm text-foreground">
             <span className="font-semibold">{match.query.title || 'Developer'}</span>
-            {match.query.location && (
-              <span className="text-muted-foreground/70"> in {match.query.location}</span>
-            )}
             {match.query.skills && match.query.skills.length > 0 && (
               <span className="text-muted-foreground/60">
                 {' '}
@@ -471,170 +476,178 @@ interface FilterBarProps {
 }
 
 function FilterBar(p: FilterBarProps) {
+  const sourceOpts = [
+    { key: 'all',       label: 'All sources', count: p.sourceCounts.all       },
+    { key: 'remotive',  label: 'Remotive',    count: p.sourceCounts.remotive  },
+    { key: 'arbeitnow', label: 'Arbeitnow',   count: p.sourceCounts.arbeitnow },
+    { key: 'adzuna',    label: 'Adzuna',      count: p.sourceCounts.adzuna    },
+    { key: 'jooble',    label: 'Jooble',      count: p.sourceCounts.jooble    },
+  ].filter((o) => o.key === 'all' || (o.count ?? 0) > 0);
+
+  const recencyOpts: Array<{ key: Recency; label: string }> = [
+    { key: 'any', label: 'Any time'   },
+    { key: '24h', label: 'Last 24h'   },
+    { key: '7d',  label: 'Last week'  },
+    { key: '30d', label: 'Last month' },
+  ];
+
+  const typeOpts: Array<{ key: LocType; label: string; count: number }> = [
+    { key: 'any',    label: 'Any',     count: p.locCounts.any    },
+    { key: 'remote', label: 'Remote',  count: p.locCounts.remote },
+    { key: 'hybrid', label: 'Hybrid',  count: p.locCounts.hybrid },
+    { key: 'onsite', label: 'On-site', count: p.locCounts.onsite },
+  ];
+
+  const matchOpts: Array<{ key: ScoreTier; label: string }> = [
+    { key: 'any',       label: 'Any match'      },
+    { key: 'good',      label: 'Good 50%+'      },
+    { key: 'great',     label: 'Great 70%+'     },
+    { key: 'excellent', label: 'Excellent 85%+' },
+  ];
+
+  const sortOpts: Array<{ key: SortKey; label: string }> = [
+    { key: 'best',    label: 'Best match' },
+    { key: 'newest',  label: 'Newest'     },
+    { key: 'company', label: 'Company A–Z' },
+  ];
+
   return (
     <div
-      className="rounded-2xl p-4 sm:p-5 space-y-4"
+      className="rounded-2xl p-3 sm:p-4 flex items-center gap-2 flex-wrap"
       style={{
         background: 'rgba(255,255,255,0.025)',
         border: '1px solid rgba(255,255,255,0.06)',
       }}
     >
-      <div className="flex items-center gap-2 flex-wrap">
-        <div className="relative flex-1 min-w-[220px]">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/60" />
-          <Input
-            placeholder="Filter by title, company or location…"
-            value={p.search}
-            onChange={(e) => p.onSearch(e.target.value)}
-            className="h-9 rounded-lg border-white/[0.08] bg-card pl-9 text-sm text-foreground placeholder:text-muted-foreground/50 focus:border-violet-500/40 focus:ring-1 focus:ring-violet-500/20"
-          />
-        </div>
-
-        <div className="flex items-center gap-1.5">
-          <ArrowUpDown className="h-3.5 w-3.5 text-muted-foreground/55" />
-          <SortChip active={p.sortBy === 'best'} onClick={() => p.onSort('best')}>Best match</SortChip>
-          <SortChip active={p.sortBy === 'newest'} onClick={() => p.onSort('newest')}>Newest</SortChip>
-          <SortChip active={p.sortBy === 'company'} onClick={() => p.onSort('company')}>Company</SortChip>
-        </div>
-      </div>
-
-      <div className="space-y-2.5">
-        <FilterRow
-          icon={<SlidersHorizontal className="h-3 w-3" />}
-          label="Source"
-          options={[
-            { key: 'all',       label: 'All',       count: p.sourceCounts.all       },
-            { key: 'remotive',  label: 'Remotive',  count: p.sourceCounts.remotive  },
-            { key: 'arbeitnow', label: 'Arbeitnow', count: p.sourceCounts.arbeitnow },
-            { key: 'adzuna',    label: 'Adzuna',    count: p.sourceCounts.adzuna    },
-            { key: 'jooble',    label: 'Jooble',    count: p.sourceCounts.jooble    },
-          ].filter((o) => o.key === 'all' || (o.count ?? 0) > 0)}
-          value={p.sourceFilter}
-          onChange={p.onSource}
-        />
-
-        <FilterRow
-          icon={<Clock className="h-3 w-3" />}
-          label="Posted"
-          options={[
-            { key: 'any', label: 'Any time'   },
-            { key: '24h', label: 'Last 24h'   },
-            { key: '7d',  label: 'Last week'  },
-            { key: '30d', label: 'Last month' },
-          ]}
-          value={p.recency}
-          onChange={(v) => p.onRecency(v as Recency)}
-        />
-
-        <FilterRow
-          icon={<MapPin className="h-3 w-3" />}
-          label="Type"
-          options={[
-            { key: 'any',    label: 'Any',     count: p.locCounts.any    },
-            { key: 'remote', label: 'Remote',  count: p.locCounts.remote },
-            { key: 'hybrid', label: 'Hybrid',  count: p.locCounts.hybrid },
-            { key: 'onsite', label: 'On-site', count: p.locCounts.onsite },
-          ]}
-          value={p.locType}
-          onChange={(v) => p.onLocType(v as LocType)}
-        />
-
-        <FilterRow
-          icon={<Star className="h-3 w-3" />}
-          label="Match"
-          options={[
-            { key: 'any',       label: 'Any'           },
-            { key: 'good',      label: 'Good 50%+'     },
-            { key: 'great',     label: 'Great 70%+'    },
-            { key: 'excellent', label: 'Excellent 85%+' },
-          ]}
-          value={p.scoreTier}
-          onChange={(v) => p.onScoreTier(v as ScoreTier)}
+      <div className="relative flex-1 min-w-[220px]">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/60" />
+        <Input
+          placeholder="Filter by title, company or location…"
+          value={p.search}
+          onChange={(e) => p.onSearch(e.target.value)}
+          className="h-9 rounded-lg border-white/[0.08] bg-card pl-9 text-sm text-foreground placeholder:text-muted-foreground/50 focus:border-violet-500/40 focus:ring-1 focus:ring-violet-500/20"
         />
       </div>
+
+      <FilterDropdown
+        icon={<SlidersHorizontal className="h-3 w-3" />}
+        label="Source"
+        value={p.sourceFilter}
+        defaultKey="all"
+        options={sourceOpts}
+        onChange={p.onSource}
+      />
+      <FilterDropdown
+        icon={<Clock className="h-3 w-3" />}
+        label="Posted"
+        value={p.recency}
+        defaultKey="any"
+        options={recencyOpts}
+        onChange={(v) => p.onRecency(v as Recency)}
+      />
+      <FilterDropdown
+        icon={<MapPin className="h-3 w-3" />}
+        label="Type"
+        value={p.locType}
+        defaultKey="any"
+        options={typeOpts}
+        onChange={(v) => p.onLocType(v as LocType)}
+      />
+      <FilterDropdown
+        icon={<Star className="h-3 w-3" />}
+        label="Match"
+        value={p.scoreTier}
+        defaultKey="any"
+        options={matchOpts}
+        onChange={(v) => p.onScoreTier(v as ScoreTier)}
+      />
+      <FilterDropdown
+        icon={<ArrowUpDown className="h-3 w-3" />}
+        label="Sort"
+        value={p.sortBy}
+        defaultKey="best"
+        options={sortOpts}
+        onChange={(v) => p.onSort(v as SortKey)}
+      />
 
       {p.activeFilterCount > 0 && (
-        <div className="flex items-center justify-between pt-2 border-t border-white/[0.05]">
-          <span className="text-[11px] text-muted-foreground/55">
-            {p.activeFilterCount} filter{p.activeFilterCount === 1 ? '' : 's'} active
-          </span>
-          <button
-            onClick={p.onClearAll}
-            className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-[11px] font-semibold text-violet-300 hover:bg-violet-500/10 transition-colors"
-          >
-            <X className="h-3 w-3" /> Clear all
-          </button>
-        </div>
+        <button
+          onClick={p.onClearAll}
+          className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-[11px] font-semibold text-violet-300 hover:bg-violet-500/10 transition-colors"
+        >
+          <X className="h-3 w-3" /> Clear
+        </button>
       )}
     </div>
   );
 }
 
-interface FilterRowProps {
+interface FilterDropdownProps<T extends string> {
   icon: React.ReactNode;
   label: string;
-  value: string;
-  onChange: (v: string) => void;
-  options: Array<{ key: string; label: string; count?: number }>;
+  value: T;
+  defaultKey: T;
+  options: Array<{ key: T; label: string; count?: number }>;
+  onChange: (v: T) => void;
 }
 
-function FilterRow({ icon, label, value, onChange, options }: FilterRowProps) {
+function FilterDropdown<T extends string>({
+  icon,
+  label,
+  value,
+  defaultKey,
+  options,
+  onChange,
+}: FilterDropdownProps<T>) {
+  const selected = options.find((o) => o.key === value);
+  const isDefault = value === defaultKey;
   return (
-    <div className="flex items-start gap-2 flex-wrap">
-      <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/55 min-w-[64px] pt-1">
+    <DropdownMenu>
+      <DropdownMenuTrigger
+        className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[11px] font-semibold transition-all outline-none"
+        style={{
+          background: isDefault ? 'rgba(255,255,255,0.04)' : 'rgba(118,77,240,0.18)',
+          border: '1px solid',
+          borderColor: isDefault ? 'rgba(255,255,255,0.07)' : 'rgba(139,92,246,0.4)',
+          color: isDefault ? 'rgba(255,255,255,0.7)' : '#c4b5fd',
+        }}
+      >
         {icon}
-        {label}
-      </span>
-      <div className="flex items-center gap-1.5 flex-wrap">
+        <span className="text-muted-foreground/55">{label}:</span>
+        <span>{selected?.label ?? '—'}</span>
+        <ChevronDown className="h-3 w-3 opacity-55" />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent
+        align="start"
+        sideOffset={6}
+        className="w-48 rounded-xl p-1"
+        style={{
+          background: 'rgba(16,20,53,0.95)',
+          border: '1px solid rgba(255,255,255,0.08)',
+          backdropFilter: 'blur(20px)',
+          WebkitBackdropFilter: 'blur(20px)',
+          boxShadow: '0 16px 48px rgba(0,0,0,0.55)',
+        }}
+      >
         {options.map((o) => {
-          const active = value === o.key;
+          const active = o.key === value;
           return (
-            <button
+            <DropdownMenuItem
               key={o.key}
               onClick={() => onChange(o.key)}
-              className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold transition-all"
-              style={{
-                background: active
-                  ? 'linear-gradient(135deg, rgba(118,77,240,0.9), rgba(139,92,246,0.75))'
-                  : 'rgba(255,255,255,0.04)',
-                color: active ? '#fff' : 'rgba(255,255,255,0.65)',
-                border: '1px solid',
-                borderColor: active ? 'rgba(139,92,246,0.4)' : 'rgba(255,255,255,0.07)',
-              }}
+              className="flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-xs cursor-pointer"
+              style={{ color: active ? '#c4b5fd' : 'rgba(255,255,255,0.78)' }}
             >
-              {o.label}
+              <span className="flex-1">{o.label}</span>
               {typeof o.count === 'number' && (
-                <span
-                  className="text-[9px] font-bold px-1 py-px rounded-full"
-                  style={{
-                    background: active ? 'rgba(255,255,255,0.18)' : 'rgba(255,255,255,0.06)',
-                  }}
-                >
-                  {o.count}
-                </span>
+                <span className="text-[10px] text-white/40">{o.count}</span>
               )}
-            </button>
+              {active && <Check className="h-3.5 w-3.5 text-violet-400" />}
+            </DropdownMenuItem>
           );
         })}
-      </div>
-    </div>
-  );
-}
-
-function SortChip({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
-  return (
-    <button
-      onClick={onClick}
-      className="inline-flex items-center rounded-lg px-2.5 py-1 text-[11px] font-semibold transition-all"
-      style={{
-        background: active ? 'rgba(118,77,240,0.18)' : 'rgba(255,255,255,0.03)',
-        color: active ? '#c4b5fd' : 'rgba(255,255,255,0.6)',
-        border: '1px solid',
-        borderColor: active ? 'rgba(139,92,246,0.35)' : 'rgba(255,255,255,0.06)',
-      }}
-    >
-      {children}
-    </button>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
 
