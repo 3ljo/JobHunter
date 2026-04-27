@@ -369,9 +369,9 @@ export interface JobHunterJob {
 
 export interface JobHunterQuery {
   title?: string;
-  skills?: string[];
-  location?: string | null;
   country?: string | null;
+  country_name?: string | null;
+  location?: string | null;
 }
 
 export interface JobHunterMatch {
@@ -383,14 +383,20 @@ export interface JobHunterMatch {
   created_at: string;
 }
 
+export interface FindJobsParams {
+  query: string;
+  country?: string | null;
+  location?: string | null;
+}
+
 // Pulls jobs live from all configured sources (Remotive, Arbeitnow,
-// Adzuna, Jooble) and re-ranks against the user's CV. Replaces any
-// previously cached match-set for this user. Long timeout because
-// fan-out + dedupe can take a few seconds on the first call.
-export const findJobsForCV = (cvId?: string) =>
+// Adzuna, Jooble) for a manual keyword + optional country. Replaces any
+// previously cached match-set for this user. Long timeout because the
+// parallel fan-out + dedupe can take a few seconds.
+export const findJobs = (params: FindJobsParams) =>
   api.post<{ match: JobHunterMatch; warning?: string }>(
     '/api/job-hunter/find',
-    { cv_id: cvId },
+    params,
     { timeout: 60000 }
   );
 

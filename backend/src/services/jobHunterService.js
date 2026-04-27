@@ -6,7 +6,7 @@
 //
 // Adding a new source: write an async fetchX(query) that returns an array
 // of normalized job objects (see NORMALIZED_JOB_SHAPE below) and add it to
-// the sources[] array in findJobsForCV.
+// the sources[] array in findJobs.
 
 const NORMALIZED_JOB_SHAPE = {
   title: '',           // job title
@@ -23,6 +23,23 @@ const NORMALIZED_JOB_SHAPE = {
 const ADZUNA_COUNTRIES = new Set([
   'gb','us','at','au','be','br','ca','ch','de','es','fr','in','it','mx','nl','nz','pl','sg','za'
 ]);
+
+// ISO code → human-readable name. Used to (a) feed Jooble's freeform
+// `location` field (Jooble has no country code), and (b) display the
+// chosen country back to the user in the UI. Covers Adzuna's 19 + a few
+// extras that Jooble understands. Unmapped codes fall through.
+const COUNTRY_NAMES = {
+  gb: 'United Kingdom', us: 'United States', at: 'Austria', au: 'Australia',
+  be: 'Belgium', br: 'Brazil', ca: 'Canada', ch: 'Switzerland',
+  de: 'Germany', es: 'Spain', fr: 'France', in: 'India',
+  it: 'Italy', mx: 'Mexico', nl: 'Netherlands', nz: 'New Zealand',
+  pl: 'Poland', sg: 'Singapore', za: 'South Africa',
+  // Non-Adzuna but Jooble-friendly:
+  al: 'Albania', gr: 'Greece', tr: 'Turkey', ie: 'Ireland', se: 'Sweden',
+  no: 'Norway', dk: 'Denmark', fi: 'Finland', pt: 'Portugal', cz: 'Czechia',
+  ro: 'Romania', hu: 'Hungary', ua: 'Ukraine', ae: 'United Arab Emirates',
+  jp: 'Japan', kr: 'South Korea', ph: 'Philippines',
+};
 
 // Lightweight location → ISO code mapping. Only common cases — anything
 // unmatched falls through to a "global" search (Adzuna defaults to gb,
@@ -147,10 +164,14 @@ const extractSearchTerms = (finalCv) => {
 
 // ─── Sources ────────────────────────────────────────────────────────────
 
+// Per-source result cap. 50 is the sweet spot — most APIs allow it
+// without paging, and it gives us enough volume to dedupe + rank from.
+const PER_SOURCE_LIMIT = 50;
+
 // Remotive — global remote jobs, no API key required.
 // API: https://remotive.com/api/remote-jobs?search={q}&limit=50
 const fetchRemotive = async (query) => {
-  const params = new URLSearchParams({ limit: '30' });
+  const params = new URLSearchParams({ limit: String(PER_SOURCE_LIMIT) });
   if (query.title) params.set('search', query.title);
   const res = await fetchWithTimeout(`https://remotive.com/api/remote-jobs?${params}`);
   if (!res || !res.ok) return [];
@@ -176,7 +197,7 @@ const fetchArbeitnow = async (query) => {
   if (!res || !res.ok) return [];
   const data = await res.json().catch(() => null);
   if (!data || !Array.isArray(data.data)) return [];
-  return data.data.slice(0, 30).map((j) => ({
+  return data.data.slice(0, PER_SOURCE_LIMIT).map((j) => ({
     title: j.title || '',
     company: j.company_name || 'Unknown',
     location: j.location || (j.remote ? 'Remote' : null),
@@ -187,32 +208,28 @@ const fetchArbeitnow = async (query) => {
   })).filter((j) => j.url && j.title);
 };
 
-// Adzuna — global, 19 countries, free key (1k calls/mo). The API requires
-// a country code in the path; we map the user's CV location → ISO code,
-// or fall back to GB for the broadest English-speaking coverage.
+// Adzuna — 19 countries, free key (1k calls/mo). The API requires a
+// supported country code in the path; if the user picked a country we
+// don't have, skip Adzuna entirely (returning UK results for someone who
+// asked for Germany would be misleading and burns quota).
 // API: https://api.adzuna.com/v1/api/jobs/{cc}/search/1?app_id=&app_key=&what=&where=
 const fetchAdzuna = async (query) => {
   const appId = process.env.ADZUNA_APP_ID;
   const appKey = process.env.ADZUNA_APP_KEY;
   if (!appId || !appKey) return [];
-
-  // If the CV-derived country isn't supported, default to GB. We don't
-  // multi-country fan-out — that burns the 1k/mo quota 3x faster.
-  const country = (query.country && ADZUNA_COUNTRIES.has(query.country))
-    ? query.country
-    : 'gb';
+  if (!query.country || !ADZUNA_COUNTRIES.has(query.country)) return [];
 
   const params = new URLSearchParams({
     app_id: appId,
     app_key: appKey,
     what: query.title || 'developer',
-    results_per_page: '30',
+    results_per_page: String(PER_SOURCE_LIMIT),
     'content-type': 'application/json',
     sort_by: 'date', // freshness first
   });
   if (query.location) params.set('where', query.location);
 
-  const url = `https://api.adzuna.com/v1/api/jobs/${country}/search/1?${params}`;
+  const url = `https://api.adzuna.com/v1/api/jobs/${query.country}/search/1?${params}`;
   const res = await fetchWithTimeout(url);
   if (!res || !res.ok) return [];
   const data = await res.json().catch(() => null);
@@ -230,14 +247,19 @@ const fetchAdzuna = async (query) => {
 
 // Jooble — 70+ countries, free key. Optional: silently skipped if
 // JOOBLE_API_KEY is unset, so the rest of the pipeline still works.
+// Country gating: pass the country *name* (not code) in `location` so
+// Jooble filters by it. If the user picked "Anywhere", send no location.
 // API: POST https://jooble.org/api/{key} with JSON {keywords, location}
 const fetchJooble = async (query) => {
   const key = process.env.JOOBLE_API_KEY;
   if (!key) return [];
 
+  const location = query.location
+    || (query.country ? COUNTRY_NAMES[query.country] : '')
+    || '';
   const body = {
     keywords: query.title || 'developer',
-    location: query.location || '',
+    location,
   };
   const res = await fetchWithTimeout(`https://jooble.org/api/${key}`, {
     method: 'POST',
@@ -247,7 +269,7 @@ const fetchJooble = async (query) => {
   if (!res || !res.ok) return [];
   const data = await res.json().catch(() => null);
   if (!data || !Array.isArray(data.jobs)) return [];
-  return data.jobs.slice(0, 30).map((j) => ({
+  return data.jobs.slice(0, PER_SOURCE_LIMIT).map((j) => ({
     title: j.title || '',
     company: j.company || 'Unknown',
     location: j.location || null,
@@ -317,15 +339,29 @@ const scoreJob = (job, query) => {
 
 // ─── Public entry ───────────────────────────────────────────────────────
 
-// findJobsForCV
-//   finalCv: the structured CV object (cvs.ats_feedback.final.final_cv)
+// findJobs
+//   input: { title: string, country?: string|null, location?: string|null }
+//     - title is the keyword/role (required, e.g. "Front End Developer")
+//     - country is an ISO-2 code (e.g. "de") used for Adzuna routing and
+//       to derive a country name for Jooble. null/empty = global.
+//     - location is an optional freeform city/region passed to Adzuna's
+//       `where` and Jooble's `location`. If omitted but country is given,
+//       Jooble still receives the country name so its results stay scoped.
 // Returns: { query, results, sourceCounts }
-//   - query: the derived search terms (saved alongside results so the UI
-//     can show "Searched for: Senior Developer in Berlin")
-//   - results: ranked + deduped list, top 100
-//   - sourceCounts: per-source raw count BEFORE dedupe, for diagnostics
-const findJobsForCV = async (finalCv) => {
-  const query = extractSearchTerms(finalCv);
+//   - query: the normalized search terms (saved alongside results so the
+//     UI can render "Searched for: Front End in Germany"). Includes a
+//     `country_name` field for display.
+//   - results: ranked + deduped list, top 200.
+//   - sourceCounts: per-source raw count BEFORE dedupe, for diagnostics.
+const findJobs = async (input) => {
+  const title = String(input?.title || '').trim();
+  const country = input?.country
+    ? String(input.country).toLowerCase().trim()
+    : null;
+  const location = input?.location ? String(input.location).trim() : null;
+  const country_name = country ? (COUNTRY_NAMES[country] || null) : null;
+
+  const query = { title, country, country_name, location };
 
   const sources = [
     { name: 'remotive', fn: fetchRemotive },
@@ -357,12 +393,14 @@ const findJobsForCV = async (finalCv) => {
   const scored = deduped
     .map((j) => ({ ...j, score: scoreJob(j, query) }))
     .sort((a, b) => b.score - a.score)
-    .slice(0, 100); // cap so the JSONB blob stays small
+    .slice(0, 200); // cap so the JSONB blob stays small
 
   return { query, results: scored, sourceCounts };
 };
 
 module.exports = {
-  findJobsForCV,
+  findJobs,
+  ADZUNA_COUNTRIES,
+  COUNTRY_NAMES,
   extractSearchTerms, // exported for tests / debugging
 };

@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import Link from 'next/link';
 import toast from 'react-hot-toast';
 import {
   Briefcase,
@@ -12,7 +11,6 @@ import {
   MapPin,
   Building2,
   Clock,
-  AlertCircle,
   SlidersHorizontal,
   X,
   Star,
@@ -31,7 +29,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import {
-  findJobsForCV,
+  findJobs,
   getLatestJobMatches,
   JobHunterJob,
   JobHunterMatch,
@@ -94,13 +92,67 @@ const SCORE_MIN: Record<Exclude<ScoreTier, 'any'>, number> = {
   excellent: 0.85,
 };
 
+// Country picker. Mirrors backend's COUNTRY_NAMES — keep these in sync.
+// "Anywhere" sends `null` to the API; non-Adzuna codes still hit Jooble
+// (which understands country names) plus the always-global Remotive +
+// Arbeitnow.
+const COUNTRY_OPTIONS: Array<{ code: string | null; name: string }> = [
+  { code: null, name: 'Anywhere' },
+  { code: 'al', name: 'Albania' },
+  { code: 'ar', name: 'Argentina' },
+  { code: 'au', name: 'Australia' },
+  { code: 'at', name: 'Austria' },
+  { code: 'be', name: 'Belgium' },
+  { code: 'br', name: 'Brazil' },
+  { code: 'ca', name: 'Canada' },
+  { code: 'cz', name: 'Czechia' },
+  { code: 'dk', name: 'Denmark' },
+  { code: 'fi', name: 'Finland' },
+  { code: 'fr', name: 'France' },
+  { code: 'de', name: 'Germany' },
+  { code: 'gr', name: 'Greece' },
+  { code: 'hu', name: 'Hungary' },
+  { code: 'in', name: 'India' },
+  { code: 'ie', name: 'Ireland' },
+  { code: 'it', name: 'Italy' },
+  { code: 'jp', name: 'Japan' },
+  { code: 'mx', name: 'Mexico' },
+  { code: 'nl', name: 'Netherlands' },
+  { code: 'nz', name: 'New Zealand' },
+  { code: 'no', name: 'Norway' },
+  { code: 'ph', name: 'Philippines' },
+  { code: 'pl', name: 'Poland' },
+  { code: 'pt', name: 'Portugal' },
+  { code: 'ro', name: 'Romania' },
+  { code: 'sg', name: 'Singapore' },
+  { code: 'za', name: 'South Africa' },
+  { code: 'kr', name: 'South Korea' },
+  { code: 'es', name: 'Spain' },
+  { code: 'se', name: 'Sweden' },
+  { code: 'ch', name: 'Switzerland' },
+  { code: 'tr', name: 'Turkey' },
+  { code: 'ua', name: 'Ukraine' },
+  { code: 'ae', name: 'UAE' },
+  { code: 'gb', name: 'United Kingdom' },
+  { code: 'us', name: 'United States' },
+];
+
+const countryName = (code?: string | null) => {
+  if (!code) return 'Anywhere';
+  return COUNTRY_OPTIONS.find((c) => c.code === code)?.name || code.toUpperCase();
+};
+
 export default function JobHunterPage() {
   const [match, setMatch] = useState<JobHunterMatch | null>(null);
   const [initialLoading, setInitialLoading] = useState(true);
   const [searching, setSearching] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [errorCode, setErrorCode] = useState<string | null>(null);
 
+  // Search inputs (what the user is typing, not the active match query)
+  const [queryInput, setQueryInput] = useState('');
+  const [countryInput, setCountryInput] = useState<string | null>(null);
+
+  // Result-list filters
   const [search, setSearch] = useState('');
   const [sourceFilter, setSourceFilter] = useState<string>('all');
   const [recency, setRecency] = useState<Recency>('any');
@@ -114,8 +166,12 @@ export default function JobHunterPage() {
     (async () => {
       try {
         const res = await getLatestJobMatches();
-        if (mounted) setMatch(res.data.match);
-      } catch (err: any) {
+        if (mounted && res.data.match) {
+          setMatch(res.data.match);
+          setQueryInput(res.data.match.query?.title || '');
+          setCountryInput(res.data.match.query?.country || null);
+        }
+      } catch {
         // 401 redirects globally; anything else is just "no cache yet"
       } finally {
         if (mounted) setInitialLoading(false);
@@ -124,28 +180,26 @@ export default function JobHunterPage() {
     return () => { mounted = false; };
   }, []);
 
-  const handleFindJobs = async () => {
+  const handleSearch = async () => {
+    const q = queryInput.trim();
+    if (!q) {
+      setError('Enter a job title or keyword to search.');
+      return;
+    }
     setSearching(true);
     setError(null);
-    setErrorCode(null);
     try {
-      const res = await findJobsForCV();
+      const res = await findJobs({ query: q, country: countryInput });
       setMatch(res.data.match);
       if (res.data.warning) {
         toast(res.data.warning, { icon: 'ℹ️' });
       } else {
-        toast.success(`Found ${res.data.match.results.length} jobs for you`);
+        toast.success(`Found ${res.data.match.results.length} jobs`);
       }
     } catch (err: any) {
-      const code = err.response?.data?.code;
       const message = err.response?.data?.error || 'Failed to find jobs. Try again.';
       setError(message);
-      setErrorCode(code || null);
-      // Don't toast.error for the "no CV" path — the inline empty state
-      // is more informative and offers a link to /cv.
-      if (code !== 'no_cv' && code !== 'cv_not_analyzed') {
-        toast.error(message);
-      }
+      toast.error(message);
     } finally {
       setSearching(false);
     }
@@ -244,54 +298,13 @@ export default function JobHunterPage() {
     return <LoadingSpinner className="mt-32" />;
   }
 
-  // ── Empty state — user hasn't analyzed a CV yet ─────────────────────
-  if (errorCode === 'no_cv' || errorCode === 'cv_not_analyzed') {
-    return (
-      <div className="space-y-6">
-        <Header />
-        <div
-          className="rounded-2xl p-12 text-center"
-          style={{
-            background: 'rgba(255,255,255,0.02)',
-            border: '1px solid rgba(255,255,255,0.06)',
-          }}
-        >
-          <div
-            className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl"
-            style={{ background: 'rgba(118,77,240,0.12)', border: '1px solid rgba(118,77,240,0.25)' }}
-          >
-            <AlertCircle className="h-6 w-6 text-violet-400" />
-          </div>
-          <h3 className="text-lg font-bold text-foreground mb-1">
-            {errorCode === 'no_cv' ? 'No CV yet' : 'CV not analyzed'}
-          </h3>
-          <p className="text-sm text-muted-foreground/70 mb-5">
-            {errorCode === 'no_cv'
-              ? 'Analyze a CV first so we can match you with the right jobs.'
-              : 'This CV needs a full analysis run before we can match jobs.'}
-          </p>
-          <Link
-            href="/cv"
-            className="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold text-white transition-all"
-            style={{
-              background: 'linear-gradient(135deg, rgba(118,77,240,0.95), rgba(139,92,246,0.85))',
-              boxShadow: '0 4px 14px rgba(118,77,240,0.35)',
-            }}
-          >
-            <Sparkles className="h-4 w-4" /> Go to CV Analyzer
-          </Link>
-        </div>
-      </div>
-    );
-  }
-
   // ── First-time state — never run a search ───────────────────────────
   if (!match) {
     return (
       <div className="space-y-6">
         <Header />
         <div
-          className="rounded-2xl p-12 text-center"
+          className="rounded-2xl p-8 sm:p-12 text-center"
           style={{
             background: 'rgba(255,255,255,0.02)',
             border: '1px solid rgba(255,255,255,0.06)',
@@ -303,30 +316,21 @@ export default function JobHunterPage() {
           >
             <Briefcase className="h-6 w-6 text-violet-400" />
           </div>
-          <h3 className="text-lg font-bold text-foreground mb-1">Find jobs matching your CV</h3>
-          <p className="text-sm text-muted-foreground/70 mb-5 max-w-md mx-auto">
-            We'll search across Remotive, Arbeitnow, Adzuna and Jooble in parallel and rank the
-            best matches for your skills, role and location.
+          <h3 className="text-lg font-bold text-foreground mb-1">Find your next job</h3>
+          <p className="text-sm text-muted-foreground/70 mb-6 max-w-md mx-auto">
+            Search across Remotive, Arbeitnow, Adzuna and Jooble in one go.
+            Try <span className="text-foreground/85">&quot;Front End Developer&quot;</span> in{' '}
+            <span className="text-foreground/85">Germany</span>.
           </p>
-          <button
-            onClick={handleFindJobs}
-            disabled={searching}
-            className="inline-flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold text-white transition-all disabled:opacity-60"
-            style={{
-              background: 'linear-gradient(135deg, rgba(118,77,240,0.95), rgba(139,92,246,0.85))',
-              boxShadow: '0 4px 14px rgba(118,77,240,0.35)',
-            }}
-          >
-            {searching ? (
-              <>
-                <RefreshCw className="h-4 w-4 animate-spin" /> Searching across job boards…
-              </>
-            ) : (
-              <>
-                <Sparkles className="h-4 w-4" /> Find Jobs Matching My CV
-              </>
-            )}
-          </button>
+          <SearchForm
+            queryInput={queryInput}
+            onQueryInput={setQueryInput}
+            countryInput={countryInput}
+            onCountryInput={setCountryInput}
+            onSubmit={handleSearch}
+            searching={searching}
+            big
+          />
           {error && (
             <p className="text-xs text-red-400 mt-4">{error}</p>
           )}
@@ -340,39 +344,37 @@ export default function JobHunterPage() {
     <div className="space-y-5">
       <Header />
 
-      {/* Query summary + refresh */}
+      {/* Search form — refine and re-run */}
+      <SearchForm
+        queryInput={queryInput}
+        onQueryInput={setQueryInput}
+        countryInput={countryInput}
+        onCountryInput={setCountryInput}
+        onSubmit={handleSearch}
+        searching={searching}
+      />
+
+      {/* Active query summary */}
       <div className="flex items-start justify-between gap-3 flex-wrap">
         <div>
           <p className="text-xs uppercase tracking-widest text-muted-foreground/60 font-semibold mb-1">
             Searched for
           </p>
           <p className="text-sm text-foreground">
-            <span className="font-semibold">{match.query.title || 'Developer'}</span>
-            {match.query.skills && match.query.skills.length > 0 && (
-              <span className="text-muted-foreground/60">
-                {' '}
-                · {match.query.skills.slice(0, 5).join(', ')}
-              </span>
-            )}
+            <span className="font-semibold">{match.query.title || '—'}</span>
+            <span className="text-muted-foreground/70">
+              {' '}in {countryName(match.query.country)}
+            </span>
           </p>
           <p className="text-[11px] text-muted-foreground/50 mt-1">
             {match.results.length} matches · refreshed {relativeTime(match.created_at)}
           </p>
         </div>
-
-        <button
-          onClick={handleFindJobs}
-          disabled={searching}
-          className="inline-flex items-center gap-2 rounded-xl px-3.5 py-2 text-xs font-semibold text-white/85 transition-all disabled:opacity-60"
-          style={{
-            background: 'rgba(255,255,255,0.04)',
-            border: '1px solid rgba(255,255,255,0.08)',
-          }}
-        >
-          <RefreshCw className={`h-3.5 w-3.5 ${searching ? 'animate-spin' : ''}`} />
-          {searching ? 'Refreshing…' : 'Refresh'}
-        </button>
       </div>
+
+      {error && (
+        <p className="text-xs text-red-400">{error}</p>
+      )}
 
       <FilterBar
         search={search}
@@ -447,10 +449,135 @@ function Header() {
       <div>
         <h1 className="text-xl font-black text-foreground tracking-tight">Job Hunter</h1>
         <p className="text-muted-foreground/60 text-xs">
-          Live jobs matched to your CV — click to apply
+          Live jobs across Remotive, Arbeitnow, Adzuna and Jooble — pick a country and search
         </p>
       </div>
     </div>
+  );
+}
+
+// ─── Search form ──────────────────────────────────────────────────────
+
+interface SearchFormProps {
+  queryInput: string;
+  onQueryInput: (v: string) => void;
+  countryInput: string | null;
+  onCountryInput: (v: string | null) => void;
+  onSubmit: () => void;
+  searching: boolean;
+  big?: boolean;
+}
+
+function SearchForm({
+  queryInput,
+  onQueryInput,
+  countryInput,
+  onCountryInput,
+  onSubmit,
+  searching,
+  big,
+}: SearchFormProps) {
+  const wrapperClass = big
+    ? 'mx-auto max-w-xl'
+    : 'rounded-2xl p-3 sm:p-4';
+  const wrapperStyle = big
+    ? undefined
+    : { background: 'rgba(255,255,255,0.025)', border: '1px solid rgba(255,255,255,0.06)' };
+
+  return (
+    <form
+      onSubmit={(e) => { e.preventDefault(); onSubmit(); }}
+      className={`flex items-center gap-2 flex-wrap ${wrapperClass}`}
+      style={wrapperStyle}
+    >
+      <div className="relative flex-1 min-w-[220px]">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/60" />
+        <Input
+          placeholder='e.g. "Front End Developer"'
+          value={queryInput}
+          onChange={(e) => onQueryInput(e.target.value)}
+          className="h-10 rounded-lg border-white/[0.08] bg-card pl-9 text-sm text-foreground placeholder:text-muted-foreground/50 focus:border-violet-500/40 focus:ring-1 focus:ring-violet-500/20"
+        />
+      </div>
+
+      <CountryDropdown value={countryInput} onChange={onCountryInput} />
+
+      <button
+        type="submit"
+        disabled={searching}
+        className="inline-flex items-center gap-2 rounded-lg px-4 h-10 text-sm font-semibold text-white transition-all disabled:opacity-60"
+        style={{
+          background: 'linear-gradient(135deg, rgba(118,77,240,0.95), rgba(139,92,246,0.85))',
+          boxShadow: '0 4px 14px rgba(118,77,240,0.35)',
+        }}
+      >
+        {searching ? (
+          <>
+            <RefreshCw className="h-4 w-4 animate-spin" /> Searching…
+          </>
+        ) : (
+          <>
+            <Sparkles className="h-4 w-4" /> Search
+          </>
+        )}
+      </button>
+    </form>
+  );
+}
+
+function CountryDropdown({
+  value,
+  onChange,
+}: {
+  value: string | null;
+  onChange: (v: string | null) => void;
+}) {
+  const isDefault = !value;
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger
+        className="inline-flex items-center gap-1.5 rounded-lg px-3 h-10 text-sm font-semibold transition-all outline-none min-w-[160px] justify-between"
+        style={{
+          background: isDefault ? 'rgba(255,255,255,0.04)' : 'rgba(118,77,240,0.18)',
+          border: '1px solid',
+          borderColor: isDefault ? 'rgba(255,255,255,0.07)' : 'rgba(139,92,246,0.4)',
+          color: isDefault ? 'rgba(255,255,255,0.75)' : '#c4b5fd',
+        }}
+      >
+        <span className="inline-flex items-center gap-1.5">
+          <Globe className="h-3.5 w-3.5 opacity-70" />
+          {countryName(value)}
+        </span>
+        <ChevronDown className="h-3.5 w-3.5 opacity-55" />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent
+        align="start"
+        sideOffset={6}
+        className="w-56 max-h-80 overflow-y-auto rounded-xl p-1"
+        style={{
+          background: 'rgba(16,20,53,0.95)',
+          border: '1px solid rgba(255,255,255,0.08)',
+          backdropFilter: 'blur(20px)',
+          WebkitBackdropFilter: 'blur(20px)',
+          boxShadow: '0 16px 48px rgba(0,0,0,0.55)',
+        }}
+      >
+        {COUNTRY_OPTIONS.map((opt) => {
+          const active = opt.code === value;
+          return (
+            <DropdownMenuItem
+              key={opt.code ?? 'any'}
+              onClick={() => onChange(opt.code)}
+              className="flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-xs cursor-pointer"
+              style={{ color: active ? '#c4b5fd' : 'rgba(255,255,255,0.78)' }}
+            >
+              <span className="flex-1">{opt.name}</span>
+              {active && <Check className="h-3.5 w-3.5 text-violet-400" />}
+            </DropdownMenuItem>
+          );
+        })}
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
 
