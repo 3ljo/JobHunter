@@ -354,4 +354,50 @@ export const getInterview = (interviewId: string) =>
 export const getInterviewHistory = () =>
   api.get<{ interviews: InterviewHistoryItem[] }>('/api/interview/history');
 
+// ═════════════════════ Job Hunter ═════════════════════
+
+export interface JobHunterJob {
+  title: string;
+  company: string;
+  location: string | null;
+  url: string;
+  source: 'remotive' | 'arbeitnow' | 'adzuna' | 'jooble' | string;
+  snippet?: string | null;
+  posted_at?: string | null;
+  score: number;
+}
+
+export interface JobHunterQuery {
+  title?: string;
+  skills?: string[];
+  location?: string | null;
+  country?: string | null;
+}
+
+export interface JobHunterMatch {
+  id?: string;
+  cv_id?: string | null;
+  query: JobHunterQuery;
+  results: JobHunterJob[];
+  source_counts: Record<string, number>;
+  created_at: string;
+}
+
+// Pulls jobs live from all configured sources (Remotive, Arbeitnow,
+// Adzuna, Jooble) and re-ranks against the user's CV. Replaces any
+// previously cached match-set for this user. Long timeout because
+// fan-out + dedupe can take a few seconds on the first call.
+export const findJobsForCV = (cvId?: string) =>
+  api.post<{ match: JobHunterMatch; warning?: string }>(
+    '/api/job-hunter/find',
+    { cv_id: cvId },
+    { timeout: 60000 }
+  );
+
+export const getLatestJobMatches = () =>
+  api.get<{ match: JobHunterMatch | null }>('/api/job-hunter/latest');
+
+export const clearJobMatches = () =>
+  api.delete<{ message: string }>('/api/job-hunter/clear');
+
 export default api;
