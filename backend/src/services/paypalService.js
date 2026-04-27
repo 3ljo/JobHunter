@@ -106,7 +106,14 @@ const createSubscription = async ({ planId, userId, plan, interval, email, retur
       user_action: 'SUBSCRIBE_NOW',
       payment_method: {
         payer_selected: 'PAYPAL',
-        payee_preferred: 'IMMEDIATE_PAYMENT_REQUIRED',
+        // UNRESTRICTED so PayPal Balance + bank funding are valid options,
+        // not just cards. IMMEDIATE_PAYMENT_REQUIRED was excluding balance
+        // entirely (balance can go Pending, the flag forbids that), which
+        // broke sandbox testing where balance is the most reliable funding
+        // source. Our webhook waits for BILLING.SUBSCRIPTION.ACTIVATED
+        // before flipping the row to 'active', so a brief Pending state
+        // can't grant entitlement prematurely.
+        payee_preferred: 'UNRESTRICTED',
       },
       return_url: returnUrl,
       cancel_url: cancelUrl,
