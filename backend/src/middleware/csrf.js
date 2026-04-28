@@ -25,11 +25,19 @@ function generate() {
 }
 
 // Cookie attributes match the session cookie's TLS-aware logic (see
-// sessionCookie.js). Cross-site XHR from the SPA will only carry the
-// cookie back if it's SameSite=None;Secure, which we set when the
-// request itself was HTTPS. Falls back to Lax for local HTTP dev.
+// sessionCookie.js for the full rationale on why we OR several
+// signals). Must stay in sync with that helper.
 function cookieAttrs(req) {
-  const isHttps = !!req?.secure;
+  const xfProto = (req?.headers?.['x-forwarded-proto'] || '')
+    .toString()
+    .split(',')[0]
+    .trim()
+    .toLowerCase();
+  const isHttps =
+    !!req?.secure ||
+    xfProto === 'https' ||
+    process.env.NODE_ENV === 'production' ||
+    process.env.COOKIE_CROSS_SITE === 'true';
   return { secure: isHttps, sameSite: isHttps ? 'none' : 'lax' };
 }
 
