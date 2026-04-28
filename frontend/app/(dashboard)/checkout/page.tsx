@@ -7,7 +7,7 @@ import { useCheckoutConfigStore } from '@/store/checkoutConfigStore';
 import { createCheckoutSession, validatePromoCode } from '@/lib/api';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
-import { Tag, Check, X, CreditCard, Smartphone } from 'lucide-react';
+import { Tag, Check, X, CreditCard, Smartphone, Lock } from 'lucide-react';
 
 /* ── Plan data (mirrors pricing page) ── */
 interface PlanEntry {
@@ -485,6 +485,162 @@ function CheckoutForm() {
               {loading ? 'Redirecting to checkout...' : 'Buy Now'}
             </span>
           </button>
+
+          {/* ── Secure-checkout trust row: payment method badges ── */}
+          <div className="mt-5">
+            <div className="flex items-center justify-center gap-1.5 mb-3">
+              <Lock className="h-3 w-3" style={{ color: 'rgba(255,255,255,0.4)' }} />
+              <p
+                className="mb-0"
+                style={{
+                  fontSize: '10px',
+                  color: 'rgba(255,255,255,0.5)',
+                  letterSpacing: '0.14em',
+                  textTransform: 'uppercase',
+                  fontWeight: 700,
+                }}
+              >
+                Secure Checkout
+              </p>
+            </div>
+
+            <div className="flex flex-wrap items-center justify-center gap-1.5">
+              {/* Visa */}
+              <div
+                className="flex items-center justify-center rounded-md"
+                title="Visa"
+                style={{
+                  width: 42,
+                  height: 26,
+                  background: '#fff',
+                  boxShadow: '0 1px 2px rgba(0,0,0,0.25)',
+                }}
+              >
+                <svg viewBox="0 0 64 24" width="32" height="14" aria-label="Visa">
+                  <path
+                    fill="#1A1F71"
+                    d="M27.4 1.2 21.6 23h-5.4l5.8-21.8h5.4Zm22.7 14 2.9-7.9 1.7 7.9h-4.6Zm6.1 6.8h5L57 1.2h-4.6c-1 0-1.9.6-2.3 1.6L41.9 23h5.4l1.1-3h6.6l.6 3ZM43 15.7c0-5.2-7.2-5.5-7.2-7.8 0-.7.7-1.5 2.2-1.7.7-.1 2.7-.2 5 .9l.9-4.2c-1.2-.4-2.7-.8-4.7-.8-5 0-8.5 2.7-8.5 6.5 0 2.8 2.5 4.4 4.5 5.4 2 1 2.7 1.6 2.7 2.4 0 1.3-1.6 1.9-3 1.9-2.5 0-4-.7-5.2-1.2l-.9 4.3c1.2.5 3.4 1 5.7 1 5.3 0 8.7-2.6 8.7-6.7M19.9 1.2 11.6 23H6.2L2.1 7.3C1.8 6.4 1.6 6 .9 5.6-.3 5-2.2 4.4-4 4l.1-.5h8.7c1.1 0 2.1.7 2.4 2l2.2 11.6L14.4 1.2h5.5Z"
+                    transform="translate(4 0)"
+                  />
+                </svg>
+              </div>
+
+              {/* Mastercard */}
+              <div
+                className="flex items-center justify-center rounded-md"
+                title="Mastercard"
+                style={{
+                  width: 42,
+                  height: 26,
+                  background: '#fff',
+                  boxShadow: '0 1px 2px rgba(0,0,0,0.25)',
+                }}
+              >
+                <svg viewBox="0 0 32 20" width="32" height="20" aria-label="Mastercard">
+                  <circle cx="12" cy="10" r="6.5" fill="#EB001B" />
+                  <circle cx="20" cy="10" r="6.5" fill="#F79E1B" />
+                  <path
+                    fill="#FF5F00"
+                    d="M16 5.2a6.5 6.5 0 0 1 0 9.6 6.5 6.5 0 0 1 0-9.6Z"
+                  />
+                </svg>
+              </div>
+
+              {/* Amex */}
+              <div
+                className="flex items-center justify-center rounded-md"
+                title="American Express"
+                style={{
+                  width: 42,
+                  height: 26,
+                  background: '#1F72CD',
+                  boxShadow: '0 1px 2px rgba(0,0,0,0.25)',
+                }}
+              >
+                <span
+                  style={{
+                    color: '#fff',
+                    fontSize: 8,
+                    fontWeight: 800,
+                    letterSpacing: '0.05em',
+                    fontFamily: 'system-ui, sans-serif',
+                    lineHeight: 1,
+                    textAlign: 'center',
+                  }}
+                >
+                  AMERICAN<br />EXPRESS
+                </span>
+              </div>
+
+              {/* Apple Pay */}
+              <div
+                className="flex items-center justify-center rounded-md"
+                title="Apple Pay"
+                style={{
+                  width: 42,
+                  height: 26,
+                  background: '#000',
+                  border: '1px solid rgba(255,255,255,0.15)',
+                  boxShadow: '0 1px 2px rgba(0,0,0,0.25)',
+                }}
+              >
+                <svg viewBox="0 0 38 16" width="32" height="14" aria-label="Apple Pay">
+                  <path
+                    fill="#fff"
+                    d="M6.4 2.4c-.4.5-1.1.9-1.7.8-.1-.7.2-1.4.6-1.8.4-.5 1.1-.8 1.7-.9.1.7-.2 1.4-.6 1.9Zm.6.9c-.9-.1-1.7.5-2.2.5s-1.1-.5-1.9-.5C2 3.4 1 4 .5 5c-1 1.7-.3 4.3.7 5.7.5.7 1 1.5 1.8 1.4.7 0 1-.5 1.9-.5s1.1.5 1.9.5 1.3-.7 1.7-1.4c.5-.8.7-1.6.8-1.6 0 0-1.5-.6-1.5-2.3 0-1.4 1.2-2.1 1.2-2.1-.6-1-1.7-1.1-2-1.1Zm6.1-2.4v11.2h1.7V8.3h2.4c2.2 0 3.7-1.5 3.7-3.7s-1.5-3.7-3.7-3.7h-4.1Zm1.7 1.5h2c1.5 0 2.4.8 2.4 2.2s-.9 2.2-2.4 2.2h-2V2.4Zm9.1 9.8c1.1 0 2.1-.5 2.6-1.4h0v1.3h1.6v-5.5c0-1.6-1.3-2.7-3.3-2.7s-3.3 1.1-3.4 2.6h1.5c.1-.7.7-1.2 1.8-1.2s1.7.5 1.7 1.4v.6l-2.2.1c-2 .1-3.1 1-3.1 2.4 0 1.5 1.1 2.4 2.8 2.4Zm.5-1.3c-.9 0-1.6-.5-1.6-1.2s.6-1.1 1.7-1.2l2-.1v.6c0 1.1-.9 1.9-2.1 1.9Zm5.1 4c1.7 0 2.5-.6 3.2-2.6L36.5 5h-1.7L33 9.4 31.3 5h-1.7l2.5 7-.1.4c-.2.7-.6 1-1.3 1l-1.3-.1v1.3l1.1.1Z"
+                  />
+                </svg>
+              </div>
+
+              {/* Google Pay */}
+              <div
+                className="flex items-center justify-center rounded-md"
+                title="Google Pay"
+                style={{
+                  width: 42,
+                  height: 26,
+                  background: '#fff',
+                  boxShadow: '0 1px 2px rgba(0,0,0,0.25)',
+                }}
+              >
+                <svg viewBox="0 0 40 16" width="32" height="14" aria-label="Google Pay">
+                  <path fill="#5F6368" d="M18.9 7.7v3.3h-1V2.9h2.8c.7 0 1.3.2 1.8.7s.7 1 .7 1.7-.2 1.2-.7 1.7-1.1.7-1.8.7h-1.8Zm0-3.8v2.8h1.8c.4 0 .8-.1 1.1-.4.3-.3.4-.6.4-1s-.1-.7-.4-1c-.3-.3-.6-.4-1.1-.4h-1.8Zm6.9 1.2c.7 0 1.3.2 1.8.6s.7.9.7 1.6V11h-1V10.2h0c-.4.6-1 1-1.7 1s-1.2-.2-1.6-.6c-.4-.4-.7-.8-.7-1.4 0-.6.2-1 .6-1.4s1-.5 1.7-.5c.6 0 1.1.1 1.5.3v-.2c0-.4-.1-.7-.4-1s-.7-.4-1.1-.4c-.6 0-1.1.3-1.5.8l-.9-.6c.6-.7 1.4-1.1 2.6-1.1Zm-1.4 4.2c0 .3.1.5.4.7s.5.3.9.3c.5 0 .9-.2 1.3-.5s.6-.8.6-1.3c-.3-.3-.8-.4-1.4-.4-.4 0-.8.1-1.2.3s-.6.5-.6.9Zm9.2-3.9-3.4 7.9h-1l1.3-2.8-2.3-5.1h1.1l1.6 4 1.6-4h1.1Z"/>
+                  <path fill="#4285F4" d="M14.3 7.1c0-.3 0-.6-.1-.9H10v1.7h2.4c-.1.6-.4 1-.9 1.4v1.1h1.4c.9-.8 1.4-2 1.4-3.3Z"/>
+                  <path fill="#34A853" d="M10 11.5c1.2 0 2.2-.4 2.9-1.1l-1.4-1.1c-.4.3-.9.4-1.5.4-1.2 0-2.1-.8-2.5-1.8H6v1.1c.7 1.5 2.3 2.5 4 2.5Z"/>
+                  <path fill="#FBBC04" d="M7.5 7.9c-.1-.3-.2-.6-.2-.9s.1-.6.2-.9V5h-1.5C5.7 5.6 5.5 6.3 5.5 7s.2 1.4.5 2l1.5-1.1Z"/>
+                  <path fill="#EA4335" d="M10 4.2c.7 0 1.3.2 1.8.7l1.3-1.3C12.2 2.9 11.2 2.5 10 2.5c-1.7 0-3.3 1-4 2.5l1.5 1.1c.4-1 1.3-1.9 2.5-1.9Z"/>
+                </svg>
+              </div>
+
+              {/* PayPal */}
+              <div
+                className="flex items-center justify-center rounded-md"
+                title="PayPal"
+                style={{
+                  width: 42,
+                  height: 26,
+                  background: '#fff',
+                  boxShadow: '0 1px 2px rgba(0,0,0,0.25)',
+                }}
+              >
+                <svg viewBox="0 0 40 16" width="32" height="14" aria-label="PayPal">
+                  <path fill="#003087" d="M9.6 3.1H6.2c-.2 0-.4.2-.5.4L4.4 12.2c0 .2.1.3.3.3h1.6c.2 0 .4-.2.5-.4l.4-2.4c0-.2.2-.4.5-.4h1.1c2.2 0 3.5-1.1 3.9-3.2.1-.9 0-1.7-.4-2.2-.5-.5-1.4-.8-2.7-.8Zm.4 3.2c-.2 1.3-1.1 1.3-2.1 1.3h-.5l.4-2.3c0-.1.1-.2.3-.2h.2c.6 0 1.2 0 1.5.4.2.1.2.4.2.8Zm9.7-.1H18.1c-.1 0-.3.1-.3.2l-.1.4-.1-.2c-.4-.5-1.1-.7-1.9-.7-1.8 0-3.3 1.4-3.6 3.3-.2 1 .1 1.9.6 2.5.5.6 1.3.8 2.2.8 1.4 0 2.2-.9 2.2-.9l-.1.4c0 .2.1.3.3.3h1.5c.2 0 .4-.2.5-.4l.9-5.4c0-.2-.1-.3-.3-.3Zm-2.2 3.2c-.2.9-.9 1.5-1.8 1.5-.5 0-.9-.1-1.1-.4-.2-.3-.3-.7-.2-1.1.1-.9.9-1.5 1.8-1.5.4 0 .8.1 1.1.4.2.3.3.7.2 1.1Z"/>
+                  <path fill="#009CDE" d="M28.7 6.2H27.1c-.2 0-.3.1-.4.2l-2.2 3.2-.9-3.1c-.1-.2-.2-.3-.4-.3h-1.6c-.2 0-.3.2-.3.4l1.7 5-1.6 2.3c-.1.2 0 .4.2.4h1.6c.2 0 .3-.1.4-.2l5.3-7.6c.1-.1 0-.3-.2-.3Zm5.4-3.1h-3.4c-.2 0-.4.2-.5.4L28.8 12.2c0 .2.1.3.3.3h1.7c.2 0 .3-.1.3-.3l.4-2.5c0-.2.2-.4.5-.4h1.1c2.2 0 3.5-1.1 3.9-3.2.1-.9 0-1.7-.4-2.2-.6-.5-1.5-.8-2.7-.8Zm.4 3.2c-.2 1.3-1.1 1.3-2.1 1.3H32l.4-2.3c0-.1.1-.2.3-.2h.2c.6 0 1.2 0 1.5.4.2.1.2.4.2.8Z"/>
+                </svg>
+              </div>
+            </div>
+
+            <p
+              className="text-center mt-3 mb-0"
+              style={{
+                fontSize: '10px',
+                color: 'rgba(255,255,255,0.3)',
+                fontWeight: 500,
+              }}
+            >
+              256-bit SSL encrypted · Powered by Lemon Squeezy &amp; PayPal
+            </p>
+          </div>
 
           {/* USDT payment details */}
           {showUsdtPayment && (
