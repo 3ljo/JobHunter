@@ -19,19 +19,36 @@ const api = axios.create({
   withCredentials: true,
 });
 
-// Echo the CSRF cookie back as X-CSRF-Token on every state-changing
-// request. The backend's csrfMiddleware compares header to cookie;
-// an attacker on a different origin can't read the cookie due to the
-// Same-Origin Policy, so they can't forge a matching header.
+// Attach the access token as `Authorization: Bearer <t>` on every
+// request. Cookie auth is still primary on browsers that allow it;
+// this is the fallback for environments where the third-party cookie
+// is blocked (mobile Safari/Chrome, desktop Chrome since 2024). The
+// backend's requireAuth checks both transports — whichever arrives
+// first wins. Don't overwrite an Authorization header the caller has
+// already set (e.g. password reset / OAuth exchange use one-shot
+// recovery tokens).
 api.interceptors.request.use((config) => {
-  const method = (config.method || 'get').toLowerCase();
-  if (method !== 'get' && method !== 'head' && method !== 'options') {
-    const token = readCsrfToken();
+  const headers = (config.headers || {}) as Record<string, string>;
+  if (!headers['Authorization'] && !headers['authorization']) {
+    const token = useAuthStore.getState().accessToken;
     if (token) {
-      config.headers = config.headers || {};
-      (config.headers as any)['X-CSRF-Token'] = token;
+      headers['Authorization'] = `Bearer ${token}`;
     }
   }
+
+  // Echo the CSRF cookie back as X-CSRF-Token on every state-changing
+  // request. The backend's csrfMiddleware compares header to cookie;
+  // an attacker on a different origin can't read the cookie due to
+  // the Same-Origin Policy, so they can't forge a matching header.
+  // (When auth rides in the Authorization header, csrfMiddleware
+  // skips the check anyway — but harmless to send.)
+  const method = (config.method || 'get').toLowerCase();
+  if (method !== 'get' && method !== 'head' && method !== 'options') {
+    const csrf = readCsrfToken();
+    if (csrf) headers['X-CSRF-Token'] = csrf;
+  }
+
+  config.headers = headers as any;
   return config;
 });
 

@@ -27,7 +27,7 @@ export default function LoginPage() {
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { setUser } = useAuthStore();
+  const { setSession } = useAuthStore();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -69,9 +69,10 @@ function LoginForm() {
         return;
       }
 
-      // No MFA — backend already issued the session cookie. Hydrate
-      // the in-memory user store and proceed.
-      setUser(data.user);
+      // No MFA — backend already issued the session cookie. Stash
+      // the access token for the Bearer-header fallback (mobile +
+      // 3rd-party-cookie-blocking browsers) and proceed.
+      setSession(data.user, data.session.access_token);
       toast.success('Signed in successfully');
       router.push('/cv');
     } catch (err: any) {
@@ -95,7 +96,7 @@ function LoginForm() {
         mfaState.challengeId,
         mfaCode.trim()
       );
-      setUser(res.data.user);
+      setSession(res.data.user, res.data.session.access_token);
       toast.success('Signed in successfully');
       router.push('/cv');
     } catch (err: any) {

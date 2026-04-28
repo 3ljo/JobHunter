@@ -11,7 +11,7 @@ type Status = 'loading' | 'verified' | 'error';
 
 export default function AuthCallbackPage() {
   const router = useRouter();
-  const { setUser } = useAuthStore();
+  const { setSession } = useAuthStore();
   const [status, setStatus] = useState<Status>('loading');
   const [errorMessage, setErrorMessage] = useState<string>('');
 
@@ -43,7 +43,7 @@ export default function AuthCallbackPage() {
       (async () => {
         try {
           const res = await exchangeSession(accessToken);
-          setUser(res.data.user);
+          setSession(res.data.user, accessToken);
           window.history.replaceState(null, '', window.location.pathname);
           router.replace('/cv');
         } catch {
@@ -63,7 +63,7 @@ export default function AuthCallbackPage() {
 
     setErrorMessage('This verification link is invalid or has expired.');
     setStatus('error');
-  }, [router, setUser]);
+  }, [router, setSession]);
 
   return (
     <div className="relative flex min-h-screen items-center justify-center overflow-hidden px-6" style={{ background: '#101435' }}>
