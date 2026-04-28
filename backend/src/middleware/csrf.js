@@ -24,24 +24,31 @@ function generate() {
   return crypto.randomBytes(32).toString('base64url');
 }
 
+// Cookie attributes match the session cookie's TLS-aware logic (see
+// sessionCookie.js). Cross-site XHR from the SPA will only carry the
+// cookie back if it's SameSite=None;Secure, which we set when the
+// request itself was HTTPS. Falls back to Lax for local HTTP dev.
+function cookieAttrs(req) {
+  const isHttps = !!req?.secure;
+  return { secure: isHttps, sameSite: isHttps ? 'none' : 'lax' };
+}
+
 // Issue a fresh CSRF cookie. Called from /login and /logout.
-function issueCookie(res) {
+function issueCookie(req, res) {
   const token = generate();
   res.cookie(COOKIE_NAME, token, {
     httpOnly: false, // JS must read it to echo on requests
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+    ...cookieAttrs(req),
     maxAge: COOKIE_TTL_MS,
     path: '/',
   });
   return token;
 }
 
-function clearCookie(res) {
+function clearCookie(req, res) {
   res.clearCookie(COOKIE_NAME, {
     httpOnly: false,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+    ...cookieAttrs(req),
     path: '/',
   });
 }

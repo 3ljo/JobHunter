@@ -210,8 +210,8 @@ const login = async (req, res) => {
 
     // Issue cookies. For native/mobile clients without cookie
     // support, the access_token is also returned in the body.
-    setSessionCookie(res, data.session.access_token);
-    issueCsrfCookie(res);
+    setSessionCookie(req, res, data.session.access_token);
+    issueCsrfCookie(req, res);
 
     return res.status(200).json({
       user: data.user,
@@ -241,8 +241,8 @@ const logout = async (req, res) => {
       console.warn('[logout] signOut failed', err.message);
     }
   }
-  clearSessionCookie(res);
-  clearCsrfCookie(res);
+  clearSessionCookie(req, res);
+  clearCsrfCookie(req, res);
   return res.status(200).json({ message: 'Logged out' });
 };
 
@@ -394,8 +394,8 @@ const exchangeSession = async (req, res) => {
     if (error || !data?.user) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
-    setSessionCookie(res, token);
-    issueCsrfCookie(res);
+    setSessionCookie(req, res, token);
+    issueCsrfCookie(req, res);
     return res.status(200).json({ user: data.user });
   } catch (err) {
     return res.status(401).json({ error: 'Unauthorized' });
@@ -455,8 +455,8 @@ const changePassword = async (req, res) => {
       console.warn('[change-password] global signOut failed', err.message);
     }
 
-    clearSessionCookie(res);
-    clearCsrfCookie(res);
+    clearSessionCookie(req, res);
+    clearCsrfCookie(req, res);
 
     return res.status(200).json({ message: 'Password updated successfully' });
   } catch (err) {
@@ -474,8 +474,8 @@ const deleteAccount = async (req, res) => {
     if (error) {
       return res.status(400).json({ error: error.message });
     }
-    clearSessionCookie(res);
-    clearCsrfCookie(res);
+    clearSessionCookie(req, res);
+    clearCsrfCookie(req, res);
     return res.status(200).json({ message: 'Account deleted' });
   } catch (err) {
     return res.status(500).json({ error: err.message });

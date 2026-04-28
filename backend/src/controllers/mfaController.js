@@ -89,8 +89,8 @@ const verifyLogin = async (req, res) => {
     }
 
     // Issue cookies on the *upgraded* aal2 session.
-    setSessionCookie(res, data.access_token);
-    issueCsrfCookie(res);
+    setSessionCookie(req, res, data.access_token);
+    issueCsrfCookie(req, res);
 
     // Pull the latest user record (factors etc.) from the new aal2
     // session so the frontend has the fully-resolved profile.
@@ -149,8 +149,8 @@ const enrollVerify = async (req, res) => {
     // Issue the upgraded aal2 cookies — the user just proved
     // possession of the factor.
     if (data?.access_token) {
-      setSessionCookie(res, data.access_token);
-      issueCsrfCookie(res);
+      setSessionCookie(req, res, data.access_token);
+      issueCsrfCookie(req, res);
     }
     return res.status(200).json({ ok: true });
   } catch (err) {
@@ -188,8 +188,8 @@ const challengeVerify = async (req, res) => {
       code,
     });
     if (error || !data?.access_token) return res.status(401).json({ error: 'Invalid code' });
-    setSessionCookie(res, data.access_token);
-    issueCsrfCookie(res);
+    setSessionCookie(req, res, data.access_token);
+    issueCsrfCookie(req, res);
     return res.status(200).json({ session: { access_token: data.access_token } });
   } catch (err) {
     return res.status(401).json({ error: 'Invalid code' });
