@@ -9,11 +9,16 @@ import { friendlyError } from '@/lib/errorMessages';
 import toast from 'react-hot-toast';
 import { Mail, Lock, ShieldCheck, Check, X as XIcon, Eye, EyeOff, MailCheck } from 'lucide-react';
 
+// 12-char minimum is enforced server-side AND client-side. The
+// strength meter awards at length thresholds the user can actually
+// reach (12, 16, 20+) plus character-class diversity.
+const MIN_LENGTH = 12;
+
 function getPasswordStrength(password: string): number {
   let score = 0;
-  if (password.length >= 6) score += 25;
-  if (password.length >= 10) score += 25;
-  if (/[A-Z]/.test(password)) score += 25;
+  if (password.length >= MIN_LENGTH) score += 25;
+  if (password.length >= 16) score += 25;
+  if (/[A-Z]/.test(password) && /[a-z]/.test(password)) score += 25;
   if (/[0-9!@#$%^&*]/.test(password)) score += 25;
   return score;
 }
@@ -65,39 +70,25 @@ function RegisterForm() {
       toast.error('Passwords do not match');
       return;
     }
-    if (password.length < 6) {
-      toast.error('Password must be at least 6 characters');
+    if (password.length < MIN_LENGTH) {
+      toast.error(`Password must be at least ${MIN_LENGTH} characters`);
       return;
     }
     setLoading(true);
     try {
       await registerUser(email, password);
+      // Backend always returns the same generic message regardless of
+      // whether the email is new or already registered (enumeration
+      // resistance). The UX is the same in both cases: tell the user
+      // to check their inbox; if they have an existing account, the
+      // backend silently sends them a recovery email so they can get
+      // back in.
       setSubmitted(true);
-      toast.success('Verification email sent');
     } catch (err: any) {
-      // Backend returns 409 + code='email_exists' when the email is
-      // already registered (see authController). Surface an actionable
-      // message with a link to the sign-in page instead of the generic.
-      if (err.response?.status === 409 && err.response?.data?.code === 'email_exists') {
-        toast.error(
-          (t) => (
-            <span className="flex items-center gap-3">
-              <span>Account already exists.</span>
-              <Link
-                href={`/login?email=${encodeURIComponent(email)}`}
-                onClick={() => toast.dismiss(t.id)}
-                className="underline font-bold"
-                style={{ color: '#a78bfa' }}
-              >
-                Sign in →
-              </Link>
-            </span>
-          ),
-          { duration: 8000 }
-        );
-      } else {
-        toast.error(friendlyError(err, 'register'));
-      }
+      // The only errors that should land here are validation
+      // failures (malformed email, password breach hit, etc.) and
+      // rate-limit responses.
+      toast.error(friendlyError(err, 'register'));
     } finally {
       setLoading(false);
     }
@@ -107,7 +98,7 @@ function RegisterForm() {
     setResending(true);
     try {
       await resendVerification(email);
-      toast.success('Verification email resent');
+      toast.success('If your email needs verification, a new link is on its way.');
     } catch (err: any) {
       toast.error(friendlyError(err, 'verify'));
     } finally {
@@ -116,10 +107,7 @@ function RegisterForm() {
   };
 
   const passwordsMatch = confirmPassword.length > 0 && password === confirmPassword;
-  // Negative-state indicator: show the red X only after the user has
-  // typed enough that they've clearly finished the field (length >=
-  // min password length) so we don't nag while they're still typing.
-  const passwordsMismatch = confirmPassword.length >= 6 && password !== confirmPassword;
+  const passwordsMismatch = confirmPassword.length >= MIN_LENGTH && password !== confirmPassword;
 
   return (
     <div className="relative flex min-h-screen overflow-hidden" style={{ background: '#101435' }}>
@@ -171,8 +159,8 @@ function RegisterForm() {
                 Check your email
               </h2>
               <p className="text-white/50 text-sm mb-8" style={{ fontWeight: 400 }}>
-                We sent a verification link to{' '}
-                <span className="font-600 text-white">{email}</span>. Click it to activate your account.
+                If <span className="font-600 text-white">{email}</span> is new, we sent a verification link.
+                If an account already exists, we sent a recovery link instead.
               </p>
               <button
                 onClick={handleResend}
@@ -231,7 +219,7 @@ function RegisterForm() {
                 <Input
                   id="password"
                   type={showPassword ? 'text' : 'password'}
-                  placeholder="At least 6 characters"
+                  placeholder="At least 12 characters"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="h-12 rounded-xl border-white/10 bg-white/[0.04] pl-10 pr-10 text-sm font-500 text-white placeholder:text-white/25 transition-all focus:border-violet-500/50 focus:ring-2 focus:ring-violet-500/20"

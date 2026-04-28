@@ -54,12 +54,14 @@ export default function ResetPasswordPage() {
       toast.error('Passwords do not match');
       return;
     }
-    if (password.length < 6) {
-      toast.error('Password must be at least 6 characters');
+    if (password.length < 12) {
+      toast.error('Password must be at least 12 characters');
       return;
     }
     setLoading(true);
     try {
+      // Recovery token rides in the Authorization header (handled in
+      // lib/api.ts) so it doesn't end up in any request-body capture.
       await resetPassword(accessToken, password);
       toast.success('Password updated! Please sign in.');
       router.push('/login');
@@ -145,7 +147,7 @@ export default function ResetPasswordPage() {
                   <Input
                     id="password"
                     type={showPassword ? 'text' : 'password'}
-                    placeholder="At least 6 characters"
+                    placeholder="At least 12 characters"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     className="h-12 rounded-xl border-white/10 bg-white/[0.04] pl-10 pr-10 text-sm font-500 text-white placeholder:text-white/25 transition-all focus:border-violet-500/50 focus:ring-2 focus:ring-violet-500/20"

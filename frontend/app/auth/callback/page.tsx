@@ -5,13 +5,13 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { CheckCircle2, AlertTriangle, Loader2 } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
-import { getMe } from '@/lib/api';
+import { exchangeSession } from '@/lib/api';
 
 type Status = 'loading' | 'verified' | 'error';
 
 export default function AuthCallbackPage() {
   const router = useRouter();
-  const { setToken, setUser } = useAuthStore();
+  const { setUser } = useAuthStore();
   const [status, setStatus] = useState<Status>('loading');
   const [errorMessage, setErrorMessage] = useState<string>('');
 
@@ -37,13 +37,14 @@ export default function AuthCallbackPage() {
     }
 
     // OAuth sign-in (e.g. Google) — Supabase returns a session in the hash with
-    // no `type`. provider_token presence is the tell. Log the user straight in.
+    // no `type`. We trade it for an httpOnly session cookie via /session/exchange,
+    // then strip the hash so the token never sits in the URL bar.
     if (accessToken && (params.get('provider_token') || !type)) {
       (async () => {
-        setToken(accessToken);
         try {
-          const res = await getMe();
+          const res = await exchangeSession(accessToken);
           setUser(res.data.user);
+          window.history.replaceState(null, '', window.location.pathname);
           router.replace('/cv');
         } catch {
           setErrorMessage('Could not complete sign-in. Try again.');
@@ -62,7 +63,7 @@ export default function AuthCallbackPage() {
 
     setErrorMessage('This verification link is invalid or has expired.');
     setStatus('error');
-  }, [router, setToken, setUser]);
+  }, [router, setUser]);
 
   return (
     <div className="relative flex min-h-screen items-center justify-center overflow-hidden px-6" style={{ background: '#101435' }}>

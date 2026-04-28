@@ -5,11 +5,16 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { loginUser, resendVerification } from '@/lib/api';
+import {
+  loginUser,
+  resendVerification,
+  challengeMfaLogin,
+  verifyMfaLogin,
+} from '@/lib/api';
 import { friendlyError } from '@/lib/errorMessages';
 import { useAuthStore } from '@/store/authStore';
 import toast from 'react-hot-toast';
-import { Mail, Lock, Eye, EyeOff } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, ShieldCheck } from 'lucide-react';
 
 export default function LoginPage() {
   return (
@@ -22,15 +27,24 @@ export default function LoginPage() {
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { setToken, setUser } = useAuthStore();
+  const { setUser } = useAuthStore();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [unconfirmed, setUnconfirmed] = useState(false);
   const [resending, setResending] = useState(false);
 
-  // Pre-fill email when arriving from /redeem or /register (account-exists toast).
+  // MFA second-factor state. When the backend tells us mfa_required,
+  // we keep the partial (aal1) access token in memory — never persisted —
+  // and prompt for a code. The token never leaves this tab.
+  const [mfaState, setMfaState] = useState<null | {
+    partialToken: string;
+    factorId: string;
+    challengeId: string;
+  }>(null);
+  const [mfaCode, setMfaCode] = useState('');
+
+  // Pre-fill email when arriving from /redeem or /register.
   useEffect(() => {
     const qEmail = searchParams.get('email');
     if (qEmail) setEmail(qEmail);
@@ -39,21 +53,54 @@ function LoginForm() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    setUnconfirmed(false);
     try {
       const res = await loginUser(email, password);
-      setToken(res.data.session.access_token);
-      setUser(res.data.user);
+      const data = res.data;
 
+      // Account has MFA enrolled — request a TOTP challenge and pivot
+      // the form to ask for the 6-digit code.
+      if ('mfa_required' in data && data.mfa_required) {
+        const challenge = await challengeMfaLogin(data.partial_session.access_token, data.factor_id);
+        setMfaState({
+          partialToken: data.partial_session.access_token,
+          factorId: data.factor_id,
+          challengeId: challenge.data.challenge_id,
+        });
+        return;
+      }
+
+      // No MFA — backend already issued the session cookie. Hydrate
+      // the in-memory user store and proceed.
+      setUser(data.user);
       toast.success('Signed in successfully');
       router.push('/cv');
     } catch (err: any) {
-      if (err.response?.data?.code === 'email_not_confirmed') {
-        setUnconfirmed(true);
-        toast.error('Please verify your email first');
-      } else {
-        toast.error(friendlyError(err, 'login'));
-      }
+      // Backend returns one generic 401 for any failure — wrong
+      // password, unknown account, unconfirmed email. We can't and
+      // shouldn't try to distinguish on the client.
+      toast.error(friendlyError(err, 'login'));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleMfaSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!mfaState) return;
+    setLoading(true);
+    try {
+      const res = await verifyMfaLogin(
+        mfaState.partialToken,
+        mfaState.factorId,
+        mfaState.challengeId,
+        mfaCode.trim()
+      );
+      setUser(res.data.user);
+      toast.success('Signed in successfully');
+      router.push('/cv');
+    } catch (err: any) {
+      toast.error('Invalid code. Try again.');
+      setMfaCode('');
     } finally {
       setLoading(false);
     }
@@ -63,7 +110,7 @@ function LoginForm() {
     setResending(true);
     try {
       await resendVerification(email);
-      toast.success('Verification email resent');
+      toast.success('If your email needs verification, a new link is on its way.');
     } catch (err: any) {
       toast.error(friendlyError(err, 'verify'));
     } finally {
@@ -169,6 +216,53 @@ function LoginForm() {
             </p>
           </div>
 
+          {mfaState ? (
+            <form onSubmit={handleMfaSubmit} className="space-y-5">
+              <div
+                className="rounded-xl px-4 py-3 text-sm flex items-start gap-3"
+                style={{ background: 'rgba(118,77,240,0.08)', border: '1px solid rgba(118,77,240,0.25)', color: '#c4b5fd' }}
+              >
+                <ShieldCheck className="h-5 w-5 mt-0.5" />
+                <p>Open your authenticator app and enter the 6-digit code.</p>
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="mfa-code" className="text-xs font-700 uppercase tracking-widest text-white/50">
+                  Authentication code
+                </Label>
+                <Input
+                  id="mfa-code"
+                  type="text"
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  pattern="[0-9]*"
+                  maxLength={8}
+                  placeholder="123456"
+                  value={mfaCode}
+                  onChange={(e) => setMfaCode(e.target.value.replace(/\D/g, ''))}
+                  className="h-12 rounded-xl border-white/10 bg-white/[0.04] px-4 text-center text-base font-700 tracking-[0.4em] text-white placeholder:text-white/25 transition-all focus:border-violet-500/50 focus:ring-2 focus:ring-violet-500/20"
+                  style={{ backdropFilter: 'blur(10px)' }}
+                  required
+                  autoFocus
+                />
+              </div>
+              <button
+                type="submit"
+                className="btn-aivent fx-slide w-full mt-2"
+                data-hover={loading ? 'VERIFYING...' : 'VERIFY'}
+                disabled={loading || mfaCode.length < 6}
+                style={{ height: '48px', borderRadius: '12px', width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+              >
+                <span>{loading ? 'Verifying...' : 'Verify'}</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => { setMfaState(null); setMfaCode(''); }}
+                className="w-full text-center text-xs font-500 text-white/40 hover:text-white/70"
+              >
+                Cancel
+              </button>
+            </form>
+          ) : (
           <form onSubmit={handleSubmit} className="space-y-5">
             <div className="space-y-1.5">
               <Label htmlFor="email" className="text-xs font-700 uppercase tracking-widest text-white/50">
@@ -219,24 +313,17 @@ function LoginForm() {
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               </div>
-            </div>
-
-            {unconfirmed && (
-              <div
-                className="rounded-xl px-4 py-3 text-sm"
-                style={{ background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.25)', color: '#fbbf24' }}
-              >
-                <p className="mb-2 font-600">Your email isn&apos;t verified yet.</p>
+              <div className="pt-1">
                 <button
                   type="button"
                   onClick={handleResend}
                   disabled={resending || !email}
-                  className="font-700 underline transition-opacity hover:opacity-80 disabled:opacity-50"
+                  className="text-[11px] font-500 text-white/35 hover:text-violet-400 transition-colors disabled:opacity-50"
                 >
                   {resending ? 'Sending...' : 'Resend verification email'}
                 </button>
               </div>
-            )}
+            </div>
 
             <button
               type="submit"
@@ -248,6 +335,7 @@ function LoginForm() {
               <span>{loading ? 'Signing in...' : 'Sign In'}</span>
             </button>
           </form>
+          )}
 
           <p className="mt-8 text-center text-sm text-white/40" style={{ fontWeight: 400 }}>
             Don&apos;t have an account?{' '}

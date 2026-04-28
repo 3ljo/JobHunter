@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/authStore';
 import { useSubscriptionStore } from '@/store/subscriptionStore';
+import { logoutUser } from '@/lib/api';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -80,7 +81,16 @@ export default function Navbar() {
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    // Best-effort backend revoke — kills the Supabase session globally
+    // so any leaked copy of the JWT becomes useless. Clears cookies
+    // server-side. We then clear the in-memory store and redirect even
+    // if the network call failed (offline, 5xx) so the UX still works.
+    try {
+      await logoutUser();
+    } catch {
+      // ignore
+    }
     logout();
     router.push('/login');
   };

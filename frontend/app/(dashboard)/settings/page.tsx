@@ -23,8 +23,10 @@ import { useAuthStore } from '@/store/authStore';
 import { useSubscriptionStore } from '@/store/subscriptionStore';
 import { useAccountStore } from '@/store/accountStore';
 import {
-  changePassword, deleteAccount,
+  changePassword, deleteAccount, logoutUser,
   updateProfile, createPortalSession, resyncSubscription,
+  listMfaFactors, enrollMfa, verifyMfaEnroll, removeMfaFactor,
+  type MfaFactor,
 } from '@/lib/api';
 
 type TabKey = 'account' | 'billing' | 'usage' | 'danger';
@@ -66,6 +68,7 @@ export default function SettingsPage() {
           <ProfileCard />
           <EmailReadOnlyCard currentEmail={user?.email ?? ''} />
           <PasswordCard />
+          <MfaCard />
         </TabsContent>
 
         <TabsContent value="billing" className="mt-6 space-y-6">
@@ -77,7 +80,16 @@ export default function SettingsPage() {
         </TabsContent>
 
         <TabsContent value="danger" className="mt-6 space-y-6">
-          <SignOutCard onSignOut={() => { logout(); router.push('/login'); }} />
+          <SignOutCard
+            onSignOut={async () => {
+              // Backend revokes the Supabase session globally; even
+              // if the call fails we still clear local state so the
+              // user isn't stuck logged-in client-side.
+              try { await logoutUser(); } catch { /* ignore */ }
+              logout();
+              router.push('/login');
+            }}
+          />
           <DeleteAccountCard onDeleted={() => { logout(); router.push('/login'); }} />
         </TabsContent>
       </Tabs>
@@ -184,9 +196,13 @@ function EmailReadOnlyCard({ currentEmail }: { currentEmail: string }) {
 // Password
 // ─────────────────────────────────────────────────────────────────────────────
 function PasswordCard() {
+  const router = useRouter();
+  const { logout } = useAuthStore();
+  const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showCurrent, setShowCurrent] = useState(false);
   const [showNew, setShowNew] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
 
@@ -196,16 +212,19 @@ function PasswordCard() {
       toast.error('Passwords do not match');
       return;
     }
-    if (newPassword.length < 6) {
-      toast.error('Password must be at least 6 characters');
+    if (newPassword.length < 12) {
+      toast.error('Password must be at least 12 characters');
       return;
     }
     setLoading(true);
     try {
-      await changePassword(newPassword);
-      toast.success('Password updated');
-      setNewPassword('');
-      setConfirmPassword('');
+      await changePassword(currentPassword, newPassword);
+      // Backend revokes all sessions after a successful change. Force
+      // the user back to /login so they sign in fresh with the new
+      // password — any leaked old token is now useless.
+      toast.success('Password updated. Please sign in again.');
+      logout();
+      router.replace('/login');
     } catch (err: any) {
       toast.error(err.response?.data?.error || 'Failed to update password');
     } finally {
@@ -217,15 +236,39 @@ function PasswordCard() {
     <Card title="Password" icon={Lock}>
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="space-y-1.5">
+          <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Current password</Label>
+          <div className="group relative">
+            <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/60 transition-colors group-focus-within:text-violet-400" />
+            <Input
+              type={showCurrent ? 'text' : 'password'}
+              placeholder="Enter your current password"
+              value={currentPassword}
+              onChange={(e) => setCurrentPassword(e.target.value)}
+              required
+              autoComplete="current-password"
+              className="h-10 rounded-xl border-border bg-card/80 pl-10 pr-10 text-sm text-foreground placeholder:text-muted-foreground/50 focus:border-violet-500/40 focus:ring-1 focus:ring-violet-500/20"
+            />
+            <button
+              type="button"
+              onClick={() => setShowCurrent(!showCurrent)}
+              className="absolute right-3.5 top-1/2 -translate-y-1/2 text-muted-foreground/40 hover:text-muted-foreground/70 transition-colors"
+              tabIndex={-1}
+            >
+              {showCurrent ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+            </button>
+          </div>
+        </div>
+        <div className="space-y-1.5">
           <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">New password</Label>
           <div className="group relative">
             <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/60 transition-colors group-focus-within:text-violet-400" />
             <Input
               type={showNew ? 'text' : 'password'}
-              placeholder="At least 6 characters"
+              placeholder="At least 12 characters"
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
               required
+              autoComplete="new-password"
               className="h-10 rounded-xl border-border bg-card/80 pl-10 pr-10 text-sm text-foreground placeholder:text-muted-foreground/50 focus:border-violet-500/40 focus:ring-1 focus:ring-violet-500/20"
             />
             <button
@@ -268,6 +311,175 @@ function PasswordCard() {
           {loading ? 'Updating…' : 'Update password'}
         </Button>
       </form>
+    </Card>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Two-factor authentication (TOTP)
+// ─────────────────────────────────────────────────────────────────────────────
+function MfaCard() {
+  const [factors, setFactors] = useState<MfaFactor[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [enrolling, setEnrolling] = useState(false);
+  const [enroll, setEnroll] = useState<{ factor_id: string; qr_code: string; secret: string } | null>(null);
+  const [code, setCode] = useState('');
+  const [verifying, setVerifying] = useState(false);
+
+  const refresh = async () => {
+    setLoading(true);
+    try {
+      const res = await listMfaFactors();
+      // Supabase returns { all: [...], totp: [...] }; show only verified TOTP.
+      const verified = (res.data.factors?.totp || []).filter((f) => f.status === 'verified');
+      setFactors(verified);
+    } catch (err: any) {
+      // Silent on first load — user might not have permission yet.
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { refresh(); }, []);
+
+  const startEnroll = async () => {
+    setEnrolling(true);
+    try {
+      const res = await enrollMfa('Authenticator');
+      setEnroll({ factor_id: res.data.factor_id, qr_code: res.data.qr_code, secret: res.data.secret });
+    } catch (err: any) {
+      toast.error(err.response?.data?.error || 'Could not start enrollment');
+    } finally {
+      setEnrolling(false);
+    }
+  };
+
+  const cancelEnroll = async () => {
+    if (enroll) {
+      // Best-effort cleanup — leaving an unverified factor behind is
+      // harmless but tidy is nicer.
+      try { await removeMfaFactor(enroll.factor_id); } catch { /* ignore */ }
+    }
+    setEnroll(null);
+    setCode('');
+  };
+
+  const verify = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!enroll) return;
+    setVerifying(true);
+    try {
+      await verifyMfaEnroll(enroll.factor_id, code.trim());
+      toast.success('Two-factor authentication enabled');
+      setEnroll(null);
+      setCode('');
+      await refresh();
+    } catch {
+      toast.error('Invalid code. Try again.');
+      setCode('');
+    } finally {
+      setVerifying(false);
+    }
+  };
+
+  const removeFactor = async (factorId: string) => {
+    if (!confirm('Remove two-factor authentication from this account?')) return;
+    try {
+      await removeMfaFactor(factorId);
+      toast.success('Two-factor authentication removed');
+      await refresh();
+    } catch (err: any) {
+      // 403 mfa_required means the user needs to re-verify the factor
+      // first — see backend requireAal2.
+      const msg = err.response?.data?.error || 'Could not remove factor';
+      toast.error(msg);
+    }
+  };
+
+  return (
+    <Card title="Two-factor authentication" icon={Lock}>
+      {loading ? (
+        <div className="text-xs text-muted-foreground/60">Loading…</div>
+      ) : enroll ? (
+        <form onSubmit={verify} className="space-y-4">
+          <div className="rounded-xl border border-border bg-card/80 p-4">
+            <p className="text-xs text-muted-foreground/80 mb-3">
+              Scan this QR code with your authenticator app (Google Authenticator, 1Password, Authy, etc.) and enter the 6-digit code below.
+            </p>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={enroll.qr_code} alt="MFA QR code" className="mx-auto h-44 w-44 rounded-lg bg-white p-2" />
+            <p className="mt-3 text-center text-[11px] font-mono break-all text-muted-foreground/60">
+              Manual setup key: {enroll.secret}
+            </p>
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Verification code</Label>
+            <Input
+              type="text"
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              pattern="[0-9]*"
+              maxLength={8}
+              placeholder="123456"
+              value={code}
+              onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
+              required
+              className="h-10 rounded-xl border-border bg-card/80 px-4 text-center text-base font-700 tracking-[0.4em] text-foreground"
+            />
+          </div>
+          <div className="flex gap-2">
+            <Button
+              type="submit"
+              disabled={verifying || code.length < 6}
+              className="h-10 flex-1 rounded-xl bg-gradient-to-b from-violet-500 to-violet-700 text-sm font-semibold text-white"
+            >
+              {verifying ? 'Verifying…' : 'Verify and enable'}
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={cancelEnroll}
+              className="h-10 rounded-xl"
+            >
+              Cancel
+            </Button>
+          </div>
+        </form>
+      ) : factors.length > 0 ? (
+        <div className="space-y-3">
+          <p className="text-xs text-emerald-400">Two-factor authentication is enabled.</p>
+          {factors.map((f) => (
+            <div key={f.id} className="flex items-center justify-between rounded-xl border border-border bg-card/80 px-3 py-2">
+              <div>
+                <div className="text-sm text-foreground">{f.friendly_name || 'Authenticator'}</div>
+                <div className="text-[11px] text-muted-foreground/60">Added {new Date(f.created_at).toLocaleDateString()}</div>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => removeFactor(f.id)}
+                className="h-8 rounded-lg text-xs text-red-400 hover:bg-red-500/10"
+              >
+                Remove
+              </Button>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="space-y-3">
+          <p className="text-xs text-muted-foreground/80">
+            Add a TOTP authenticator app for an extra layer of security at sign-in.
+          </p>
+          <Button
+            type="button"
+            onClick={startEnroll}
+            disabled={enrolling}
+            className="h-10 rounded-xl bg-gradient-to-b from-violet-500 to-violet-700 text-sm font-semibold text-white"
+          >
+            {enrolling ? 'Setting up…' : 'Enable two-factor authentication'}
+          </Button>
+        </div>
+      )}
     </Card>
   );
 }

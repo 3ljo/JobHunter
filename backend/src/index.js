@@ -39,6 +39,8 @@ require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
 
 const express = require('express');
 const cors = require('cors');
+const cookieParser = require('cookie-parser');
+const helmet = require('helmet');
 const authRoutes = require('./routes/auth');
 const profileRoutes = require('./routes/profile');
 const onboardingRoutes = require('./routes/onboarding');
@@ -61,11 +63,45 @@ const PORT = process.env.PORT || 5000;
 // resolve to the real client IP. Required by the rate limiter.
 app.set('trust proxy', 1);
 
-// Configure CORS to allow requests from the frontend
-app.use(cors({
-  origin: process.env.FRONTEND_URL?.split(',').map(u => u.trim()),
-  credentials: true,
-}));
+// Helmet sets a baseline of security headers (HSTS, X-Frame-Options,
+// no-sniff, etc.). We don't ship HTML from this origin so a strict
+// CSP isn't critical here, but the other defaults are pure win.
+app.use(
+  helmet({
+    contentSecurityPolicy: false, // API-only origin; CSP belongs on the frontend
+    crossOriginResourcePolicy: { policy: 'cross-origin' },
+    crossOriginOpenerPolicy: false,
+  })
+);
+
+// Configure CORS — strict allowlist from FRONTEND_URL (comma-separated).
+// `credentials: true` is required for the SPA to send the auth cookie
+// cross-origin. Browsers refuse `Access-Control-Allow-Origin: *` once
+// credentials are in play, so we mirror the request origin only when
+// it's in the allowlist.
+const allowedOrigins = (process.env.FRONTEND_URL || '')
+  .split(',')
+  .map((u) => u.trim().replace(/\/$/, ''))
+  .filter(Boolean);
+
+app.use(
+  cors({
+    origin: (origin, cb) => {
+      // Same-origin and tools (curl/Postman) send no Origin header.
+      if (!origin) return cb(null, true);
+      const normalized = origin.replace(/\/$/, '');
+      if (allowedOrigins.includes(normalized)) return cb(null, true);
+      return cb(new Error(`Origin not allowed: ${origin}`));
+    },
+    credentials: true,
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-CSRF-Token'],
+    exposedHeaders: ['Retry-After'],
+  })
+);
+
+// Parse cookies into req.cookies — needed by requireAuth (for the
+// httpOnly session cookie) and the CSRF middleware.
+app.use(cookieParser());
 
 // Payment webhook (Lemon Squeezy) — needs raw body for HMAC signature
 // verification, so it MUST be mounted before express.json(). If you switch

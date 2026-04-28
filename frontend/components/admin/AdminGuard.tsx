@@ -3,24 +3,22 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { checkAdmin } from '@/lib/api';
-import { useAuthStore } from '@/store/authStore';
 
+// Cookie-based auth: AdminGuard just asks the backend whether the
+// current session is an admin. There's no token to inspect on the
+// client side anymore.
 export default function AdminGuard({ children }: { children: React.ReactNode }) {
   const router = useRouter();
-  const { token } = useAuthStore();
   const [authorized, setAuthorized] = useState(false);
 
   useEffect(() => {
-    if (!token) {
-      const stored = localStorage.getItem('auth_token');
-      if (!stored) { router.replace('/dashboard'); return; }
-      useAuthStore.getState().setToken(stored);
-    }
-
     checkAdmin()
-      .then(() => setAuthorized(true))
+      .then((res) => {
+        if (res.data?.isAdmin) setAuthorized(true);
+        else router.replace('/dashboard');
+      })
       .catch(() => router.replace('/dashboard'));
-  }, [router, token]);
+  }, [router]);
 
   if (!authorized) {
     return (

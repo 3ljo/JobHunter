@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { useAuthStore } from '@/store/authStore';
+import { readCsrfToken } from '@/lib/csrf';
 import {
   User,
   Profile,
@@ -13,37 +14,48 @@ import {
 
 const api = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_URL,
+  // Send the httpOnly session cookie + readable CSRF cookie on every
+  // request. Backend CORS already allows credentials.
+  withCredentials: true,
 });
 
+// Echo the CSRF cookie back as X-CSRF-Token on every state-changing
+// request. The backend's csrfMiddleware compares header to cookie;
+// an attacker on a different origin can't read the cookie due to the
+// Same-Origin Policy, so they can't forge a matching header.
 api.interceptors.request.use((config) => {
-  const token = useAuthStore.getState().token;
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
+  const method = (config.method || 'get').toLowerCase();
+  if (method !== 'get' && method !== 'head' && method !== 'options') {
+    const token = readCsrfToken();
+    if (token) {
+      config.headers = config.headers || {};
+      (config.headers as any)['X-CSRF-Token'] = token;
+    }
   }
   return config;
 });
 
-// Endpoints where a 401 is a *normal* response (bad credentials / invalid
-// reset token / expired verification link) — the calling page handles the
-// error inline. The global redirect-to-login interceptor below only fires
-// for 401s on *authenticated* endpoints (i.e. genuinely expired sessions).
-const UNAUTH_401_ENDPOINTS = [
+// Endpoints where 401/403 are *normal* responses (bad credentials,
+// invalid reset token, expired verification link, MFA-required) and
+// the calling page handles the error inline.
+const UNAUTH_ENDPOINTS = [
   '/api/auth/login',
   '/api/auth/register',
   '/api/auth/forgot-password',
   '/api/auth/resend-verification',
   '/api/auth/reset-password',
+  '/api/auth/mfa/login/challenge',
+  '/api/auth/mfa/login/verify',
 ];
 
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
-      // Strip query string and baseURL before comparing so both relative
-      // and absolute request URLs match the allowlist.
+    const status = error.response?.status;
+    if (status === 401) {
       const url: string = error.config?.url || '';
       const path = url.split('?')[0];
-      const isUnauthEndpoint = UNAUTH_401_ENDPOINTS.some((e) => path.endsWith(e));
+      const isUnauthEndpoint = UNAUTH_ENDPOINTS.some((e) => path.endsWith(e));
       if (!isUnauthEndpoint) {
         useAuthStore.getState().logout();
         if (typeof window !== 'undefined') {
@@ -56,14 +68,22 @@ api.interceptors.response.use(
 );
 
 // Auth
+export type LoginResponse =
+  | { user: User; session: { access_token: string }; mfa_required?: false }
+  | {
+      mfa_required: true;
+      partial_session: { access_token: string };
+      factor_id: string;
+    };
+
 export const registerUser = (email: string, password: string) =>
-  api.post<{ message: string; user: User }>('/api/auth/register', {
-    email,
-    password,
-  });
+  api.post<{ message: string }>('/api/auth/register', { email, password });
 
 export const loginUser = (email: string, password: string) =>
-  api.post<{ user: User; session: { access_token: string } }>('/api/auth/login', { email, password });
+  api.post<LoginResponse>('/api/auth/login', { email, password });
+
+export const logoutUser = () =>
+  api.post<{ message: string }>('/api/auth/logout');
 
 export const forgotPassword = (email: string) =>
   api.post<{ message: string }>('/api/auth/forgot-password', { email });
@@ -71,11 +91,82 @@ export const forgotPassword = (email: string) =>
 export const resendVerification = (email: string) =>
   api.post<{ message: string }>('/api/auth/resend-verification', { email });
 
-export const resetPassword = (access_token: string, new_password: string) =>
-  api.post<{ message: string }>('/api/auth/reset-password', { access_token, new_password });
+// Recovery token rides in the Authorization header so it doesn't end
+// up in access logs / APM body capture.
+export const resetPassword = (recoveryToken: string, new_password: string) =>
+  api.post<{ message: string }>(
+    '/api/auth/reset-password',
+    { new_password },
+    { headers: { Authorization: `Bearer ${recoveryToken}` } }
+  );
 
 export const getMe = () =>
   api.get<{ user: User }>('/api/auth/me');
+
+// Exchange an OAuth-issued access_token (received in the URL hash on
+// /auth/callback) for an httpOnly session cookie. The token is sent
+// once via the Authorization header and discarded afterward.
+export const exchangeSession = (token: string) =>
+  api.post<{ user: User }>(
+    '/api/auth/session/exchange',
+    {},
+    { headers: { Authorization: `Bearer ${token}` } }
+  );
+
+// ─── MFA ──────────────────────────────────────────────────────────────
+export interface MfaFactor {
+  id: string;
+  factor_type: 'totp' | 'phone';
+  status: 'verified' | 'unverified';
+  friendly_name?: string;
+  created_at: string;
+}
+
+export const listMfaFactors = () =>
+  api.get<{ factors: { all: MfaFactor[]; totp: MfaFactor[] } }>('/api/auth/mfa/factors');
+
+export const enrollMfa = (friendly_name?: string) =>
+  api.post<{ factor_id: string; qr_code: string; secret: string; uri: string }>(
+    '/api/auth/mfa/enroll',
+    { friendly_name }
+  );
+
+export const verifyMfaEnroll = (factor_id: string, code: string) =>
+  api.post<{ ok: true }>('/api/auth/mfa/enroll/verify', { factor_id, code });
+
+export const challengeMfa = (factor_id: string) =>
+  api.post<{ challenge_id: string }>('/api/auth/mfa/challenge', { factor_id });
+
+export const verifyMfa = (factor_id: string, challenge_id: string, code: string) =>
+  api.post<{ session: { access_token: string } }>('/api/auth/mfa/challenge/verify', {
+    factor_id,
+    challenge_id,
+    code,
+  });
+
+export const removeMfaFactor = (factor_id: string) =>
+  api.delete<{ ok: true }>(`/api/auth/mfa/factor/${factor_id}`);
+
+// MFA during login — uses the partial (aal1) access_token in the
+// Authorization header instead of cookies.
+export const challengeMfaLogin = (partialToken: string, factor_id: string) =>
+  api.post<{ challenge_id: string }>(
+    '/api/auth/mfa/login/challenge',
+    { factor_id },
+    { headers: { Authorization: `Bearer ${partialToken}` } }
+  );
+
+export const verifyMfaLogin = (
+  partialToken: string,
+  factor_id: string,
+  challenge_id: string,
+  code: string
+) =>
+  api.post<{ user: User; session: { access_token: string } }>(
+    '/api/auth/mfa/login/verify',
+    { factor_id, challenge_id, code },
+    { headers: { Authorization: `Bearer ${partialToken}` } }
+  );
 
 // Profile
 export const getProfile = () =>
@@ -201,9 +292,13 @@ export const generateFromPdf = (file: File, jobDescription: string, tone: string
 export const refineCoverLetter = (data: { cover_letter: string; instructions: string }) =>
   api.post<{ cover_letter: string }>('/api/cover-letter/refine', data, { timeout: 60000 });
 
-// Password
-export const changePassword = (newPassword: string) =>
-  api.post<{ message: string }>('/api/auth/change-password', { new_password: newPassword });
+// Password — current_password is mandatory now (re-authentication
+// requirement; without it a stolen session can rotate the password).
+export const changePassword = (currentPassword: string, newPassword: string) =>
+  api.post<{ message: string }>('/api/auth/change-password', {
+    current_password: currentPassword,
+    new_password: newPassword,
+  });
 
 // Account deletion
 export const deleteAccount = () =>

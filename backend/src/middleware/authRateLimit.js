@@ -1,64 +1,91 @@
 // Brute-force protection for auth endpoints.
 //
-// In-memory rolling window — NOT a cluster-safe store. On a single
-// Render instance (which is the current setup) this gets us a cheap
-// floor on credential stuffing / email enumeration / verify-email
-// spam. If the backend ever scales to multiple instances, swap the
-// Map for Redis before counting on this.
+// Backed by `rateLimitStore` — Redis when REDIS_URL is set, otherwise
+// in-memory. Each limiter takes a `key` function that decides what to
+// bucket on:
 //
-// Keyed by IP. We intentionally don't key by email (an attacker can
-// rotate emails; IP is the actual cost center). Trust-proxy is set
-// in index.js so req.ip is the real client IP, not the Render LB.
+//   - IP-only is the cheap floor (catches spray attacks).
+//   - Email-keyed buckets catch targeted attacks against one account
+//     from a botnet (where rotating IPs would defeat IP-only limits).
+//
+// Endpoints that take an email always use BOTH: an IP cap and an
+// email cap. Whichever trips first 429s.
+
+const { check } = require('../services/rateLimitStore');
 
 const WINDOW_MS = 15 * 60 * 1000; // 15 minutes
-const hits = new Map(); // ip -> [{ ts }]
 
-function clean(ip, now) {
-  const list = hits.get(ip);
-  if (!list) return [];
-  const fresh = list.filter((h) => now - h.ts < WINDOW_MS);
-  if (fresh.length === 0) hits.delete(ip);
-  else hits.set(ip, fresh);
-  return fresh;
-}
-
-function keyFor(req) {
-  // Fall back to a stable placeholder when req.ip is undefined (e.g.
-  // trust-proxy misconfigured in local dev) so we don't collapse all
-  // anon calls into the same bucket.
+function getIp(req) {
   return req.ip || req.headers['x-forwarded-for'] || req.socket?.remoteAddress || 'unknown';
 }
 
-// Create a limiter with a maximum number of hits per window.
-function createAuthRateLimit(maxHits) {
-  return (req, res, next) => {
-    const ip = keyFor(req);
-    const now = Date.now();
-    const list = clean(ip, now);
-    if (list.length >= maxHits) {
-      const oldest = list[0].ts;
-      const retryAfterSec = Math.ceil((WINDOW_MS - (now - oldest)) / 1000);
-      res.set('Retry-After', String(retryAfterSec));
+function getEmail(req) {
+  const raw = (req.body && typeof req.body.email === 'string' && req.body.email) || '';
+  return raw.trim().toLowerCase() || null;
+}
+
+// Build a middleware that runs one or more keyed checks. If any one
+// of them is over the limit, we 429 with the largest retry-after.
+function build({ buckets }) {
+  return async (req, res, next) => {
+    let denied = null;
+    for (const bucket of buckets) {
+      const key = bucket.key(req);
+      if (!key) continue;
+      try {
+        const result = await check(`${bucket.name}:${key}`, WINDOW_MS, bucket.max);
+        if (!result.allowed) {
+          if (!denied || result.retryAfterSec > denied.retryAfterSec) denied = result;
+        }
+      } catch (err) {
+        console.error('[authRateLimit] check failed', err);
+      }
+    }
+    if (denied) {
+      res.set('Retry-After', String(denied.retryAfterSec));
       return res.status(429).json({
         error: 'Too many attempts. Please wait a few minutes and try again.',
         code: 'rate_limited',
-        retry_after_seconds: retryAfterSec,
+        retry_after_seconds: denied.retryAfterSec,
       });
     }
-    list.push({ ts: now });
-    hits.set(ip, list);
-    next();
+    return next();
   };
 }
 
-// Ten hits per 15 minutes on failed flows (login / forgot-password /
-// resend-verification). Password reset is capped tighter because it
-// sends email — abusing it wastes our Supabase quota and annoys users.
-const loginLimiter = createAuthRateLimit(10);
-const registerLimiter = createAuthRateLimit(15);
-const forgotPasswordLimiter = createAuthRateLimit(5);
-const resendVerificationLimiter = createAuthRateLimit(5);
-const resetPasswordLimiter = createAuthRateLimit(10);
+const ipBucket = (name, max) => ({ name: `ip:${name}`, key: getIp, max });
+const emailBucket = (name, max) => ({ name: `email:${name}`, key: getEmail, max });
+
+const loginLimiter = build({
+  buckets: [ipBucket('login', 10), emailBucket('login', 5)],
+});
+
+const registerLimiter = build({
+  buckets: [ipBucket('register', 15), emailBucket('register', 5)],
+});
+
+const forgotPasswordLimiter = build({
+  buckets: [ipBucket('forgot', 5), emailBucket('forgot', 3)],
+});
+
+const resendVerificationLimiter = build({
+  buckets: [ipBucket('resend', 5), emailBucket('resend', 3)],
+});
+
+// Reset-password is keyed by IP only because the request body holds
+// a one-time recovery token, not an email — and that token can be
+// cycled by re-requesting forgot-password (already rate limited).
+const resetPasswordLimiter = build({
+  buckets: [ipBucket('reset', 10)],
+});
+
+const mfaChallengeLimiter = build({
+  buckets: [ipBucket('mfa-challenge', 10)],
+});
+
+const mfaVerifyLimiter = build({
+  buckets: [ipBucket('mfa-verify', 10)],
+});
 
 module.exports = {
   loginLimiter,
@@ -66,4 +93,6 @@ module.exports = {
   forgotPasswordLimiter,
   resendVerificationLimiter,
   resetPasswordLimiter,
+  mfaChallengeLimiter,
+  mfaVerifyLimiter,
 };
