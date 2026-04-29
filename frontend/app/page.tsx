@@ -832,8 +832,9 @@ export default function Home() {
                   { label: 'About', href: '#about' },
                   { label: 'FAQ', href: '#faq' },
                   { label: 'Contact', href: '/contact' },
-                  { label: 'Privacy Policy', href: '#' },
-                  { label: 'Terms of Service', href: '#' },
+                  { label: 'Privacy Policy', href: '/privacy' },
+                  { label: 'Terms of Service', href: '/terms' },
+                  { label: 'Refund Policy', href: '/refund' },
                 ].map((l) => (
                   <li key={l.label}>
                     <a href={l.href} className="text-white/35 hover:text-white/70 transition-colors text-sm" style={{ fontWeight: 400 }}>{l.label}</a>
