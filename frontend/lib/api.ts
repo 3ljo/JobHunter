@@ -212,21 +212,35 @@ export const getCVHistory = () =>
 export const deleteCV = (cvId: string) =>
   api.delete<{ message: string }>(`/api/cv/${cvId}`);
 
+export type CVExportFormat = 'pdf' | 'docx' | 'txt';
+
 export interface CVExportOptions {
   template?: string;
   photo?: string | null;
+  format?: CVExportFormat;
+  filename?: string;
 }
 
+const FORMAT_META: Record<CVExportFormat, { mime: string; ext: string }> = {
+  pdf:  { mime: 'application/pdf', ext: 'pdf' },
+  docx: { mime: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', ext: 'docx' },
+  txt:  { mime: 'text/plain;charset=utf-8', ext: 'txt' },
+};
+
 export const downloadCVPdf = async (cvId: string, options: CVExportOptions = {}) => {
-  const res = await api.post(`/api/cv/download/${cvId}`, options, {
+  const format: CVExportFormat = options.format ?? 'pdf';
+  const meta = FORMAT_META[format];
+  const filename = (options.filename || 'cv_optimized').replace(/\.[a-z0-9]+$/i, '');
+
+  const res = await api.post(`/api/cv/download/${cvId}`, { ...options, format, filename }, {
     responseType: 'blob',
     timeout: 60000,
   });
-  const blob = new Blob([res.data], { type: 'application/pdf' });
+  const blob = new Blob([res.data], { type: meta.mime });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = 'cv_optimized.pdf';
+  a.download = `${filename}.${meta.ext}`;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);

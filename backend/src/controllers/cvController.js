@@ -7,7 +7,7 @@ const multer = require('multer');
 const supabase = require('../services/supabaseClient');
 const { parsePDF } = require('../services/cvParserService');
 const { analyzeCVWithJD, refineCVWithInstructions } = require('../services/cvAnalyzerService');
-const { generateCVDocx } = require('../services/cvGeneratorService');
+const { generateCVDocxBuffer, generateCVTxt } = require('../services/cvGeneratorService');
 const { generateCVPdfBuffer } = require('../services/cvPdfService');
 const { incrementUsage } = require('../services/usageService');
 
@@ -201,16 +201,39 @@ const deleteCVRecord = async (req, res) => {
   }
 };
 
-// Extract template + photo from request body or query (supports GET + POST)
+// Sanitize a user-supplied filename: strip path separators / control chars,
+// keep something safe for Content-Disposition. Returns a fallback if empty.
+const sanitizeFilename = (raw, fallback = 'cv_optimized') => {
+  if (typeof raw !== 'string') return fallback;
+  const cleaned = raw
+    .replace(/[\\/:*?"<>|\x00-\x1f]/g, '')
+    .replace(/\.+$/g, '')
+    .trim()
+    .slice(0, 100);
+  return cleaned || fallback;
+};
+
+const FORMATS = {
+  pdf:  { ext: 'pdf',  mime: 'application/pdf' },
+  docx: { ext: 'docx', mime: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' },
+  txt:  { ext: 'txt',  mime: 'text/plain; charset=utf-8' },
+};
+
+// Extract template + photo + format + filename from request body or query
 const readExportOptions = (req) => {
   const src = (req.method === 'POST' ? req.body : req.query) || {};
+  const rawFormat = typeof src.format === 'string' ? src.format.toLowerCase() : 'pdf';
+  const format = FORMATS[rawFormat] ? rawFormat : 'pdf';
   return {
     template: typeof src.template === 'string' ? src.template : undefined,
     photo: typeof src.photo === 'string' ? src.photo : null,
+    format,
+    filename: sanitizeFilename(src.filename),
   };
 };
 
-// GET/POST /api/cv/download/:cv_id — Generate and stream PDF on-demand
+// GET/POST /api/cv/download/:cv_id — Generate and stream the CV in the
+// requested format (PDF / DOCX / TXT).
 const downloadCVPdf = async (req, res) => {
   const { cv_id } = req.params;
 
@@ -233,18 +256,27 @@ const downloadCVPdf = async (req, res) => {
     }
 
     const opts = readExportOptions(req);
-    const pdfBuffer = await generateCVPdfBuffer(finalCV, opts);
+    const fmt = FORMATS[opts.format];
+
+    let buffer;
+    if (opts.format === 'docx') {
+      buffer = await generateCVDocxBuffer(finalCV);
+    } else if (opts.format === 'txt') {
+      buffer = Buffer.from(generateCVTxt(finalCV), 'utf-8');
+    } else {
+      buffer = await generateCVPdfBuffer(finalCV, opts);
+    }
 
     res.set({
-      'Content-Type': 'application/pdf',
-      'Content-Disposition': `attachment; filename="cv_optimized.pdf"`,
-      'Content-Length': pdfBuffer.length,
+      'Content-Type': fmt.mime,
+      'Content-Disposition': `attachment; filename="${opts.filename}.${fmt.ext}"`,
+      'Content-Length': buffer.length,
     });
 
-    return res.send(pdfBuffer);
+    return res.send(buffer);
   } catch (err) {
-    console.error('PDF generation error:', err.message);
-    return res.status(500).json({ error: 'Failed to generate PDF' });
+    console.error('CV download error:', err.message);
+    return res.status(500).json({ error: 'Failed to generate file' });
   }
 };
 

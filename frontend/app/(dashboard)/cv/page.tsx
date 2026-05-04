@@ -13,7 +13,7 @@ import PhotoUpload from '@/components/cv/PhotoUpload';
 import { TEMPLATES, type TemplateId } from '@/components/cv/templates';
 import UsageMeter from '@/components/usage/UsageMeter';
 import LimitReachedCard from '@/components/usage/LimitReachedCard';
-import { downloadCVPdf } from '@/lib/api';
+import { downloadCVPdf, type CVExportFormat } from '@/lib/api';
 import { useCVAnalysisStore } from '@/store/cvAnalysisStore';
 import { useCoverLetterStore } from '@/store/coverLetterStore';
 import { useSubscriptionStore } from '@/store/subscriptionStore';
@@ -23,8 +23,26 @@ import toast from 'react-hot-toast';
 import {
   Download, RotateCcw, ArrowRight, TrendingUp, FileSignature,
   Sparkles, Copy, Check, X, Send, Palette, ChevronDown, ChevronUp,
-  Share2,
+  Share2, FileText, FileType, FileCode,
 } from 'lucide-react';
+
+const FORMAT_OPTIONS: Array<{ key: CVExportFormat; label: string; ext: string; Icon: typeof FileText }> = [
+  { key: 'pdf',  label: 'PDF',  ext: 'pdf',  Icon: FileText },
+  { key: 'docx', label: 'Word', ext: 'docx', Icon: FileType },
+  { key: 'txt',  label: 'Text', ext: 'txt',  Icon: FileCode },
+];
+
+// Slugify a name into a safe default filename: "Eljo Shurdhi" -> "eljo_shurdhi_cv"
+const buildDefaultFilename = (name?: string | null): string => {
+  if (!name) return 'cv_optimized';
+  const slug = name
+    .toLowerCase()
+    .normalize('NFKD')
+    .replace(/[̀-ͯ]/g, '')
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '');
+  return slug ? `${slug}_cv` : 'cv_optimized';
+};
 
 const tones = [
   { key: 'balanced', label: 'Balanced' },
@@ -68,6 +86,11 @@ export default function CVPage() {
   const [downloading, setDownloading] = useState(false);
   const [templatesExpanded, setTemplatesExpanded] = useState(false);
   const [downloadDialogOpen, setDownloadDialogOpen] = useState(false);
+  const [dlFilename, setDlFilename] = useState('cv_optimized');
+  const [dlFormat, setDlFormat] = useState<CVExportFormat>('pdf');
+  // When viewing the original PDF, the user can choose to download that exact
+  // file (no AI edits) instead of the rendered template version.
+  const [dlUseOriginal, setDlUseOriginal] = useState(false);
 
   // Share-card state — visible when ATS score ≥ 90.
   const { profile } = useAccountStore();
@@ -118,51 +141,73 @@ export default function CVPage() {
     }
   };
 
-  const runDownload = async (templateId: TemplateId) => {
+  const runDownload = async (
+    templateId: TemplateId,
+    format: CVExportFormat,
+    filename: string,
+  ) => {
     if (!result?.cv_record_id) return;
     setDownloading(true);
     try {
       const meta = TEMPLATES[templateId];
       const photoForExport = meta?.supportsPhoto ? photo : null;
-      await downloadCVPdf(result.cv_record_id, { template: templateId, photo: photoForExport });
-      toast.success('PDF downloaded');
+      await downloadCVPdf(result.cv_record_id, {
+        template: templateId,
+        photo: photoForExport,
+        format,
+        filename,
+      });
+      toast.success(`${format.toUpperCase()} downloaded`);
     } catch {
-      toast.error('Failed to download PDF');
+      toast.error('Failed to download file');
     } finally {
       setDownloading(false);
     }
   };
 
-  const handleDownload = async () => {
+  const handleDownload = () => {
     if (!result?.cv_record_id) return;
-    // When the user is viewing the original PDF, make the choice explicit:
-    // do they want the untouched file or the AI-edited version?
-    if (isOriginal) {
-      setDownloadDialogOpen(true);
-      return;
-    }
-    await runDownload(template);
+    // Always open the options modal — lets the user pick filename + format,
+    // and (when on original-PDF view) pick which version to download.
+    const finalCV = result.final?.final_cv;
+    const nameSource = finalCV?.full_name || profile?.full_name || '';
+    setDlFilename(buildDefaultFilename(nameSource));
+    setDlFormat('pdf');
+    setDlUseOriginal(false);
+    setDownloadDialogOpen(true);
   };
 
-  const handleDownloadOriginal = () => {
-    if (!originalPdfDataUrl) {
-      toast.error('Original file is not cached in this session');
+  const handleConfirmDownload = async () => {
+    const safeName = (dlFilename.trim() || 'cv_optimized')
+      .replace(/[\\/:*?"<>|]/g, '')
+      .replace(/\.[a-z0-9]+$/i, '')
+      .slice(0, 100) || 'cv_optimized';
+
+    // Path 1: download the cached original PDF as-is (only available on
+    // original-PDF view). Format is forced to PDF — it's a PDF file already.
+    if (isOriginal && dlUseOriginal) {
+      if (!originalPdfDataUrl) {
+        toast.error('Original file is not cached in this session');
+        return;
+      }
+      const a = document.createElement('a');
+      a.href = originalPdfDataUrl;
+      a.download = `${safeName}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setDownloadDialogOpen(false);
+      toast.success('Original file downloaded');
       return;
     }
-    const a = document.createElement('a');
-    a.href = originalPdfDataUrl;
-    a.download = 'original_cv.pdf';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    setDownloadDialogOpen(false);
-    toast.success('Original file downloaded');
-  };
 
-  const handleSwitchAndDownload = async () => {
-    setTemplate(FALLBACK_TEMPLATE);
+    // Path 2: AI-edited version. If the user is on original-PDF view we have
+    // to switch to a real template first — the original PDF can't be re-rendered
+    // with edits or re-encoded as DOCX/TXT.
+    const targetTemplate: TemplateId = isOriginal ? FALLBACK_TEMPLATE : template;
+    if (isOriginal) setTemplate(FALLBACK_TEMPLATE);
     setDownloadDialogOpen(false);
-    await runDownload(FALLBACK_TEMPLATE);
+    await runDownload(targetTemplate, dlFormat, safeName);
   };
 
   const handleReset       = () => { resetAnalysis(); setShowCL(false); resetInline(); };
@@ -507,7 +552,7 @@ export default function CVPage() {
                   onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(118,77,240,0.18)'; }}
                 >
                   <Download className="h-4 w-4" />
-                  {downloading ? 'Downloading…' : 'PDF'}
+                  {downloading ? 'Downloading…' : 'Download'}
                 </button>
                 <button
                   onClick={() => setShowCL(true)}
@@ -869,20 +914,19 @@ export default function CVPage() {
         </div>
       </div>
 
-      {/* Download choice modal — only used when the user is on the Original PDF
-          template. Makes the trade-off explicit instead of silently exporting
-          one version or the other. */}
+      {/* Download options modal — pick filename + format, plus (when viewing
+          the original PDF) which version of the CV to export. */}
       {downloadDialogOpen && (
         <div
           className="fixed inset-0 z-[60] flex items-center justify-center px-4"
           role="dialog"
           aria-modal="true"
-          aria-labelledby="download-choice-title"
+          aria-labelledby="download-options-title"
         >
           <div
             className="absolute inset-0"
             style={{ background: 'rgba(4,6,20,0.72)', backdropFilter: 'blur(6px)' }}
-            onClick={() => setDownloadDialogOpen(false)}
+            onClick={() => !downloading && setDownloadDialogOpen(false)}
           />
           <div
             className="relative w-full max-w-md rounded-2xl overflow-hidden"
@@ -893,7 +937,7 @@ export default function CVPage() {
             }}
           >
             <div style={{ height: '2px', background: 'linear-gradient(90deg,transparent,rgba(118,77,240,0.9),transparent)' }} />
-            <div className="px-6 pt-6 pb-5">
+            <div className="px-6 pt-6 pb-4">
               <div className="flex items-start gap-3">
                 <div
                   className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl"
@@ -903,75 +947,160 @@ export default function CVPage() {
                 </div>
                 <div className="min-w-0 flex-1">
                   <h3
-                    id="download-choice-title"
+                    id="download-options-title"
                     className="text-base font-bold tracking-tight"
                     style={{ color: '#f5f3ff' }}
                   >
-                    Which version do you want?
+                    Download options
                   </h3>
-                  <p className="mt-1.5 text-sm leading-relaxed" style={{ color: 'rgba(255,255,255,0.6)' }}>
-                    You&apos;re viewing your original PDF, which can&apos;t be re-rendered with
-                    AI edits{editsApplied > 0 ? ` (${editsApplied} pending)` : ''}. Pick what to download.
+                  <p className="mt-1 text-[12px] leading-relaxed" style={{ color: 'rgba(255,255,255,0.55)' }}>
+                    Name the file and pick a format.
                   </p>
                 </div>
+                <button
+                  type="button"
+                  onClick={() => setDownloadDialogOpen(false)}
+                  disabled={downloading}
+                  className="flex h-7 w-7 items-center justify-center rounded-lg disabled:opacity-30"
+                  style={{ color: 'rgba(255,255,255,0.4)' }}
+                  aria-label="Close"
+                >
+                  <X className="h-4 w-4" />
+                </button>
               </div>
             </div>
-            <div className="px-6 pb-6 space-y-2">
-              <button
-                type="button"
-                onClick={handleDownloadOriginal}
-                disabled={!originalPdfDataUrl}
-                className="w-full flex items-start gap-3 rounded-xl px-4 py-3 text-left transition-colors disabled:opacity-50"
-                style={{
-                  background: 'rgba(255,255,255,0.04)',
-                  border: '1px solid rgba(255,255,255,0.1)',
-                  color: 'rgba(255,255,255,0.85)',
-                }}
-                onMouseEnter={e => { if (originalPdfDataUrl) (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.08)'; }}
-                onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.04)'; }}
-              >
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-bold" style={{ color: '#f5f3ff' }}>Download original file</p>
-                  <p className="text-[12px] mt-0.5" style={{ color: 'rgba(255,255,255,0.5)' }}>
-                    Exactly what you uploaded. No AI edits applied.
-                  </p>
+
+            {/* Original-PDF version picker — only shown when on the original view. */}
+            {isOriginal && (
+              <div className="px-6 pb-4">
+                <p className="text-[10px] font-bold uppercase tracking-widest mb-2" style={{ color: 'rgba(255,255,255,0.4)' }}>
+                  Source
+                </p>
+                <div className="grid grid-cols-1 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setDlUseOriginal(false)}
+                    className="rounded-xl px-3 py-2.5 text-left transition-colors"
+                    style={
+                      !dlUseOriginal
+                        ? { background: 'rgba(118,77,240,0.22)', border: '1px solid rgba(167,139,250,0.5)', color: '#f5f3ff' }
+                        : { background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.7)' }
+                    }
+                  >
+                    <p className="text-[13px] font-bold">AI-edited version</p>
+                    <p className="text-[11px] mt-0.5" style={{ color: 'rgba(255,255,255,0.5)' }}>
+                      Re-rendered as {TEMPLATES[FALLBACK_TEMPLATE].name}
+                      {editsApplied > 0 ? ` with your ${editsApplied} ${editsApplied === 1 ? 'edit' : 'edits'}` : ''}.
+                    </p>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setDlUseOriginal(true); setDlFormat('pdf'); }}
+                    disabled={!originalPdfDataUrl}
+                    className="rounded-xl px-3 py-2.5 text-left transition-colors disabled:opacity-40"
+                    style={
+                      dlUseOriginal
+                        ? { background: 'rgba(118,77,240,0.22)', border: '1px solid rgba(167,139,250,0.5)', color: '#f5f3ff' }
+                        : { background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.7)' }
+                    }
+                  >
+                    <p className="text-[13px] font-bold">My original PDF</p>
+                    <p className="text-[11px] mt-0.5" style={{ color: 'rgba(255,255,255,0.5)' }}>
+                      Exactly what you uploaded — no AI edits, PDF only.
+                    </p>
+                  </button>
                 </div>
-              </button>
-              <button
-                type="button"
-                onClick={handleSwitchAndDownload}
-                disabled={downloading}
-                className="w-full flex items-start gap-3 rounded-xl px-4 py-3 text-left transition-all disabled:opacity-50"
-                style={{
-                  background: 'linear-gradient(135deg, rgba(118,77,240,0.28), rgba(91,33,182,0.28))',
-                  border: '1px solid rgba(167,139,250,0.5)',
-                  color: '#f5f3ff',
-                  boxShadow: '0 6px 16px rgba(118,77,240,0.25)',
-                }}
+              </div>
+            )}
+
+            {/* Filename input */}
+            <div className="px-6 pb-4">
+              <label
+                htmlFor="dl-filename"
+                className="block text-[10px] font-bold uppercase tracking-widest mb-2"
+                style={{ color: 'rgba(255,255,255,0.4)' }}
               >
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-bold">
-                    {downloading
-                      ? `Rendering ${TEMPLATES[FALLBACK_TEMPLATE].name}…`
-                      : `Switch to ${TEMPLATES[FALLBACK_TEMPLATE].name} and download`}
-                  </p>
-                  <p className="text-[12px] mt-0.5" style={{ color: 'rgba(221,214,254,0.8)' }}>
-                    AI-rewritten CV{editsApplied > 0 ? ` with your ${editsApplied} ${editsApplied === 1 ? 'edit' : 'edits'}` : ''} — ATS-optimized.
-                  </p>
-                </div>
-              </button>
+                File name
+              </label>
+              <div className="flex items-stretch rounded-xl overflow-hidden"
+                style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)' }}
+              >
+                <input
+                  id="dl-filename"
+                  type="text"
+                  value={dlFilename}
+                  onChange={(e) => setDlFilename(e.target.value)}
+                  placeholder="my_cv"
+                  maxLength={100}
+                  className="flex-1 min-w-0 bg-transparent px-3 py-2.5 text-sm outline-none"
+                  style={{ color: '#f5f3ff' }}
+                />
+                <span
+                  className="flex items-center px-3 text-xs font-bold"
+                  style={{ color: 'rgba(255,255,255,0.4)', borderLeft: '1px solid rgba(255,255,255,0.08)' }}
+                >
+                  .{dlUseOriginal ? 'pdf' : (FORMAT_OPTIONS.find(f => f.key === dlFormat)?.ext ?? 'pdf')}
+                </span>
+              </div>
             </div>
+
+            {/* Format selector */}
+            <div className="px-6 pb-5">
+              <p className="text-[10px] font-bold uppercase tracking-widest mb-2" style={{ color: 'rgba(255,255,255,0.4)' }}>
+                Format
+              </p>
+              <div className="grid grid-cols-3 gap-2">
+                {FORMAT_OPTIONS.map(({ key, label, Icon }) => {
+                  const selected = dlFormat === key;
+                  const disabled = dlUseOriginal && key !== 'pdf';
+                  return (
+                    <button
+                      key={key}
+                      type="button"
+                      onClick={() => !disabled && setDlFormat(key)}
+                      disabled={disabled}
+                      className="flex flex-col items-center justify-center gap-1.5 rounded-xl py-3 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                      style={
+                        selected && !disabled
+                          ? { background: 'rgba(118,77,240,0.22)', border: '1px solid rgba(167,139,250,0.5)', color: '#f5f3ff' }
+                          : { background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.7)' }
+                      }
+                    >
+                      <Icon className="h-4 w-4" />
+                      <span className="text-[12px] font-bold">{label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
             <div
-              className="flex items-center justify-end px-6 py-3"
+              className="flex items-center justify-end gap-2 px-6 py-3"
               style={{ borderTop: '1px solid rgba(255,255,255,0.06)', background: 'rgba(255,255,255,0.02)' }}
             >
               <button
                 type="button"
                 onClick={() => setDownloadDialogOpen(false)}
-                className="text-[12px] font-semibold"
+                disabled={downloading}
+                className="rounded-lg px-3 py-2 text-[12px] font-semibold disabled:opacity-40"
                 style={{ color: 'rgba(255,255,255,0.5)' }}
               >
                 Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmDownload}
+                disabled={downloading || (dlUseOriginal && !originalPdfDataUrl)}
+                className="flex items-center gap-2 rounded-lg px-4 py-2 text-[12px] font-bold disabled:opacity-50"
+                style={{
+                  background: 'linear-gradient(135deg, rgba(118,77,240,0.32), rgba(91,33,182,0.32))',
+                  border: '1px solid rgba(167,139,250,0.5)',
+                  color: '#f5f3ff',
+                  boxShadow: '0 6px 16px rgba(118,77,240,0.25)',
+                }}
+              >
+                <Download className="h-3.5 w-3.5" />
+                {downloading ? 'Downloading…' : 'Download'}
               </button>
             </div>
           </div>
