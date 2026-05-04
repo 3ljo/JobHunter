@@ -577,23 +577,18 @@ export default function Home() {
 
       {/* ══ JOB SOURCES ══ */}
       <section
-        className="relative overflow-hidden"
+        className="relative overflow-hidden py-16 sm:py-20"
         aria-label="job-sources"
-        style={{ paddingTop: '80px', paddingBottom: '80px' }}
+        style={{ background: '#101435' }}
       >
-        <div className="absolute inset-0" style={{ backgroundImage: 'url(/aivent/background/1.webp)', backgroundSize: 'cover', backgroundPosition: 'center' }} />
-        <div className="absolute inset-0" style={{ background: 'rgba(10,13,40,0.82)' }} />
-        <div className="absolute top-0 left-0 right-0" style={{ height: '80px', background: 'linear-gradient(180deg,#101435 0%,transparent 100%)' }} />
-        <div className="absolute bottom-0 left-0 right-0" style={{ height: '80px', background: 'linear-gradient(0deg,#101435 0%,transparent 100%)' }} />
-
-        <div className="relative px-6 mb-8 text-center" style={{ zIndex: 4 }}>
+        <div className="px-6 mb-10 text-center">
           <span className="aivent-subtitle s2">Job Sources</span>
           <h3 className="text-white/85 mt-2" style={{ fontSize: 'clamp(20px,2.5vw,28px)', fontWeight: 700 }}>
             Live jobs pulled from the boards you already know
           </h3>
         </div>
 
-        <div className="relative overflow-hidden" style={{ zIndex: 4 }}>
+        <div className="relative overflow-hidden">
           <div className="animate-logo-scroll wow fadeInUp">
             {[...logos, ...logos].map((src, i) => (
               <div key={i} className="px-8 flex items-center justify-center" style={{ minWidth: '140px' }}>
