@@ -29,7 +29,7 @@ export default function PrivacyPage() {
 
           <div>
             <h2 className="text-white text-2xl font-bold mb-3">1. Who We Are</h2>
-            <p>CvClimber ("we", "us", "our") operates the AI-powered job-search platform at cvclimber.com. This Privacy Policy explains how we collect, use, share, and protect your personal data when you use our Service.</p>
+            <p>CvClimber ("we", "us", "our") operates the AI-powered job-search platform at cvclimber.lol. This Privacy Policy explains how we collect, use, share, and protect your personal data when you use our Service.</p>
           </div>
 
           <div>
@@ -81,7 +81,7 @@ export default function PrivacyPage() {
 
           <div>
             <h2 className="text-white text-2xl font-bold mb-3">8. Your Rights</h2>
-            <p>Depending on your jurisdiction (GDPR, UK GDPR, CCPA, etc.) you have the right to access, correct, delete, port, or restrict processing of your personal data, and to object to processing or withdraw consent. Email <a href="mailto:privacy@cvclimber.com" className="text-purple-400 hover:text-purple-300 underline">privacy@cvclimber.com</a> to exercise these rights.</p>
+            <p>Depending on your jurisdiction (GDPR, UK GDPR, CCPA, etc.) you have the right to access, correct, delete, port, or restrict processing of your personal data, and to object to processing or withdraw consent. Email <a href="mailto:privacy@cvclimber.lol" className="text-purple-400 hover:text-purple-300 underline">privacy@cvclimber.lol</a> to exercise these rights.</p>
           </div>
 
           <div>
@@ -111,7 +111,7 @@ export default function PrivacyPage() {
 
           <div>
             <h2 className="text-white text-2xl font-bold mb-3">14. Contact</h2>
-            <p>For privacy questions, reach us at <a href="mailto:privacy@cvclimber.com" className="text-purple-400 hover:text-purple-300 underline">privacy@cvclimber.com</a> or via our <Link href="/contact" className="text-purple-400 hover:text-purple-300 underline">contact page</Link>.</p>
+            <p>For privacy questions, reach us at <a href="mailto:privacy@cvclimber.lol" className="text-purple-400 hover:text-purple-300 underline">privacy@cvclimber.lol</a> or via our <Link href="/contact" className="text-purple-400 hover:text-purple-300 underline">contact page</Link>.</p>
           </div>
 
         </div>

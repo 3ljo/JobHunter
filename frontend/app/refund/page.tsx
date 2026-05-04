@@ -54,7 +54,7 @@ export default function RefundPage() {
 
           <div>
             <h2 className="text-white text-2xl font-bold mb-3">4. Duplicate or Accidental Charges</h2>
-            <p>If you were charged twice or believe a charge was made in error, email <a href="mailto:support@cvclimber.com" className="text-purple-400 hover:text-purple-300 underline">support@cvclimber.com</a> with the order ID. We will refund verified duplicate charges in full.</p>
+            <p>If you were charged twice or believe a charge was made in error, email <a href="mailto:support@cvclimber.lol" className="text-purple-400 hover:text-purple-300 underline">support@cvclimber.lol</a> with the order ID. We will refund verified duplicate charges in full.</p>
           </div>
 
           <div>
@@ -65,7 +65,7 @@ export default function RefundPage() {
           <div>
             <h2 className="text-white text-2xl font-bold mb-3">6. How to Request a Refund</h2>
             <ol className="list-decimal pl-6 space-y-2">
-              <li>Email <a href="mailto:support@cvclimber.com" className="text-purple-400 hover:text-purple-300 underline">support@cvclimber.com</a> from the address on your account.</li>
+              <li>Email <a href="mailto:support@cvclimber.lol" className="text-purple-400 hover:text-purple-300 underline">support@cvclimber.lol</a> from the address on your account.</li>
               <li>Include your Lemon Squeezy order ID (from your receipt) and a brief reason.</li>
               <li>We respond within 2 business days. Approved refunds are processed by Lemon Squeezy and typically appear within 5–10 business days, depending on your bank.</li>
             </ol>
@@ -78,7 +78,7 @@ export default function RefundPage() {
 
           <div>
             <h2 className="text-white text-2xl font-bold mb-3">8. Contact</h2>
-            <p>Refund requests and questions: <a href="mailto:support@cvclimber.com" className="text-purple-400 hover:text-purple-300 underline">support@cvclimber.com</a> or via our <Link href="/contact" className="text-purple-400 hover:text-purple-300 underline">contact page</Link>.</p>
+            <p>Refund requests and questions: <a href="mailto:support@cvclimber.lol" className="text-purple-400 hover:text-purple-300 underline">support@cvclimber.lol</a> or via our <Link href="/contact" className="text-purple-400 hover:text-purple-300 underline">contact page</Link>.</p>
           </div>
 
         </div>

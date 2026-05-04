@@ -89,7 +89,7 @@ export default function TermsPage() {
 
           <div>
             <h2 className="text-white text-2xl font-bold mb-3">13. Contact</h2>
-            <p>Questions about these Terms? Reach us at <Link href="/contact" className="text-purple-400 hover:text-purple-300 underline">our contact page</Link> or via support@cvclimber.com.</p>
+            <p>Questions about these Terms? Reach us at <Link href="/contact" className="text-purple-400 hover:text-purple-300 underline">our contact page</Link> or via support@cvclimber.lol.</p>
           </div>
 
         </div>

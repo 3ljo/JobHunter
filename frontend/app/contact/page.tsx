@@ -111,7 +111,7 @@ export default function ContactPage() {
                   </div>
                   <div>
                     <h4 className="text-white text-sm font-bold mb-1">Send a Message</h4>
-                    <p className="text-white/40 text-sm" style={{ fontWeight: 400 }}>support@cvclimber.ai</p>
+                    <p className="text-white/40 text-sm" style={{ fontWeight: 400 }}>support@cvclimber.lol</p>
                   </div>
                 </div>
 
