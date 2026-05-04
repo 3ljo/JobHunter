@@ -130,7 +130,15 @@ export default function LimitReachedCard({ feature }: { feature: FeatureKey }) {
         <>
           <button
             type="button"
-            onClick={() => router.push('/pricing')}
+            onClick={() => {
+              // Skip the pricing page when we already know the right
+              // plan to upsell — drop the user straight into checkout.
+              if (upgrade.target === 'pro' || upgrade.target === 'pro_voice') {
+                router.push(`/checkout?plan=${upgrade.target}&interval=month`);
+              } else {
+                router.push('/pricing');
+              }
+            }}
             className="w-full flex items-center justify-center gap-2 rounded-xl py-3 text-sm font-black transition-all"
             style={{
               background: 'linear-gradient(135deg,#764DF0,#5b21b6)',
@@ -142,7 +150,7 @@ export default function LimitReachedCard({ feature }: { feature: FeatureKey }) {
             <Sparkles className="h-4 w-4" />
             {upgrade.label}
           </button>
-          <p className="text-center text-[11px] text-white/35 mt-3">
+          <p className="text-center text-[11px] text-white/45 mt-3">
             Upgrades take effect immediately
           </p>
         </>

@@ -56,6 +56,7 @@ function RegisterForm() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [loading, setLoading] = useState(false);
   const [resending, setResending] = useState(false);
   const [submitted, setSubmitted] = useState(false);
@@ -66,6 +67,10 @@ function RegisterForm() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!agreedToTerms) {
+      toast.error('Please accept the Terms and Privacy Policy to continue');
+      return;
+    }
     if (password !== confirmPassword) {
       toast.error('Passwords do not match');
       return;
@@ -302,12 +307,34 @@ function RegisterForm() {
               )}
             </div>
 
+            <label className="flex items-start gap-2.5 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={agreedToTerms}
+                onChange={(e) => setAgreedToTerms(e.target.checked)}
+                className="mt-0.5 h-4 w-4 shrink-0 rounded"
+                style={{ accentColor: '#a78bfa' }}
+                required
+              />
+              <span className="text-[12px] leading-relaxed text-white/60" style={{ fontWeight: 400 }}>
+                I agree to the{' '}
+                <Link href="/terms" target="_blank" className="font-600 underline transition-colors hover:text-white" style={{ color: 'oklch(0.59 0.245 291)' }}>
+                  Terms of Service
+                </Link>
+                {' '}and{' '}
+                <Link href="/privacy" target="_blank" className="font-600 underline transition-colors hover:text-white" style={{ color: 'oklch(0.59 0.245 291)' }}>
+                  Privacy Policy
+                </Link>
+                .
+              </span>
+            </label>
+
             <button
               type="submit"
               className="btn-aivent fx-slide w-full mt-2"
               data-hover={loading ? 'CREATING...' : 'CREATE ACCOUNT'}
-              disabled={loading}
-              style={{ height: '48px', borderRadius: '12px', width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+              disabled={loading || !agreedToTerms}
+              style={{ height: '48px', borderRadius: '12px', width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: agreedToTerms ? 1 : 0.55 }}
             >
               <span>{loading ? 'Creating account...' : 'Create Account'}</span>
             </button>
@@ -349,7 +376,7 @@ function RegisterForm() {
             <span style={{ color: 'oklch(0.59 0.245 291)' }}>Starts Here</span>
           </h1>
           <p className="text-white/55 text-base leading-relaxed mb-10" style={{ fontWeight: 400 }}>
-            Join thousands of job seekers using AI-powered insights to craft the perfect CV and land interviews faster.
+            AI-powered insights to score your CV against any job, fix the gaps, and write a cover letter that lands interviews.
           </p>
 
           {/* Feature image */}
