@@ -160,10 +160,11 @@ const buildCVDocxDocument = (finalCV) => {
     sections.push(createSectionHeading('Education'));
 
     for (const edu of finalCV.education) {
-      const eduText = [edu.degree, edu.institution, edu.year].filter(Boolean).join(' — ');
+      const place = [edu.city, edu.country].filter(Boolean).join(', ');
+      const eduText = [edu.degree, edu.institution, place, edu.year].filter(Boolean).join(' — ');
       sections.push(
         new Paragraph({
-          spacing: { after: 100 },
+          spacing: { after: edu.url ? 40 : 100 },
           children: [
             new TextRun({
               text: eduText,
@@ -173,6 +174,21 @@ const buildCVDocxDocument = (finalCV) => {
           ],
         })
       );
+      if (edu.url) {
+        sections.push(
+          new Paragraph({
+            spacing: { after: 100 },
+            children: [
+              new TextRun({
+                text: edu.url,
+                size: 20,
+                color: '1d4ed8',
+                font: 'Calibri',
+              }),
+            ],
+          })
+        );
+      }
     }
   }
 
@@ -181,19 +197,38 @@ const buildCVDocxDocument = (finalCV) => {
     sections.push(createSectionHeading('Certifications'));
 
     for (const cert of finalCV.certifications) {
-      const certText = typeof cert === 'string' ? cert : cert.name || JSON.stringify(cert);
+      const isString = typeof cert === 'string';
+      const headline = isString
+        ? cert
+        : [cert.name, cert.issuer, cert.year].filter(Boolean).join(' — ') || JSON.stringify(cert);
+      const url = !isString && cert.url ? String(cert.url) : '';
       sections.push(
         new Paragraph({
-          spacing: { after: 100 },
+          spacing: { after: url ? 40 : 100 },
           children: [
             new TextRun({
-              text: certText,
+              text: headline,
               size: 22,
               font: 'Calibri',
             }),
           ],
         })
       );
+      if (url) {
+        sections.push(
+          new Paragraph({
+            spacing: { after: 100 },
+            children: [
+              new TextRun({
+                text: url,
+                size: 20,
+                color: '1d4ed8',
+                font: 'Calibri',
+              }),
+            ],
+          })
+        );
+      }
     }
   }
 
@@ -266,8 +301,10 @@ const generateCVTxt = (finalCV) => {
   if (Array.isArray(finalCV.education) && finalCV.education.length > 0) {
     push('EDUCATION');
     for (const edu of finalCV.education) {
-      const text = [edu.degree, edu.institution, edu.year].filter(Boolean).join(' — ');
+      const place = [edu.city, edu.country].filter(Boolean).join(', ');
+      const text = [edu.degree, edu.institution, place, edu.year].filter(Boolean).join(' — ');
       if (text) push(text);
+      if (edu.url) push(`  ${edu.url}`);
     }
     push();
   }
@@ -275,8 +312,13 @@ const generateCVTxt = (finalCV) => {
   if (Array.isArray(finalCV.certifications) && finalCV.certifications.length > 0) {
     push('CERTIFICATIONS');
     for (const cert of finalCV.certifications) {
-      const text = typeof cert === 'string' ? cert : (cert?.name || '');
-      if (text) push(text);
+      if (typeof cert === 'string') {
+        push(cert);
+        continue;
+      }
+      const headline = [cert?.name, cert?.issuer, cert?.year].filter(Boolean).join(' — ');
+      if (headline) push(headline);
+      if (cert?.url) push(`  ${cert.url}`);
     }
     push();
   }
