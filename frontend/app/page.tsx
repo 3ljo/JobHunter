@@ -1,10 +1,13 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 
-import { ChevronDown, Menu, X, Tag, X as XIcon } from 'lucide-react';
+import { ChevronDown, Menu, X, Tag, Sparkles } from 'lucide-react';
 import axios from 'axios';
+
+const PROMO_BANNER_DISMISSED_KEY = 'cvc_promo_banner_dismissed_at';
 
 /* ── Scroll reveal ── */
 function useScrollReveal() {
@@ -70,11 +73,20 @@ export default function Home() {
 
   useEffect(() => {
     setIsLoggedIn(!!localStorage.getItem('auth_token'));
+    // Restore prior banner dismissal so we don't nag returning visitors.
+    if (localStorage.getItem(PROMO_BANNER_DISMISSED_KEY)) {
+      setBannerDismissed(true);
+    }
     // Fetch active promo banner
     axios.get(`${process.env.NEXT_PUBLIC_API_URL}/api/promo/banner`)
       .then((res) => { if (res.data.banner) setPromoBanner(res.data.banner); })
       .catch(() => {});
   }, []);
+
+  const dismissPromoBanner = () => {
+    setBannerDismissed(true);
+    try { localStorage.setItem(PROMO_BANNER_DISMISSED_KEY, String(Date.now())); } catch {}
+  };
 
   /* ── Active section tracking ── */
   useEffect(() => {
@@ -139,8 +151,20 @@ export default function Home() {
     '/logos/reed.svg', '/logos/totaljobs.svg', '/logos/careerbuilder.svg', '/logos/stepstone.svg', '/logos/simplyhired.svg',
   ];
 
+  // Build the deep-link a logged-in visitor should hit when they click a
+  // pricing tier on the landing page. Free goes back to the dashboard,
+  // paid plans land directly in their checkout flow. Logged-out visitors
+  // always start at /register first.
+  const planHref = (key: 'free' | 'starter' | 'pro' | 'pro_voice') => {
+    if (!isLoggedIn) return '/register';
+    if (key === 'free') return '/cv';
+    if (key === 'starter') return '/checkout?plan=starter&interval=once';
+    return `/checkout?plan=${key}&interval=month`;
+  };
+
   const pricing = [
     {
+      key: 'free' as const,
       bg: '/aivent/misc/l3.webp',
       plan: 'Free',
       price: '$0',
@@ -148,23 +172,27 @@ export default function Home() {
       tagline: 'Try the core tools',
       features: ['1 CV analysis', '2 cover letters', 'ATS score & keyword report', 'PDF downloads', 'Tracker — up to 15 jobs'],
       cta: 'Get Started Free',
-      href: isLoggedIn ? '/pricing' : '/register',
+      href: planHref('free'),
       highlight: false,
+      premium: false,
       badge: '',
     },
     {
+      key: 'starter' as const,
       bg: '/aivent/misc/l3.webp',
       plan: '7-Day Pass',
       price: '$9',
       period: 'one-time',
       tagline: 'No auto-renew',
       features: ['Unlimited CV analyses (7 days)', 'Unlimited cover letters (7 days)', 'Full ATS audit & optimization', 'AI quick edits', 'Unlimited job tracker', 'Pay once — no subscription'],
-      cta: isLoggedIn ? 'Get Pass' : 'Get Pass',
-      href: isLoggedIn ? '/pricing' : '/register',
+      cta: 'Get Pass',
+      href: planHref('starter'),
       highlight: false,
+      premium: false,
       badge: 'Pay once',
     },
     {
+      key: 'pro' as const,
       bg: '/aivent/misc/l4.webp',
       plan: 'Pro',
       price: '$19',
@@ -172,11 +200,13 @@ export default function Home() {
       tagline: 'For active job seekers',
       features: ['Unlimited CV analyses', 'Unlimited cover letters', 'Full ATS audit & optimization', 'AI quick edits', 'Priority AI processing', 'Full CV history & analytics', 'Unlimited job tracker'],
       cta: isLoggedIn ? 'Upgrade to Pro' : 'Start Pro',
-      href: isLoggedIn ? '/pricing' : '/register',
+      href: planHref('pro'),
       highlight: true,
+      premium: false,
       badge: 'Most Popular',
     },
     {
+      key: 'pro_voice' as const,
       bg: '/aivent/misc/l5.webp',
       plan: 'Pro Voice',
       price: '$39',
@@ -184,9 +214,10 @@ export default function Home() {
       tagline: 'With AI voice interview coach',
       features: ['Everything in Pro', 'Voice Mock Interview — 8 sessions / month', 'Voice feedback report', 'Interview prep library', 'LinkedIn-ready CV export', 'Priority AI processing'],
       cta: isLoggedIn ? 'Upgrade to Pro Voice' : 'Start Pro Voice',
-      href: isLoggedIn ? '/pricing' : '/register',
+      href: planHref('pro_voice'),
       highlight: false,
-      badge: '',
+      premium: true,
+      badge: 'Premium',
     },
   ];
 
@@ -196,7 +227,7 @@ export default function Home() {
     { q: 'Is CvClimber free to use?', a: 'Yes — create a free account and start analyzing your CV right away. No credit card required. A $9 one-time 7-day pass or the Pro subscription unlocks unlimited usage.' },
     { q: 'What file formats does it support?', a: 'You can paste your CV text directly or upload a document. The AI processes the content and matches it against your target job description.' },
     { q: 'How does the cover letter generator work?', a: 'After your CV is analyzed, click "Generate Cover Letter". Choose your tone — balanced, formal, or friendly — and our AI crafts a personalized letter in seconds.' },
-    { q: 'Is my data secure?', a: 'Yes. Your CV data is stored securely with Supabase and is only used to power your analysis. We never share your data with third parties.' },
+    { q: 'Is my data secure?', a: 'Yes. Your CV data is encrypted in transit and at rest, used only to power your own analysis, and never shared or sold to third parties.' },
   ];
 
   /* ── Render ── */
@@ -241,7 +272,7 @@ export default function Home() {
             </Link>
           </div>
           <button
-            onClick={() => setBannerDismissed(true)}
+            onClick={dismissPromoBanner}
             className="absolute right-4 top-1/2 -translate-y-1/2 text-white/60 hover:text-white transition-colors"
           >
             <X className="h-4 w-4" />
@@ -376,7 +407,7 @@ export default function Home() {
 
       {/* ══ HERO — Demo 6 split layout ══ */}
       <section id="hero" className="relative overflow-hidden pt-20 sm:pt-[110px]" style={{ paddingBottom: 0 }}>
-        <div className="absolute inset-0" style={{ backgroundImage: 'url(/aivent/background/8.webp)', backgroundSize: 'cover', backgroundPosition: 'center', backgroundAttachment: 'fixed' }} />
+        <div className="absolute inset-0" style={{ backgroundImage: 'url(/aivent/background/8.webp)', backgroundSize: 'cover', backgroundPosition: 'center' }} />
         <div className="absolute inset-0" style={{ background: 'rgba(16,20,53,0.60)' }} />
         <div className="absolute bottom-0 left-0 right-0" style={{ height: '35%', background: 'linear-gradient(0deg,#101435 0%,transparent 100%)' }} />
 
@@ -385,26 +416,30 @@ export default function Home() {
 
             {/* Left — landingrobot.png hero robot image */}
             <div className="wow fadeInUp order-first lg:order-none text-center lg:text-left" data-wow-delay=".3s">
-              <img
+              <Image
                 src="/aivent/misc/landingrobot.png"
-                alt="AI Job Search"
-                className="w-full mx-auto max-h-[280px] sm:max-h-[400px] lg:max-h-[560px]"
+                alt="CvClimber AI assistant illustration"
+                width={720}
+                height={720}
+                priority
+                sizes="(max-width: 1024px) 90vw, 45vw"
+                className="w-full mx-auto max-h-[280px] sm:max-h-[400px] lg:max-h-[560px] h-auto"
                 style={{ objectFit: 'contain' }}
               />
             </div>
 
             {/* Right — headline + CTA */}
             <div>
-              <span className="aivent-subtitle s2 wow fadeInUp" data-wow-delay=".0s">Welcome to CvClimber</span>
+              <span className="aivent-subtitle s2 wow fadeInUp" data-wow-delay=".0s">AI-powered CV review</span>
               <h1
                 className="wow fadeInUp text-white leading-[1.1] mb-6"
                 style={{ fontSize: 'clamp(30px,7vw,62px)', letterSpacing: '-0.02em', fontWeight: 800 }}
                 data-wow-delay=".2s"
               >
-                Land Your Dream Job with Artificial Intelligence
+                Score your CV against any job in 30 seconds. Beat the ATS.
               </h1>
               <p className="wow fadeInUp text-white/60 text-base leading-relaxed mb-8" style={{ fontWeight: 400, maxWidth: '32rem' }} data-wow-delay=".4s">
-                Upload your CV, paste any job description, and get an instant ATS score, keyword gap analysis, and a tailored cover letter. CvClimber gives every job seeker an unfair advantage.
+                Upload your CV, paste any job description, and get an instant ATS score, the exact keywords you're missing, and a rewritten CV plus cover letter ready to send.
               </p>
               <div className="flex flex-wrap items-center gap-4 wow fadeInUp" data-wow-delay=".6s">
                 {isLoggedIn
@@ -442,7 +477,7 @@ export default function Home() {
       </section>
 
       {/* ══ ABOUT ══ */}
-      <section className="py-14 sm:py-28 px-4 sm:px-6" style={{ background: '#101435', position: 'relative', zIndex: 1 }}>
+      <section id="about" className="py-14 sm:py-28 px-4 sm:px-6" style={{ background: '#101435', position: 'relative', zIndex: 1 }}>
         <div className="mx-auto max-w-6xl">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
             <div>
@@ -459,7 +494,15 @@ export default function Home() {
               </ul>
             </div>
             <div className="flex justify-center wow scaleIn">
-              <img src="/aivent/misc/c1.webp" alt="CvClimber AI" className="rotate-slow" style={{ width: '80%', maxWidth: '420px' }} />
+              <Image
+                src="/aivent/misc/c1.webp"
+                alt="CvClimber AI"
+                width={420}
+                height={420}
+                sizes="(max-width: 768px) 80vw, 420px"
+                className="rotate-slow"
+                style={{ width: '80%', maxWidth: '420px', height: 'auto' }}
+              />
             </div>
           </div>
         </div>
@@ -539,7 +582,13 @@ export default function Home() {
             {features.map((f, i) => (
               <div key={f.title} className="feature-card relative rounded-xl overflow-hidden cursor-pointer wow scale-in-mask" style={{ minHeight: '300px' }}>
                 <div className="card-bg absolute inset-0 transition-colors duration-500" style={{ background: '#1A1E42' }}>
-                  <img src={f.img} alt={f.title} className="w-full h-full object-cover opacity-75" />
+                  <Image
+                    src={f.img}
+                    alt={f.title}
+                    fill
+                    sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                    className="object-cover opacity-75"
+                  />
                 </div>
                 <div className="absolute bottom-0 left-0 right-0 h-3/4" style={{ background: 'linear-gradient(0deg,#101435 0%,rgba(16,20,53,0) 100%)', zIndex: 1 }} />
                 <div className="radial-overlay absolute inset-0" style={{ zIndex: 2 }} />
@@ -559,7 +608,7 @@ export default function Home() {
         aria-label="quote"
         style={{ paddingTop: '140px', paddingBottom: '140px' }}
       >
-        <div className="absolute inset-0" style={{ backgroundImage: 'url(/aivent/background/1.webp)', backgroundSize: 'cover', backgroundPosition: 'center', backgroundAttachment: 'fixed' }} />
+        <div className="absolute inset-0" style={{ backgroundImage: 'url(/aivent/background/1.webp)', backgroundSize: 'cover', backgroundPosition: 'center' }} />
         {/* Overlays */}
         <div className="absolute inset-0" style={{ background: 'rgba(10,13,40,0.82)' }} />
         <div className="absolute top-0 left-0 right-0" style={{ height: '120px', background: 'linear-gradient(180deg,#101435 0%,transparent 100%)' }} />
@@ -662,7 +711,7 @@ export default function Home() {
       <section
         id="pricing"
         className="relative py-16 sm:py-32 px-4 sm:px-6"
-        style={{ backgroundImage: 'url(/aivent/background/7.webp)', backgroundSize: 'cover', backgroundPosition: 'center', backgroundAttachment: 'fixed' }}
+        style={{ backgroundImage: 'url(/aivent/background/7.webp)', backgroundSize: 'cover', backgroundPosition: 'center' }}
       >
         <div className="absolute inset-0" style={{ background: 'rgba(0,0,0,0.80)' }} />
         <div className="absolute top-0 left-0 right-0 h-1/4" style={{ background: 'linear-gradient(180deg,#1A1E42 0%,transparent 100%)' }} />
@@ -676,40 +725,57 @@ export default function Home() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
-            {pricing.map((p, i) => (
-              <div key={p.plan} data-reveal data-delay={String(i * 100)}>
-                <div className="d-ticket-card mb-0 rounded-b-none" style={{ backgroundImage: `url(${p.bg})`, border: p.highlight ? '2px solid oklch(0.59 0.245 291)' : '2px solid rgba(255,255,255,0.08)', borderBottom: 'none' }}>
-                  <div className="absolute inset-0" style={{ background: 'rgba(16,20,53,0.82)', borderRadius: '10px 10px 0 0' }} />
-                  <div className="relative" style={{ zIndex: 1 }}>
-                    <img src="/aivent/logo.png" alt="" style={{ height: '48px', marginBottom: '16px', opacity: 0.8 }} />
-                    <h2 className="text-white mb-1" style={{ fontSize: '1.625rem', fontWeight: 800 }}>{p.plan}</h2>
-                    {p.tagline && (
-                      <p className="text-white/50 text-xs mb-3" style={{ fontWeight: 500 }}>{p.tagline}</p>
-                    )}
-                    <h4 className="text-white/80 mb-3" style={{ fontWeight: 600 }}>
-                      <span className="text-white" style={{ fontSize: '2rem', fontWeight: 800 }}>{p.price}</span>
-                      {p.period && (
-                        <span className="text-white/50 ml-1" style={{ fontSize: '0.95rem', fontWeight: 400 }}>{p.period}</span>
+            {pricing.map((p, i) => {
+              // Pro Voice gets the gold treatment so it doesn't sit ignored
+              // in the 4th slot — it's our highest-margin SKU.
+              const accent = p.premium
+                ? '#fbbf24'                      // amber-400
+                : p.highlight
+                  ? 'oklch(0.59 0.245 291)'      // brand violet for "Most Popular"
+                  : 'rgba(255,255,255,0.08)';
+              const borderStyle = (p.highlight || p.premium) ? `2px solid ${accent}` : `2px solid ${accent}`;
+              const cardShadow = p.premium ? '0 12px 40px rgba(251,191,36,0.18)' : undefined;
+              return (
+                <div key={p.plan} data-reveal data-delay={String(i * 100)} style={{ boxShadow: cardShadow }}>
+                  <div className="d-ticket-card mb-0 rounded-b-none" style={{ backgroundImage: `url(${p.bg})`, border: borderStyle, borderBottom: 'none' }}>
+                    <div className="absolute inset-0" style={{ background: 'rgba(16,20,53,0.82)', borderRadius: '10px 10px 0 0' }} />
+                    <div className="relative" style={{ zIndex: 1 }}>
+                      <img src="/aivent/logo.png" alt="" style={{ height: '48px', marginBottom: '16px', opacity: 0.8 }} />
+                      <h2 className="text-white mb-1" style={{ fontSize: '1.625rem', fontWeight: 800 }}>{p.plan}</h2>
+                      {p.tagline && (
+                        <p className="text-white/50 text-xs mb-3" style={{ fontWeight: 500 }}>{p.tagline}</p>
                       )}
-                    </h4>
-                    {p.badge === 'Most Popular' && (
-                      <span className="inline-block px-3 py-1 rounded-full text-xs uppercase tracking-widest text-white" style={{ fontWeight: 700, background: 'oklch(0.59 0.245 291)' }}>Most Popular</span>
-                    )}
-                    {p.badge === 'Pay once' && (
-                      <span className="inline-block px-3 py-1 rounded-full text-xs uppercase tracking-widest" style={{ fontWeight: 700, background: 'rgba(52,211,153,0.18)', color: '#34d399' }}>Pay once</span>
-                    )}
+                      <h4 className="text-white/80 mb-3" style={{ fontWeight: 600 }}>
+                        <span className="text-white" style={{ fontSize: '2rem', fontWeight: 800 }}>{p.price}</span>
+                        {p.period && (
+                          <span className="text-white/50 ml-1" style={{ fontSize: '0.95rem', fontWeight: 400 }}>{p.period}</span>
+                        )}
+                      </h4>
+                      {p.badge === 'Most Popular' && (
+                        <span className="inline-block px-3 py-1 rounded-full text-xs uppercase tracking-widest text-white" style={{ fontWeight: 700, background: 'oklch(0.59 0.245 291)' }}>Most Popular</span>
+                      )}
+                      {p.badge === 'Pay once' && (
+                        <span className="inline-block px-3 py-1 rounded-full text-xs uppercase tracking-widest" style={{ fontWeight: 700, background: 'rgba(52,211,153,0.18)', color: '#34d399' }}>Pay once</span>
+                      )}
+                      {p.badge === 'Premium' && (
+                        <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs uppercase tracking-widest" style={{ fontWeight: 800, background: 'rgba(251,191,36,0.18)', color: '#fbbf24', border: '1px solid rgba(251,191,36,0.45)' }}>
+                          <Sparkles className="h-3 w-3" />
+                          Premium
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="rounded-t-none rounded-b-xl px-5 py-5" style={{ background: '#1A1E42', border: borderStyle, borderTop: 'none' }}>
+                    <ul className="ul-check mb-5 space-y-2 text-sm">
+                      {p.features.map(f => <li key={f}>{f}</li>)}
+                    </ul>
+                    <Link href={p.href} className="btn-aivent fx-slide w-full text-center block" data-hover={p.cta.toUpperCase()}>
+                      <span>{p.cta}</span>
+                    </Link>
                   </div>
                 </div>
-                <div className="rounded-t-none rounded-b-xl px-5 py-5" style={{ background: '#1A1E42', border: p.highlight ? '2px solid oklch(0.59 0.245 291)' : '2px solid rgba(255,255,255,0.08)', borderTop: 'none' }}>
-                  <ul className="ul-check mb-5 space-y-2 text-sm">
-                    {p.features.map(f => <li key={f}>{f}</li>)}
-                  </ul>
-                  <Link href={p.href} className="btn-aivent fx-slide w-full text-center block" data-hover={p.cta.toUpperCase()}>
-                    <span>{p.cta}</span>
-                  </Link>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       </section>
@@ -735,7 +801,7 @@ export default function Home() {
         aria-label="cta"
         style={{ paddingTop: '140px', paddingBottom: '140px' }}
       >
-        <div className="absolute inset-0" style={{ backgroundImage: 'url(/aivent/background/3.webp)', backgroundSize: 'cover', backgroundPosition: 'center', backgroundAttachment: 'fixed' }} />
+        <div className="absolute inset-0" style={{ backgroundImage: 'url(/aivent/background/3.webp)', backgroundSize: 'cover', backgroundPosition: 'center' }} />
         <div className="absolute inset-0" style={{ background: 'rgba(10,13,40,0.82)' }} />
         <div className="absolute top-0 left-0 right-0" style={{ height: '120px', background: 'linear-gradient(180deg,#101435 0%,transparent 100%)' }} />
         <div className="absolute bottom-0 left-0 right-0" style={{ height: '120px', background: 'linear-gradient(0deg,#101435 0%,transparent 100%)' }} />
@@ -781,7 +847,7 @@ export default function Home() {
                   { label: 'Pricing', href: '#pricing' },
                 ].map((l) => (
                   <li key={l.label}>
-                    <a href={l.href} className="text-white/35 hover:text-white/70 transition-colors text-sm" style={{ fontWeight: 400 }}>{l.label}</a>
+                    <a href={l.href} className="text-white/55 hover:text-white transition-colors text-sm" style={{ fontWeight: 400 }}>{l.label}</a>
                   </li>
                 ))}
               </ul>
@@ -800,7 +866,7 @@ export default function Home() {
                   { label: 'Refund Policy', href: '/refund' },
                 ].map((l) => (
                   <li key={l.label}>
-                    <a href={l.href} className="text-white/35 hover:text-white/70 transition-colors text-sm" style={{ fontWeight: 400 }}>{l.label}</a>
+                    <a href={l.href} className="text-white/55 hover:text-white transition-colors text-sm" style={{ fontWeight: 400 }}>{l.label}</a>
                   </li>
                 ))}
               </ul>
@@ -810,8 +876,8 @@ export default function Home() {
             <div>
               <h4 className="text-white/80 text-xs font-bold uppercase tracking-widest mb-5">Get Started</h4>
               <ul className="space-y-3">
-                <li><Link href="/login" className="text-white/35 hover:text-white/70 transition-colors text-sm">Sign In</Link></li>
-                <li><Link href="/register" className="text-white/35 hover:text-white/70 transition-colors text-sm">Create Account</Link></li>
+                <li><Link href="/login" className="text-white/55 hover:text-white transition-colors text-sm">Sign In</Link></li>
+                <li><Link href="/register" className="text-white/55 hover:text-white transition-colors text-sm">Create Account</Link></li>
               </ul>
               <div className="mt-6">
                 <Link href="/register" className="btn-aivent btn-line fx-slide text-xs !px-5 !py-2.5" data-hover="TRY FREE">
@@ -824,13 +890,11 @@ export default function Home() {
 
           {/* Bottom bar */}
           <div className="pt-6 flex flex-col sm:flex-row items-center justify-between gap-4" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
-            <p className="text-white/20 text-xs" style={{ fontWeight: 400 }}>
+            <p className="text-white/45 text-xs" style={{ fontWeight: 400 }}>
               &copy; {new Date().getFullYear()} CvClimber. All rights reserved.
             </p>
             <div className="flex items-center gap-5">
-              <a href="https://x.com" target="_blank" rel="noopener noreferrer" className="text-white/20 hover:text-white/50 transition-colors text-xs">X / Twitter</a>
-              <a href="https://linkedin.com" target="_blank" rel="noopener noreferrer" className="text-white/20 hover:text-white/50 transition-colors text-xs">LinkedIn</a>
-              <Link href="/contact" className="text-white/20 hover:text-white/50 transition-colors text-xs">Contact</Link>
+              <Link href="/contact" className="text-white/45 hover:text-white/80 transition-colors text-xs">Contact</Link>
             </div>
           </div>
         </div>
