@@ -930,17 +930,6 @@ function FilterDropdown<T extends string>({
 // ─── Job card ─────────────────────────────────────────────────────────
 
 function JobCard({ job }: { job: JobHunterJob }) {
-  const src = sourceMeta(job.source);
-  const posted = relativeTime(job.posted_at);
-  const remote = isRemoteJob(job);
-  const hybrid = isHybridLoc(job.location);
-  const scorePct = Math.round((job.score ?? 0) * 100);
-  const scoreTone =
-    scorePct >= 85 ? { color: '#34d399', bg: 'rgba(52,211,153,0.12)', border: 'rgba(52,211,153,0.3)' } :
-    scorePct >= 70 ? { color: '#a78bfa', bg: 'rgba(167,139,250,0.12)', border: 'rgba(167,139,250,0.3)' } :
-    scorePct >= 50 ? { color: '#60a5fa', bg: 'rgba(96,165,250,0.12)', border: 'rgba(96,165,250,0.3)' } :
-                     { color: 'rgba(255,255,255,0.6)', bg: 'rgba(255,255,255,0.05)', border: 'rgba(255,255,255,0.1)' };
-
   return (
     <a
       href={job.url}
@@ -964,43 +953,6 @@ function JobCard({ job }: { job: JobHunterJob }) {
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2 flex-wrap mb-1.5">
-            <span
-              className="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded"
-              style={{ background: src.bg, color: src.color, border: `1px solid ${src.border}` }}
-            >
-              {src.label}
-            </span>
-            {scorePct > 0 && (
-              <span
-                className="inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded"
-                style={{ background: scoreTone.bg, color: scoreTone.color, border: `1px solid ${scoreTone.border}` }}
-              >
-                <Star className="h-2.5 w-2.5 fill-current" /> {scorePct}% match
-              </span>
-            )}
-            {remote && (
-              <span
-                className="inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded"
-                style={{ background: 'rgba(52,211,153,0.10)', color: '#34d399', border: '1px solid rgba(52,211,153,0.25)' }}
-              >
-                <Globe className="h-2.5 w-2.5" /> Remote
-              </span>
-            )}
-            {hybrid && !remote && (
-              <span
-                className="inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded"
-                style={{ background: 'rgba(251,146,60,0.10)', color: '#fb923c', border: '1px solid rgba(251,146,60,0.25)' }}
-              >
-                <Home className="h-2.5 w-2.5" /> Hybrid
-              </span>
-            )}
-            {posted && (
-              <span className="text-[10px] text-muted-foreground/55 flex items-center gap-1">
-                <Clock className="h-2.5 w-2.5" /> {posted}
-              </span>
-            )}
-          </div>
           <h3 className="text-sm sm:text-base font-bold text-foreground leading-snug mb-1 line-clamp-2 group-hover:text-violet-300 transition-colors">
             {job.title}
           </h3>
