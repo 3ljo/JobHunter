@@ -381,7 +381,7 @@ export const createCheckoutSession = (
   plan: string,
   interval: 'month' | 'year' | 'once',
   payment_method?: string,
-  provider?: 'lemonsqueezy' | 'paypal',
+  provider?: 'lemonsqueezy' | 'paypal' | 'nowpayments',
 ) =>
   api.post<{ url: string }>('/api/subscription/checkout', { plan, interval, payment_method, provider });
 

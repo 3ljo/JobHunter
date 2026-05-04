@@ -188,14 +188,14 @@ function CheckoutForm() {
   const [showUsdtPayment, setShowUsdtPayment] = useState(false);
 
   const handleBuyNow = async () => {
-    if (paymentMethod === 'crypto') {
-      setShowUsdtPayment(true);
-      return;
-    }
     setShowUsdtPayment(false);
     setLoading(true);
     try {
-      const res = await createCheckoutSession(planKey, interval, paymentMethod, 'lemonsqueezy');
+      // Crypto goes through NOWPayments (hosted checkout, picks coin/network
+      // there). Card goes through Lemon Squeezy (which also offers PayPal,
+      // Apple Pay, Google Pay at its hosted checkout).
+      const provider = paymentMethod === 'crypto' ? 'nowpayments' : 'lemonsqueezy';
+      const res = await createCheckoutSession(planKey, interval, paymentMethod, provider);
       window.location.href = res.data.url;
     } catch (err: any) {
       const msg = err.response?.data?.error || 'Failed to start checkout';

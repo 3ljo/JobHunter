@@ -14,6 +14,7 @@ const { /* stripe, */ PLANS, getPlanLimits, canonicalPlan } = require('../servic
 const { getTodayCount } = require('../services/usageService');
 const ls = require('../services/lemonSqueezyService');
 const pp = require('../services/paypalService');
+const np = require('../services/nowpaymentsService');
 
 // FRONTEND_URL may be a comma-separated list (used by CORS). For redirect URLs
 // we only want the canonical first entry, otherwise we'd redirect users to a
@@ -62,9 +63,11 @@ const getSubscription = async (req, res) => {
         }
       : { ...data, plan };
 
-    // One-time passes (e.g. `starter`) expire — once `current_period_end`
-    // has passed, the user drops back to `free` entitlements.
-    if (plan === 'starter' && subscription.current_period_end) {
+    // Prepaid / one-time entitlements (Starter, plus crypto-paid Pro and
+    // Pro Voice — all stored with `billing_interval='once'`) expire once
+    // `current_period_end` is past. After that, the user drops back to
+    // `free` until they buy again.
+    if (subscription.billing_interval === 'once' && subscription.current_period_end) {
       const expired = new Date(subscription.current_period_end).getTime() < Date.now();
       if (expired) {
         plan = 'free';
@@ -91,8 +94,13 @@ const getSubscription = async (req, res) => {
 // returns 400.
 const createCheckout = async (req, res) => {
   try {
-    const { plan, interval, provider: providerRaw } = req.body;
-    const provider = providerRaw === 'paypal' ? 'paypal' : 'lemonsqueezy';
+    const { plan, interval, provider: providerRaw, payment_method } = req.body;
+    // Crypto rail wins if the user picked the USDT tile, regardless of
+    // the explicit `provider` value the frontend sent.
+    let provider;
+    if (payment_method === 'crypto') provider = 'nowpayments';
+    else if (providerRaw === 'paypal') provider = 'paypal';
+    else provider = 'lemonsqueezy';
 
     if (!plan || !PLANS[plan] || plan === 'free') {
       return res.status(400).json({ error: 'Invalid plan' });
@@ -108,6 +116,39 @@ const createCheckout = async (req, res) => {
           ? 'One-time plans must use interval=once'
           : 'Invalid billing interval',
       });
+    }
+
+    if (provider === 'nowpayments') {
+      const successUrl = `${canonicalFrontend()}/checkout/success?provider=nowpayments`;
+      const cancelUrl = `${canonicalFrontend()}/pricing?checkout=canceled`;
+      // Build the IPN URL from the request host so dev / staging / prod
+      // all hit themselves. Falls back to BACKEND_URL if set.
+      const backendBase = (process.env.BACKEND_URL || `${req.protocol}://${req.get('host')}`).replace(/\/$/, '');
+      const ipnCallbackUrl = `${backendBase}/api/subscription/nowpayments/webhook`;
+      try {
+        const { invoiceUrl } = await np.createInvoice({
+          userId: req.user.id,
+          email: req.user.email,
+          plan,
+          interval,
+          successUrl,
+          cancelUrl,
+          ipnCallbackUrl,
+        });
+        return res.json({ url: invoiceUrl });
+      } catch (err) {
+        console.error('NOWPayments invoice error:', err.message, err.npStatus, err.npHint);
+        if (err.npHint === 'api_key_missing' || err.npHint === 'price_missing') {
+          return res.status(503).json({
+            error: 'Crypto checkout is not configured. Please choose another payment method.',
+            code: 'crypto_unconfigured',
+          });
+        }
+        return res.status(502).json({
+          error: 'Could not start crypto checkout. Please try again or use card.',
+          code: 'crypto_checkout_failed',
+        });
+      }
     }
 
     if (provider === 'paypal') {
@@ -903,4 +944,99 @@ function resolvePlanFromStripePriceId(priceId) {
 
    ════════════════════════════════════════════════════════════════════════════ */
 
-module.exports = { getSubscription, createCheckout, createPortal, handleWebhook, handlePaypalWebhook, configCheck, resyncSubscription };
+// POST /api/subscription/nowpayments/webhook — IPN handler for crypto
+// payments. NOWPayments forwards the actual USDT to the configured payout
+// wallet automatically; this endpoint exists purely to grant entitlements
+// once the on-chain payment is confirmed.
+//
+// Crypto invoices are always one-shot, even for "monthly" / "yearly" Pro
+// plans — there is no native subscription primitive for crypto here. We
+// store these as `billing_interval='once'` and let the auto-expiration
+// logic in getSubscription downgrade them when the period ends.
+const handleNowpaymentsWebhook = async (req, res) => {
+  const sig = req.headers['x-nowpayments-sig'];
+  const verification = np.verifyIpnSignature(req.body, sig);
+  if (!verification.valid) {
+    console.warn(`NOWPayments IPN rejected: ${verification.reason}`);
+    return res.status(401).send('Invalid signature');
+  }
+  const payload = verification.payload;
+
+  try {
+    const status = payload.payment_status;
+    if (!np.isPaidStatus(status)) {
+      // Acknowledge so NOWPayments doesn't retry forever, but don't grant
+      // anything until the payment actually finishes confirming.
+      return res.status(200).send('ok');
+    }
+
+    const decoded = np.decodeOrderId(payload.order_id);
+    if (!decoded || !decoded.userId || !decoded.plan) {
+      console.warn(`NOWPayments IPN with unparseable order_id: ${payload.order_id}`);
+      return res.status(200).send('ok'); // 200 to stop retries — payload is malformed, not transient
+    }
+
+    const { userId, plan, interval } = decoded;
+    if (!PLANS[plan]) {
+      console.warn(`NOWPayments IPN for unknown plan ${plan}, order ${payload.order_id}`);
+      return res.status(200).send('ok');
+    }
+
+    // How many days does this purchase grant?
+    let durationDays;
+    if (PLANS[plan].billing_type === 'one_time') {
+      durationDays = PLANS[plan].pass_duration_days || 7;
+    } else if (interval === 'year') {
+      durationDays = 365;
+    } else {
+      durationDays = 30;
+    }
+
+    // Idempotency: if the user already has an active row that ends after
+    // the period we'd grant for *this* payment, do nothing. NOWPayments
+    // re-fires IPNs on retries; we don't want to shorten an existing
+    // longer entitlement.
+    const now = new Date();
+    const expiresAt = new Date(now.getTime() + durationDays * 24 * 60 * 60 * 1000);
+
+    const { data: existing } = await supabase
+      .from('subscriptions')
+      .select('current_period_end, status, plan')
+      .eq('user_id', userId)
+      .single();
+
+    if (existing && existing.current_period_end) {
+      const existingEnd = new Date(existing.current_period_end).getTime();
+      if (existingEnd >= expiresAt.getTime() && existing.status === 'active') {
+        return res.status(200).send('ok');
+      }
+    }
+
+    const { error: upsertErr } = await supabase.from('subscriptions').upsert({
+      user_id: userId,
+      lemonsqueezy_customer_id: null,
+      lemonsqueezy_subscription_id: null,
+      lemonsqueezy_portal_url: null,
+      plan,
+      billing_interval: 'once',
+      status: 'active',
+      current_period_start: now.toISOString(),
+      current_period_end: expiresAt.toISOString(),
+      cancel_at_period_end: false,
+    }, { onConflict: 'user_id' });
+
+    if (upsertErr) {
+      console.error('NOWPayments IPN: subscriptions upsert failed:', upsertErr.message);
+      // Return 500 so NOWPayments retries — DB is transiently failing.
+      return res.status(500).send('upsert_failed');
+    }
+
+    console.log(`NOWPayments IPN: granted ${plan}/${interval} to ${userId} for ${durationDays}d (payment ${payload.payment_id})`);
+    return res.status(200).send('ok');
+  } catch (err) {
+    console.error('NOWPayments IPN handler error:', err.message);
+    return res.status(500).send('error');
+  }
+};
+
+module.exports = { getSubscription, createCheckout, createPortal, handleWebhook, handlePaypalWebhook, handleNowpaymentsWebhook, configCheck, resyncSubscription };

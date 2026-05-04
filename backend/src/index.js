@@ -54,7 +54,7 @@ const adminRoutes = require('./routes/admin');
 const subscriptionRoutes = require('./routes/subscription');
 const promoRoutes = require('./routes/promo');
 const giftRoutes = require('./routes/gift');
-const { handleWebhook, handlePaypalWebhook } = require('./controllers/subscriptionController');
+const { handleWebhook, handlePaypalWebhook, handleNowpaymentsWebhook } = require('./controllers/subscriptionController');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -113,6 +113,13 @@ app.post('/api/subscription/webhook', express.raw({ type: 'application/json' }),
 // asynchronously via /v1/notifications/verify-webhook-signature using
 // the unmodified payload bytes, so the same raw-body rule applies.
 app.post('/api/subscription/paypal/webhook', express.raw({ type: 'application/json' }), handlePaypalWebhook);
+
+// NOWPayments IPN webhook — raw body required. Signature is HMAC-SHA512
+// over the JSON payload with keys sorted alphabetically at every level
+// (verified in nowpaymentsService.verifyIpnSignature). The actual USDT
+// is forwarded by NOWPayments straight to the configured payout wallet
+// (Binance USDT TRC-20); this endpoint exists purely to grant entitlements.
+app.post('/api/subscription/nowpayments/webhook', express.raw({ type: 'application/json' }), handleNowpaymentsWebhook);
 
 // Parse JSON request bodies (2MB limit to accommodate base64 profile photos for CV templates)
 app.use(express.json({ limit: '2mb' }));
