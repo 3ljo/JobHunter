@@ -102,7 +102,7 @@ function CheckoutForm() {
 
   const [interval, setInterval] = useState<'month' | 'year' | 'once'>(intervalParam);
   const [loading, setLoading] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState<'card' | 'paypal' | 'crypto'>('card');
+  const [paymentMethod, setPaymentMethod] = useState<'card' | 'crypto'>('card');
   const [usdtCopied, setUsdtCopied] = useState(false);
 
   // Discount state — promo is user-entered (not cached).
@@ -195,12 +195,7 @@ function CheckoutForm() {
     setShowUsdtPayment(false);
     setLoading(true);
     try {
-      // PayPal Subscriptions API only handles recurring plans, so the
-      // 7-Day Pass and any other one-time SKU always go through Lemon
-      // Squeezy regardless of which payment-method tile is selected.
-      const provider: 'lemonsqueezy' | 'paypal' =
-        paymentMethod === 'paypal' && !isOneTime ? 'paypal' : 'lemonsqueezy';
-      const res = await createCheckoutSession(planKey, interval, paymentMethod, provider);
+      const res = await createCheckoutSession(planKey, interval, paymentMethod, 'lemonsqueezy');
       window.location.href = res.data.url;
     } catch (err: any) {
       const msg = err.response?.data?.error || 'Failed to start checkout';
@@ -291,10 +286,9 @@ function CheckoutForm() {
           {/* Payment method selector */}
           <div className="mb-4">
             <h4 className="text-white mb-4" style={{ fontWeight: 700 }}>Payment Method:</h4>
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-2 gap-3">
               {([
-                { key: 'card' as const, label: 'Card', sub: 'Visa, Mastercard, Amex', color: 'oklch(0.59 0.245 291)', colorLight: 'oklch(0.72 0.19 291)', bg: 'rgba(118,77,240,0.12)', icon: 'card' },
-                { key: 'paypal' as const, label: 'PayPal', sub: 'Pay with PayPal', color: '#0070f3', colorLight: '#3b9aff', bg: 'rgba(0,112,243,0.12)', icon: 'paypal' },
+                { key: 'card' as const, label: 'Card', sub: 'Visa, Mastercard, Amex, PayPal', color: 'oklch(0.59 0.245 291)', colorLight: 'oklch(0.72 0.19 291)', bg: 'rgba(118,77,240,0.12)', icon: 'card' },
                 { key: 'crypto' as const, label: 'USDT', sub: 'Tether stablecoin', color: '#26a17b', colorLight: '#50d9a3', bg: 'rgba(38,161,123,0.12)', icon: 'crypto' },
               ]).map((m) => (
                 <button
@@ -313,10 +307,6 @@ function CheckoutForm() {
                   )}
                   {m.icon === 'card' ? (
                     <CreditCard className="h-6 w-6 mx-auto mb-2" style={{ color: paymentMethod === m.key ? m.colorLight : 'rgba(255,255,255,0.4)' }} />
-                  ) : m.icon === 'paypal' ? (
-                    <svg className="h-6 w-6 mx-auto mb-2" viewBox="0 0 24 24" fill="none">
-                      <path d="M7.076 21.337H2.47a.641.641 0 0 1-.633-.74L4.944 3.72a.773.773 0 0 1 .763-.648h6.457c2.139 0 3.701.55 4.637 1.633.438.507.716 1.073.85 1.684.14.636.138 1.397-.008 2.319l-.01.055v.484l.378.214a3.09 3.09 0 0 1 .765.578c.41.462.674 1.054.784 1.757.114.722.076 1.583-.11 2.559-.215 1.12-.563 2.096-1.035 2.895a5.71 5.71 0 0 1-1.636 1.81c-.621.454-1.362.793-2.2 1.004-.813.207-1.74.312-2.754.312H11.08a.955.955 0 0 0-.944.808l-.032.174-.532 3.37-.024.127a.955.955 0 0 1-.944.808H7.076Z" fill={paymentMethod === m.key ? m.colorLight : 'rgba(255,255,255,0.4)'}/>
-                    </svg>
                   ) : (
                     <svg className="h-6 w-6 mx-auto mb-2" viewBox="0 0 32 32" fill="none">
                       <circle cx="16" cy="16" r="16" fill={paymentMethod === m.key ? m.colorLight : 'rgba(255,255,255,0.4)'}/>
@@ -333,9 +323,7 @@ function CheckoutForm() {
             <div className="flex items-center gap-3 mt-3 px-1">
               <Smartphone className="h-4 w-4 shrink-0" style={{ color: 'rgba(255,255,255,0.25)' }} />
               <p className="text-[11px] text-white/30" style={{ fontWeight: 400 }}>
-                {paymentMethod === 'paypal' && !isOneTime
-                  ? 'You’ll be redirected to PayPal to approve your subscription. PayPal manages billing, renewals, and cancellation directly from your PayPal account.'
-                  : 'After you click Buy Now you’ll be redirected to the secure checkout page. Apple Pay, Google Pay, and regional methods are offered there as available.'}
+                After you click Buy Now you’ll be redirected to the secure checkout page. Apple Pay, Google Pay, PayPal, and regional methods are offered there as available.
               </p>
             </div>
           </div>
@@ -638,7 +626,7 @@ function CheckoutForm() {
                 fontWeight: 500,
               }}
             >
-              256-bit SSL encrypted · Powered by Lemon Squeezy &amp; PayPal
+              256-bit SSL encrypted · Powered by Lemon Squeezy
             </p>
           </div>
 
