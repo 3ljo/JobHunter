@@ -134,24 +134,6 @@ export default function Home() {
     },
   ];
 
-  const testimonials = [
-    {
-      img: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=600&h=700&fit=crop&q=80',
-      name: 'James Mitchell',
-      title: 'Software Engineer · Landed at Google',
-    },
-    {
-      img: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=600&h=700&fit=crop&q=80',
-      name: 'Sarah Okonkwo',
-      title: 'Product Manager · Hired at Meta',
-    },
-    {
-      img: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=600&h=700&fit=crop&q=80',
-      name: 'Carlos Vasquez',
-      title: 'Data Scientist · Joined Stripe',
-    },
-  ];
-
   const logos = [
     '/logos/indeed.svg', '/logos/glassdoor.svg', '/logos/linkedin-jobs.svg', '/logos/monster.svg', '/logos/ziprecruiter.svg',
     '/logos/reed.svg', '/logos/totaljobs.svg', '/logos/careerbuilder.svg', '/logos/stepstone.svg', '/logos/simplyhired.svg',
@@ -437,17 +419,21 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Glassmorphism stats bar */}
+        {/* Trust signals bar — honest, no fake metrics */}
         <div className="relative px-6" style={{ zIndex: 3 }}>
           <div className="mx-auto max-w-5xl">
             <div
-              className="hidden md:grid grid-cols-3 divide-x divide-white/10 rounded-t-xl px-8 py-5"
+              className="grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-white/10 rounded-t-xl px-8 py-5"
               style={{ background: 'rgba(0,0,0,0.22)', backdropFilter: 'blur(14px)', border: '1px solid rgba(255,255,255,0.08)', borderBottom: 'none' }}
             >
-              {[{ v: '10,000+', l: 'CVs Analyzed' }, { v: '85%', l: 'Average Score Improvement' }, { v: '3×', l: 'More Interview Callbacks' }].map((s) => (
-                <div key={s.l} className="text-center px-6">
-                  <h3 className="text-2xl text-white mb-0.5" style={{ fontWeight: 800 }}>{s.v}</h3>
-                  <p className="text-sm text-white/55" style={{ fontWeight: 500 }}>{s.l}</p>
+              {[
+                { v: 'Free forever plan', l: 'Try it before you pay' },
+                { v: 'No credit card', l: 'Sign up in 30 seconds' },
+                { v: 'Cancel anytime', l: 'No lock-in, no contract' },
+              ].map((s) => (
+                <div key={s.l} className="text-center px-6 py-3 md:py-0">
+                  <h3 className="text-base text-white mb-0.5" style={{ fontWeight: 700 }}>{s.v}</h3>
+                  <p className="text-sm text-white/55" style={{ fontWeight: 400 }}>{s.l}</p>
                 </div>
               ))}
             </div>
@@ -463,7 +449,7 @@ export default function Home() {
               <span className="aivent-subtitle wow fadeInUp" data-wow-delay=".2s">About CvClimber</span>
               <h2 className="wow fadeInUp text-white tracking-tight mb-6" style={{ fontSize: 'clamp(32px,4vw,48px)', fontWeight: 800 }} data-wow-delay=".4s">A Global AI Platform for Job Seekers</h2>
               <p className="wow fadeInUp text-white/55 text-base leading-relaxed mb-8" style={{ fontWeight: 400 }} data-wow-delay=".6s">
-                Join thousands of job seekers using cutting-edge AI to perfect their CVs, craft winning cover letters, and land interviews faster. CvClimber gives you the AI-powered edge in every application.
+                CvClimber uses AI to score your CV against any job description, fix the gaps the ATS would flag, and write a cover letter that matches. The same edge recruiters look for — applied automatically.
               </p>
               <ul className="ul-check">
                 <li className="wow fadeInUp" data-wow-delay=".7s">Instant ATS scoring against any job description</li>
@@ -583,47 +569,29 @@ export default function Home() {
           <div className="wow fadeInUp">
             <div className="text-6xl font-black mb-6" style={{ color: 'oklch(0.59 0.245 291)', lineHeight: 1 }}>"</div>
             <h3 className="text-white leading-relaxed mb-6" style={{ fontSize: 'clamp(20px,2.5vw,30px)', fontWeight: 600 }}>
-              AI is fundamentally reshaping how people find work. Those who embrace AI-powered tools in their job search will have an insurmountable advantage over those who don't.
+              Most CVs never reach a human — they get filtered out by an ATS before anyone reads them. CvClimber rewrites yours so it makes it through.
             </h3>
-            <span className="text-white/45 text-sm uppercase tracking-widest" style={{ fontWeight: 500 }}>— The Future of Work Report, 2026</span>
           </div>
         </div>
       </section>
 
-      {/* ══ SUCCESS STORIES ══ */}
-      <section className="py-16 sm:py-32 px-4 sm:px-6" style={{ background: '#101435', position: 'relative', zIndex: 1 }}>
-        <div className="mx-auto max-w-6xl">
-          <div className="text-center mb-16">
-            <span className="aivent-subtitle" data-reveal>Success Stories</span>
-            <h2 className="text-white tracking-tight wow fadeInUp" data-wow-delay=".1s" style={{ fontSize: 'clamp(32px,4vw,48px)', fontWeight: 800 }}>Meet Our Top Users</h2>
-            <p className="text-white/55 text-lg mt-4 max-w-2xl mx-auto wow fadeInUp" style={{ fontWeight: 400 }} data-wow-delay=".2s">Real job seekers who used CvClimber to land roles at the world's top companies.</p>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {testimonials.map((t, i) => (
-              <div key={t.name} className="speaker-card relative rounded-xl overflow-hidden wow scale-in-mask" style={{ minHeight: '380px' }}>
-                <img src={t.img} alt={t.name} className="w-full h-full object-cover absolute inset-0" style={{ minHeight: '380px' }} />
-                <div className="absolute inset-0" style={{ background: 'linear-gradient(0deg,rgba(16,20,53,0.9) 0%,rgba(16,20,53,0) 60%)', zIndex: 1 }} />
-                <div className="speaker-overlay absolute inset-0" style={{ zIndex: 2 }} />
-                <div className="absolute bottom-0 left-0 right-0 z-10 p-4 m-4 rounded-xl text-center" style={{ background: 'rgba(0,0,0,0.18)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.08)' }}>
-                  <h3 className="text-white text-lg mb-1" style={{ fontWeight: 700 }}>{t.name}</h3>
-                  <span className="text-white/55 text-sm" style={{ fontWeight: 400 }}>{t.title}</span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ══ COMPANY LOGOS ══ */}
+      {/* ══ JOB SOURCES ══ */}
       <section
         className="relative overflow-hidden"
-        aria-label="logos"
+        aria-label="job-sources"
         style={{ paddingTop: '80px', paddingBottom: '80px' }}
       >
-        <div className="absolute inset-0" style={{ backgroundImage: 'url(/aivent/background/1.webp)', backgroundSize: 'cover', backgroundPosition: 'center', backgroundAttachment: 'fixed' }} />
+        <div className="absolute inset-0" style={{ backgroundImage: 'url(/aivent/background/1.webp)', backgroundSize: 'cover', backgroundPosition: 'center' }} />
         <div className="absolute inset-0" style={{ background: 'rgba(10,13,40,0.82)' }} />
         <div className="absolute top-0 left-0 right-0" style={{ height: '80px', background: 'linear-gradient(180deg,#101435 0%,transparent 100%)' }} />
         <div className="absolute bottom-0 left-0 right-0" style={{ height: '80px', background: 'linear-gradient(0deg,#101435 0%,transparent 100%)' }} />
+
+        <div className="relative px-6 mb-8 text-center" style={{ zIndex: 4 }}>
+          <span className="aivent-subtitle s2">Job Sources</span>
+          <h3 className="text-white/85 mt-2" style={{ fontSize: 'clamp(20px,2.5vw,28px)', fontWeight: 700 }}>
+            Live jobs pulled from the boards you already know
+          </h3>
+        </div>
 
         <div className="relative overflow-hidden" style={{ zIndex: 4 }}>
           <div className="animate-logo-scroll wow fadeInUp">
@@ -673,16 +641,16 @@ export default function Home() {
                   <div className="absolute bottom-0 left-0 right-0" style={{ height: '50%', background: 'linear-gradient(0deg,rgba(16,20,53,0.8) 0%,transparent 100%)' }} />
                 </div>
                 <div className="rounded-xl text-center py-8 px-4 wow scale-in-mask" style={{ background: 'oklch(0.59 0.245 291)' }}>
-                  <h2 className="text-white mb-1" style={{ fontSize: '2.5rem', fontWeight: 800, lineHeight: 1 }}>10K+</h2>
-                  <div className="text-white/80 text-sm" style={{ fontWeight: 600 }}>CVs Analyzed</div>
+                  <h2 className="text-white mb-1" style={{ fontSize: '2rem', fontWeight: 800, lineHeight: 1.1 }}>Free</h2>
+                  <div className="text-white/80 text-sm" style={{ fontWeight: 600 }}>To get started</div>
                 </div>
               </div>
 
               {/* Column 2 — offset down */}
               <div className="flex flex-col gap-4 mt-10">
                 <div className="rounded-xl text-center py-8 px-4 wow scale-in-mask" style={{ background: 'oklch(0.42 0.18 285)' }}>
-                  <h2 className="text-white mb-1" style={{ fontSize: '2.5rem', fontWeight: 800, lineHeight: 1 }}>85%</h2>
-                  <div className="text-white/80 text-sm" style={{ fontWeight: 600 }}>Score Improvement</div>
+                  <h2 className="text-white mb-1" style={{ fontSize: '2rem', fontWeight: 800, lineHeight: 1.1 }}>Instant</h2>
+                  <div className="text-white/80 text-sm" style={{ fontWeight: 600 }}>ATS results in seconds</div>
                 </div>
                 <div className="relative overflow-hidden rounded-xl wow scale-in-mask">
                   <img src="/aivent/misc/s2.webp" alt="" className="w-full object-cover" style={{ borderRadius: '12px' }} />
@@ -781,7 +749,7 @@ export default function Home() {
           <span className="aivent-subtitle s2 wow fadeInUp" data-wow-delay=".0s">Start Today — It is Free</span>
           <h2 className="text-white tracking-tight mb-6 wow fadeInUp" style={{ fontSize: 'clamp(32px,4vw,52px)', fontWeight: 800 }} data-wow-delay=".2s">Join the Future of Job Search</h2>
           <p className="text-white/60 text-lg leading-relaxed mb-8 wow fadeInUp" style={{ fontWeight: 400 }} data-wow-delay=".4s">
-            Thousands of job seekers are already using AI to get more interviews. Create your free account and start today.
+            Stop guessing why your CV gets ignored. Get an ATS score, fix the gaps, and apply with confidence. Free to start — no card required.
           </p>
           <div className="wow fadeInUp" data-wow-delay=".6s">
             {isLoggedIn
