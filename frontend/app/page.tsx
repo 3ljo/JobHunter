@@ -113,36 +113,43 @@ export default function Home() {
   ];
 
   /* ── Data ── */
+  // Mirrors the dashboard's TOOLS list so the landing page advertises
+  // exactly what users get inside. Update both lists together.
   const features = [
     {
-      img: 'https://images.unsplash.com/photo-1586281380349-632531db7ed4?w=700&h=450&fit=crop&q=80',
-      title: 'AI CV Analysis',
-      desc: 'ATS scoring, keyword gap analysis, and instant optimization suggestions for any job.',
+      img: '/aivent/misc/s3.webp',
+      title: 'CV Analyzer',
+      desc: 'ATS scoring and keyword gap analysis for any job description.',
     },
     {
-      img: 'https://images.unsplash.com/photo-1565688534245-05d6b5be184a?w=700&h=450&fit=crop&q=80',
-      title: 'Smart Job Matching',
-      desc: 'Our AI scores your profile against any job description and highlights exactly what is missing.',
+      img: '/aivent/misc/s2.webp',
+      title: 'Create CV',
+      desc: 'Build a CV from scratch — fill the form, preview live, tune with AI, export PDF/DOCX.',
     },
     {
-      img: 'https://images.unsplash.com/photo-1450101499163-c8848c66ca85?w=700&h=450&fit=crop&q=80',
-      title: 'Cover Letter AI',
-      desc: 'Tailored, professional cover letters in seconds — formal, balanced, or friendly tone.',
+      img: '/aivent/misc/s4.webp',
+      title: 'Cover Letter',
+      desc: 'AI-tailored cover letters in seconds — formal, balanced, or friendly tone.',
     },
     {
-      img: 'https://images.unsplash.com/photo-1507679799987-c73779587ccf?w=700&h=450&fit=crop&q=80',
-      title: 'Job Application Tracker',
-      desc: 'Visual kanban board to manage every application from saved to offer in one place.',
+      img: '/aivent/misc/mock-interview.png',
+      title: 'Mock Interview',
+      desc: 'Voice-based AI interview practice with scored, per-question feedback.',
     },
     {
-      img: 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=700&h=450&fit=crop&q=80',
-      title: 'CV History & Analytics',
-      desc: 'Full history of every analysis with score progression charts over time.',
+      img: '/aivent/misc/job-hunter.png',
+      title: 'Job Hunter',
+      desc: 'Live jobs across Remotive, Adzuna, and Jooble — searchable by role and country.',
     },
     {
-      img: 'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?w=700&h=450&fit=crop&q=80',
-      title: 'ATS Optimization',
-      desc: 'Beat automated resume filters with keyword-tuned CVs crafted for each specific role.',
+      img: '/aivent/misc/job-tracker.png',
+      title: 'Job Tracker',
+      desc: 'Kanban and table views to manage every application from saved to offer.',
+    },
+    {
+      img: '/aivent/misc/s6.webp',
+      title: 'CV History',
+      desc: 'Full history of every analysis with score progression over time.',
     },
   ];
 
