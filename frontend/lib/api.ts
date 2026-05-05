@@ -545,11 +545,38 @@ export const resyncSubscription = () =>
 export const checkAdmin = () =>
   api.get<{ isAdmin: boolean; email: string }>('/api/admin/check');
 
-export const getAdminDashboard = () =>
-  api.get('/api/admin/dashboard');
+export const getAdminOverview = () =>
+  api.get('/api/admin/overview');
+
+// Back-compat shim — old name kept so any stragglers still compile.
+export const getAdminDashboard = getAdminOverview;
 
 export const getAdminUsers = () =>
   api.get('/api/admin/users');
+
+export const getAdminUserDetail = (id: string) =>
+  api.get(`/api/admin/users/${id}`);
+
+export const grantAdminPlan = (id: string, plan: string, days: number) =>
+  api.post(`/api/admin/users/${id}/grant`, { plan, days });
+
+export const changeAdminPlan = (id: string, plan: string, status?: string) =>
+  api.patch(`/api/admin/users/${id}/plan`, { plan, status });
+
+export const resetAdminUserPassword = (id: string) =>
+  api.post(`/api/admin/users/${id}/reset-password`);
+
+export const banAdminUser = (id: string, hours: number) =>
+  api.post(`/api/admin/users/${id}/ban`, { hours });
+
+export const unbanAdminUser = (id: string) =>
+  api.post(`/api/admin/users/${id}/unban`);
+
+export const deleteAdminUser = (id: string) =>
+  api.delete(`/api/admin/users/${id}`);
+
+export const getAdminRevenue = () =>
+  api.get('/api/admin/revenue');
 
 export const getAdminUsage = (days = 30) =>
   api.get(`/api/admin/usage?days=${days}`);

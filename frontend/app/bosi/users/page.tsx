@@ -1,9 +1,10 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
 import { getAdminUsers } from '@/lib/api';
-import { Search, FileText, Briefcase, DollarSign, Crown, MailCheck, MailX, Filter } from 'lucide-react';
+import { Search, FileText, Briefcase, DollarSign, Crown, MailCheck, MailX, Filter, ChevronRight } from 'lucide-react';
+import UserDetailDrawer from '@/components/admin/UserDetailDrawer';
 
 interface AdminUser {
   id: string;
@@ -67,8 +68,11 @@ export default function BosiUsers() {
   const [planFilter, setPlanFilter] = useState<PlanFilter>('all');
   const [verifiedFilter, setVerifiedFilter] = useState<VerifiedFilter>('all');
   const [sortBy, setSortBy] = useState<SortKey>('newest');
+  const [openUserId, setOpenUserId] = useState<string | null>(null);
 
-  useEffect(() => {
+  const fetchUsers = useCallback(() => {
+    setLoading(true);
+    setError(null);
     getAdminUsers()
       .then((res) => setUsers(res.data.users || []))
       .catch((err: any) => {
@@ -81,6 +85,8 @@ export default function BosiUsers() {
       })
       .finally(() => setLoading(false));
   }, []);
+
+  useEffect(() => { fetchUsers(); }, [fetchUsers]);
 
   if (loading) {
     return (
@@ -268,7 +274,11 @@ export default function BosiUsers() {
             return (
               <div
                 key={user.id}
-                className="px-4 md:px-5 py-3.5 md:py-3 hover:bg-white/[0.04] transition-colors"
+                role="button"
+                tabIndex={0}
+                onClick={() => setOpenUserId(user.id)}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setOpenUserId(user.id); } }}
+                className="px-4 md:px-5 py-3.5 md:py-3 hover:bg-white/[0.04] transition-colors cursor-pointer"
                 style={{
                   borderBottom: isLast ? 'none' : '1px solid rgba(255,255,255,0.07)',
                 }}
@@ -316,13 +326,14 @@ export default function BosiUsers() {
                       <Briefcase className="h-3 w-3 text-white/40" /> {user.job_count}
                     </span>
                   </div>
-                  <div className="col-span-2 text-center">
+                  <div className="col-span-2 text-center flex items-center justify-center gap-1">
                     <span
                       className="inline-flex items-center gap-1 text-xs font-mono"
                       style={{ color: user.api_cost > 0 ? '#34d399' : 'rgba(255,255,255,0.5)' }}
                     >
                       <DollarSign className="h-3 w-3" /> {user.api_cost.toFixed(4)}
                     </span>
+                    <ChevronRight className="h-3 w-3 text-white/25" />
                   </div>
                 </div>
 
@@ -380,6 +391,14 @@ export default function BosiUsers() {
           })
         )}
       </div>
+
+      {openUserId && (
+        <UserDetailDrawer
+          userId={openUserId}
+          onClose={() => setOpenUserId(null)}
+          onMutated={fetchUsers}
+        />
+      )}
     </div>
   );
 }
