@@ -1,5 +1,5 @@
 {
-  "ai_provider": "openai",
+  "ai_provider": "gemini",
   "ai_model_anthropic": "claude-sonnet-4-20250514",
   "ai_model_openai": "gpt-4.1-nano",
   "ai_model_gemini": "gemini-2.0-flash",
