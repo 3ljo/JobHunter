@@ -874,7 +874,11 @@ export default function CVPage() {
               <AnalysisSidebar audit={result.audit} rewrite={result.rewrite} />
             </div>
             {isPro ? (
-              <QuickEditBox cvRecordId={result.cv_record_id} onRefine={handleRefine} />
+              <QuickEditBox
+                cvRecordId={result.cv_record_id}
+                onRefine={handleRefine}
+                onStaleRecord={resetAnalysis}
+              />
             ) : (
               <div
                 className="rounded-2xl p-4 sm:p-5 overflow-hidden"

@@ -15,6 +15,11 @@ interface QuickEditBoxProps {
    * so the same prompt fired twice still re-prefills.
    */
   prefill?: { text: string; key: number } | null;
+  /**
+   * Fired when the server reports the cv_record_id no longer exists (404).
+   * Parent should clear its cached analysis so the user is forced to re-upload.
+   */
+  onStaleRecord?: () => void;
 }
 
 const SUGGESTIONS = [
@@ -26,7 +31,7 @@ const SUGGESTIONS = [
   'Make tone sound more senior',
 ];
 
-export default function QuickEditBox({ cvRecordId, onRefine, prefill }: QuickEditBoxProps) {
+export default function QuickEditBox({ cvRecordId, onRefine, prefill, onStaleRecord }: QuickEditBoxProps) {
   const [text, setText] = useState('');
   const [refining, setRefining] = useState(false);
 
@@ -52,8 +57,20 @@ export default function QuickEditBox({ cvRecordId, onRefine, prefill }: QuickEdi
       onRefine(res.data.final_cv);
       toast.success('CV updated');
       setText('');
-    } catch {
-      toast.error('Failed to apply changes');
+    } catch (err: any) {
+      const status = err?.response?.status;
+      const serverMsg = err?.response?.data?.error;
+      if (status === 404) {
+        // The cv_record_id we're sending no longer exists for this user (deleted
+        // from history, account switch, etc). Cached state is stale — kick the
+        // parent so it can clear the analysis and force a re-upload.
+        toast.error('This analysis is no longer available — please re-upload your CV');
+        onStaleRecord?.();
+      } else if (status === 429) {
+        toast.error(serverMsg || 'Daily edit limit reached — try again tomorrow');
+      } else {
+        toast.error(serverMsg || 'Failed to apply changes');
+      }
     } finally {
       setRefining(false);
     }
