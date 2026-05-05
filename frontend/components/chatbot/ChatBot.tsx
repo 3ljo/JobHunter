@@ -1,13 +1,14 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { MessageCircle, Send, X } from 'lucide-react';
+import { MessageCircle, RotateCcw, Send, X } from 'lucide-react';
 import { sendChatBotMessage, type ChatBotMessage } from '@/lib/api';
 import { cn } from '@/lib/utils';
 
 type UIMessage = ChatBotMessage & { id: string };
 
 const BRAND = 'CVClimber';
+const ROBOT_ICON = '/aivent/misc/robot-idle.png';
 
 const QUICK_REPLIES = [
   'How does CV scoring work?',
@@ -84,6 +85,12 @@ export default function ChatBot() {
     void send(input);
   };
 
+  const restart = () => {
+    setMessages([]);
+    setInput('');
+    inputRef.current?.focus();
+  };
+
   return (
     <>
       <button
@@ -112,14 +119,29 @@ export default function ChatBot() {
             : 'pointer-events-none translate-y-2 opacity-0'
         )}
       >
-        <div className="flex items-center justify-between border-b border-neutral-200 bg-[#1a2466] px-4 py-3 text-white">
-          <div className="min-w-0">
-            <div className="text-sm font-semibold">{BRAND} Assistant</div>
-            <div className="flex items-center gap-1.5 text-[11px] text-white/70">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
-              <span>Online</span>
-            </div>
+        <div className="flex items-center gap-3 border-b border-neutral-200 bg-[#1a2466] px-4 py-3 text-white">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#0d1130] ring-1 ring-white/15">
+            <img
+              src={ROBOT_ICON}
+              alt=""
+              aria-hidden
+              className="h-[125%] w-auto -mb-1 select-none"
+              draggable={false}
+            />
           </div>
+          <div className="min-w-0 flex-1">
+            <div className="truncate text-sm font-semibold">{BRAND} Assistant</div>
+            <div className="truncate text-[11px] text-white/70">Here to help</div>
+          </div>
+          <button
+            type="button"
+            aria-label="Restart conversation"
+            title="Restart conversation"
+            onClick={restart}
+            className="rounded-md p-1 text-white/80 hover:bg-white/10 hover:text-white"
+          >
+            <RotateCcw className="h-4 w-4" />
+          </button>
           <button
             type="button"
             aria-label="Close chat"
