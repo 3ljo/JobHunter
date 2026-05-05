@@ -8,6 +8,12 @@ import ExecutiveNarrative from './ExecutiveNarrative';
 import AcademicResearch from './AcademicResearch';
 import ConsultingMetrics from './ConsultingMetrics';
 import SwissGrid from './SwissGrid';
+import AccentSidebar from './AccentSidebar';
+import CreativeBold from './CreativeBold';
+import DarkTech from './DarkTech';
+import SalesPerformance from './SalesPerformance';
+import CareerChanger from './CareerChanger';
+import ElegantSerif from './ElegantSerif';
 import { TEMPLATES, DEFAULT_TEMPLATE, type TemplateId, type TemplateMeta, type TemplateProps, type CVData } from './types';
 
 // 'original' is handled specially by CVPreview (renders the uploaded PDF in an iframe).
@@ -24,6 +30,12 @@ export const TEMPLATE_COMPONENTS: Record<TemplateId, React.FC<TemplateProps>> = 
   academic: AcademicResearch,
   consulting: ConsultingMetrics,
   swiss: SwissGrid,
+  sidebar: AccentSidebar,
+  creative: CreativeBold,
+  darktech: DarkTech,
+  sales: SalesPerformance,
+  functional: CareerChanger,
+  serif: ElegantSerif,
 };
 
 export { TEMPLATES, DEFAULT_TEMPLATE };

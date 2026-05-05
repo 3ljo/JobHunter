@@ -54,7 +54,13 @@ export type TemplateId =
   | 'executive'
   | 'academic'
   | 'consulting'
-  | 'swiss';
+  | 'swiss'
+  | 'sidebar'
+  | 'creative'
+  | 'darktech'
+  | 'sales'
+  | 'functional'
+  | 'serif';
 
 export interface TemplateMeta {
   id: TemplateId;
@@ -164,6 +170,60 @@ export const TEMPLATES: Record<TemplateId, TemplateMeta> = {
     supportsPhoto: true,
     atsScore: 96,
     region: 'Europe / Global',
+    proOnly: true,
+  },
+  sidebar: {
+    id: 'sidebar',
+    name: 'Two-Column Sidebar',
+    description: 'Navy sidebar with photo, skills, and contact — clean main column for experience.',
+    supportsPhoto: true,
+    atsScore: 92,
+    region: 'Global',
+    proOnly: true,
+  },
+  creative: {
+    id: 'creative',
+    name: 'Creative Bold',
+    description: 'Full-width violet→pink gradient header with optional photo. For designers, marketers, and creatives.',
+    supportsPhoto: true,
+    atsScore: 90,
+    region: 'Global',
+    proOnly: true,
+  },
+  darktech: {
+    id: 'darktech',
+    name: 'Dark Tech',
+    description: 'Charcoal sidebar with cyan terminal accents. Built for engineers, infra, and security roles.',
+    supportsPhoto: true,
+    atsScore: 91,
+    region: 'Global',
+    proOnly: true,
+  },
+  sales: {
+    id: 'sales',
+    name: 'Sales Performance',
+    description: 'Auto-paints quotas, %, and revenue figures as green KPI pills. Built for sales, BD, and revenue roles.',
+    supportsPhoto: false,
+    atsScore: 96,
+    region: 'Global',
+    proOnly: true,
+  },
+  functional: {
+    id: 'functional',
+    name: 'Career Changer',
+    description: 'Skills-first functional layout with strengths grid up top. Ideal for re-entry and pivots.',
+    supportsPhoto: false,
+    atsScore: 94,
+    region: 'Global',
+    proOnly: true,
+  },
+  serif: {
+    id: 'serif',
+    name: 'Elegant Serif',
+    description: 'Premium Playfair-style serif with gold double-rule. For director, partner, and senior consulting roles.',
+    supportsPhoto: true,
+    atsScore: 95,
+    region: 'Global',
     proOnly: true,
   },
 };

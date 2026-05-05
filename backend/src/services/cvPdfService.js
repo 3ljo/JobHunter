@@ -1,6 +1,6 @@
 // CV PDF Service
 // Generates PDF from structured CV data using Puppeteer.
-// Supports 10 ATS-optimized templates.
+// Supports 16 ATS-optimized templates.
 
 const puppeteer = require('puppeteer');
 
@@ -8,9 +8,10 @@ const DEFAULT_TEMPLATE = 'harvard';
 const TEMPLATES = [
   'harvard', 'modern', 'minimalist', 'european',
   'tech', 'compact', 'executive', 'academic', 'consulting', 'swiss',
+  'sidebar', 'creative', 'darktech', 'sales', 'functional', 'serif',
 ];
 
-const PHOTO_TEMPLATES = ['european', 'executive', 'swiss'];
+const PHOTO_TEMPLATES = ['european', 'executive', 'swiss', 'sidebar', 'creative', 'darktech', 'serif'];
 
 // ─── Singleton browser ──────────────────────────────────────────────
 // Launching Chromium is expensive (1-3s). Keep one instance alive for the
@@ -117,6 +118,12 @@ function buildCVHtml(cv, templateId, photo) {
     case 'academic':    return academicTemplate(cv);
     case 'consulting':  return consultingTemplate(cv);
     case 'swiss':       return swissTemplate(cv, photo);
+    case 'sidebar':     return sidebarTemplate(cv, photo);
+    case 'creative':    return creativeTemplate(cv, photo);
+    case 'darktech':    return darkTechTemplate(cv, photo);
+    case 'sales':       return salesTemplate(cv);
+    case 'functional':  return functionalTemplate(cv);
+    case 'serif':       return serifTemplate(cv, photo);
     case 'harvard':
     default:            return harvardTemplate(cv);
   }
@@ -807,6 +814,484 @@ li { font-size: 10.5pt; }
   ${renderSkills(cv, ' / ', '04 / Skills')}
   ${renderLanguages(cv)}
   ${renderCertifications(cv)}
+</body></html>`;
+}
+
+/* ═══════════════════════ Two-Column Sidebar (navy + amber) ═══════════════════════ */
+
+function sidebarTemplate(cv, photo) {
+  const skills = (cv.skills || []).filter((s) => s && String(s).trim());
+  const langs = (cv.languages || []).filter((l) => langText(l).length > 0);
+  const certs = (cv.certifications || []).filter((c) => certText(c).length > 0);
+  const photoHtml = photo ? `<img src="${photo}" class="photo" alt="Profile" />` : '';
+
+  const experienceHtml = !cv.experience || cv.experience.length === 0 ? '' : `
+    <div class="section">
+      <h2>Experience</h2>
+      ${cv.experience.map((role) => `
+        <div class="role">
+          <div class="role-row">
+            <span class="role-title"><strong>${escapeHtml(role.title)}</strong></span>
+            ${role.duration ? `<span class="role-date">${escapeHtml(role.duration)}</span>` : ''}
+          </div>
+          ${role.company ? `<div class="role-meta"><em>${escapeHtml(role.company)}</em></div>` : ''}
+          ${role.bullets && role.bullets.length > 0 ? `
+            <ul>${role.bullets.map((b) => `<li>${escapeHtml(b)}</li>`).join('')}</ul>
+          ` : ''}
+        </div>
+      `).join('')}
+    </div>
+  `;
+
+  return `<!DOCTYPE html>
+<html><head><meta charset="utf-8"><style>
+${baseStyles()}
+body { font-family: 'Inter', 'Segoe UI', Arial, sans-serif; font-size: 10.5pt; line-height: 1.5; color: #1f2937; }
+.layout { display: flex; gap: 16pt; align-items: stretch; }
+.side { width: 32%; background: #0f1f3d; color: #f8fafc; padding: 14pt 12pt; }
+.side .photo { width: 100%; max-width: 90pt; aspect-ratio: 1/1; object-fit: cover; border-radius: 50%; border: 2pt solid #d97706; display: block; margin: 0 auto 10pt; }
+.side .name { font-size: 18pt; font-weight: 700; color: #fff; line-height: 1.15; }
+.side .accent { width: 28pt; height: 2.5pt; background: #d97706; margin: 6pt 0 12pt; }
+.side h3 { font-size: 9pt; font-weight: 700; color: #d97706; text-transform: uppercase; letter-spacing: 2.5px; margin-bottom: 5pt; margin-top: 12pt; }
+.side ul { list-style: none; padding-left: 0; margin-top: 4pt; }
+.side li { font-size: 9.5pt; color: #e5e7eb; margin-bottom: 3pt; line-height: 1.45; word-break: break-all; }
+.side li.skill::before { content: '▸ '; color: #d97706; }
+.side .cert-name { font-weight: 600; color: #fff; }
+.side .cert-meta { font-size: 9pt; color: rgba(255,255,255,0.7); }
+.main { flex: 1; padding-top: 4pt; }
+.main h2 { font-size: 10.5pt; font-weight: 700; color: #0f1f3d; text-transform: uppercase; letter-spacing: 2.5px; border-bottom: 2pt solid #0f1f3d; padding-bottom: 2pt; margin-bottom: 8pt; }
+.main .section { margin-bottom: 14pt; }
+.main .role { margin-bottom: 10pt; }
+.main .role-row { display: flex; justify-content: space-between; align-items: baseline; gap: 10pt; }
+.main .role-title { font-size: 11pt; color: #0f1f3d; }
+.main .role-date { font-size: 9.5pt; color: #d97706; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; white-space: nowrap; }
+.main .role-meta { font-size: 10pt; color: #6b7280; font-style: italic; margin-bottom: 3pt; }
+.main p { font-size: 10.5pt; }
+.main li { font-size: 10.5pt; }
+</style></head><body>
+  <div class="layout">
+    <aside class="side">
+      ${photoHtml}
+      <div class="name">${escapeHtml(cv.full_name)}</div>
+      <div class="accent"></div>
+      <h3>Contact</h3>
+      <ul>
+        ${[cv.email, cv.phone, cv.location, cv.linkedin].filter(Boolean).map((c) => `<li>${escapeHtml(c)}</li>`).join('')}
+      </ul>
+      ${skills.length > 0 ? `<h3>Skills</h3><ul>${skills.map((s) => `<li class="skill">${escapeHtml(s)}</li>`).join('')}</ul>` : ''}
+      ${langs.length > 0 ? `<h3>Languages</h3><ul>${langs.map((l) => `<li>${escapeHtml(langText(l))}</li>`).join('')}</ul>` : ''}
+      ${certs.length > 0 ? `<h3>Certifications</h3><ul>${certs.map((c) => `<li><span class="cert-name">${escapeHtml(certText(c))}</span></li>`).join('')}</ul>` : ''}
+    </aside>
+    <div class="main">
+      ${cv.summary ? `<div class="section"><h2>Profile</h2><p>${escapeHtml(cv.summary)}</p></div>` : ''}
+      ${experienceHtml}
+      ${renderEducation(cv)}
+    </div>
+  </div>
+</body></html>`;
+}
+
+/* ═══════════════════════ Creative Bold (violet→pink gradient hero) ═══════════════════════ */
+
+function creativeTemplate(cv, photo) {
+  const contactLine = [cv.email, cv.phone, cv.location, cv.linkedin].filter(Boolean).join('  ·  ');
+  const skills = (cv.skills || []).filter((s) => s && String(s).trim());
+  const photoHtml = photo ? `<img src="${photo}" class="photo" alt="Profile" />` : '';
+
+  const experienceHtml = !cv.experience || cv.experience.length === 0 ? '' : `
+    <div class="section">
+      ${sectionHeader('Experience')}
+      ${cv.experience.map((role) => `
+        <div class="role">
+          <div class="role-row">
+            <span class="role-title"><strong>${escapeHtml(role.title)}</strong></span>
+            ${role.duration ? `<span class="role-pill">${escapeHtml(role.duration)}</span>` : ''}
+          </div>
+          ${role.company ? `<div class="role-meta"><em>${escapeHtml(role.company)}</em></div>` : ''}
+          ${role.bullets && role.bullets.length > 0 ? `
+            <ul>${role.bullets.map((b) => `<li>${escapeHtml(b)}</li>`).join('')}</ul>
+          ` : ''}
+        </div>
+      `).join('')}
+    </div>
+  `;
+
+  const skillsHtml = skills.length === 0 ? '' : `
+    <div class="section">
+      ${sectionHeader('Skills')}
+      <div class="chips">
+        ${skills.map((s) => `<span class="chip">${escapeHtml(s)}</span>`).join('')}
+      </div>
+    </div>
+  `;
+
+  return `<!DOCTYPE html>
+<html><head><meta charset="utf-8"><style>
+${baseStyles()}
+body { font-family: 'Inter', 'Segoe UI', Arial, sans-serif; font-size: 10.5pt; line-height: 1.5; color: #1f2937; margin: 0; }
+.hero { background: linear-gradient(135deg,#7c3aed 0%,#ec4899 100%); color: #fff; padding: 22pt 26pt; display: flex; align-items: center; gap: 16pt; margin: -0.6in -0.7in 18pt; }
+.photo { width: 70pt; height: 70pt; object-fit: cover; border-radius: 50%; border: 2pt solid rgba(255,255,255,0.85); flex-shrink: 0; }
+.hero .name { font-size: 26pt; font-weight: 800; letter-spacing: -0.5px; line-height: 1.05; color: #fff; }
+.hero .contact { font-size: 10pt; color: rgba(255,255,255,0.92); margin-top: 6pt; }
+.section { margin-bottom: 14pt; }
+.h2-row { display: flex; align-items: center; gap: 8pt; margin-bottom: 8pt; }
+.h2-bar { display: inline-block; width: 18pt; height: 2.5pt; border-radius: 1pt; background: linear-gradient(90deg,#7c3aed,#ec4899); }
+.h2 { font-size: 10pt; font-weight: 800; text-transform: uppercase; letter-spacing: 2.5px; color: #1f2937; }
+.role { margin-bottom: 10pt; padding-left: 10pt; border-left: 2.5pt solid #7c3aed; }
+.role-row { display: flex; justify-content: space-between; align-items: baseline; gap: 10pt; }
+.role-title { font-size: 11pt; color: #0a0a0a; }
+.role-pill { font-size: 9pt; font-weight: 700; color: #7c3aed; background: rgba(124,58,237,0.10); padding: 2pt 8pt; border-radius: 10pt; white-space: nowrap; }
+.role-meta { font-size: 10pt; color: #6b7280; font-style: italic; margin-bottom: 3pt; }
+.chips { display: flex; flex-wrap: wrap; gap: 4pt; }
+.chip { display: inline-block; font-size: 9.5pt; font-weight: 600; color: #581c87; padding: 3pt 9pt; border-radius: 10pt; background: rgba(124,58,237,0.08); border: 0.5pt solid rgba(124,58,237,0.20); }
+p { font-size: 10.5pt; }
+li { font-size: 10.5pt; }
+</style></head><body>
+  <div class="hero">
+    ${photoHtml}
+    <div>
+      <div class="name">${escapeHtml(cv.full_name)}</div>
+      ${contactLine ? `<div class="contact">${escapeHtml(contactLine)}</div>` : ''}
+    </div>
+  </div>
+  ${cv.summary ? `<div class="section">${sectionHeader('About')}<p>${escapeHtml(cv.summary)}</p></div>` : ''}
+  ${experienceHtml}
+  ${skillsHtml}
+  ${renderEducation(cv)}
+  ${renderLanguages(cv)}
+  ${renderCertifications(cv)}
+</body></html>`;
+}
+
+function sectionHeader(title) {
+  return `<div class="h2-row"><span class="h2-bar"></span><span class="h2">${escapeHtml(title)}</span></div>`;
+}
+
+/* ═══════════════════════ Dark Tech (charcoal sidebar + cyan) ═══════════════════════ */
+
+function darkTechTemplate(cv, photo) {
+  const skills = (cv.skills || []).filter((s) => s && String(s).trim());
+  const langs = (cv.languages || []).filter((l) => langText(l).length > 0);
+  const certs = (cv.certifications || []).filter((c) => certText(c).length > 0);
+  const photoHtml = photo ? `<img src="${photo}" class="photo" alt="Profile" />` : '';
+
+  const experienceHtml = !cv.experience || cv.experience.length === 0 ? '' : `
+    <div class="section">
+      <h2><span class="hash">#</span> experience.log</h2>
+      ${cv.experience.map((role) => `
+        <div class="role">
+          <div class="role-row">
+            <span class="role-title"><strong>${escapeHtml(role.title)}</strong></span>
+            ${role.duration ? `<span class="role-tag">${escapeHtml(role.duration)}</span>` : ''}
+          </div>
+          ${role.company ? `<div class="role-meta">${escapeHtml(role.company)}</div>` : ''}
+          ${role.bullets && role.bullets.length > 0 ? `
+            <ul>${role.bullets.map((b) => `<li>${escapeHtml(b)}</li>`).join('')}</ul>
+          ` : ''}
+        </div>
+      `).join('')}
+    </div>
+  `;
+
+  return `<!DOCTYPE html>
+<html><head><meta charset="utf-8"><style>
+${baseStyles()}
+body { font-family: 'Inter', 'Segoe UI', Arial, sans-serif; font-size: 10.5pt; line-height: 1.5; color: #1f2937; }
+.layout { display: flex; gap: 16pt; }
+.side { width: 32%; background: #0b1220; color: #e5e7eb; padding: 14pt 12pt; }
+.side .photo { width: 100%; max-width: 88pt; aspect-ratio: 1/1; object-fit: cover; border-radius: 6pt; border: 0.5pt solid rgba(34,211,238,0.35); display: block; margin: 0 auto 10pt; }
+.side .who { font-family: 'Courier New', monospace; font-size: 9pt; color: #22d3ee; margin-bottom: 4pt; }
+.side .name { font-size: 17pt; font-weight: 700; color: #fff; line-height: 1.15; }
+.side .accent { height: 2pt; width: 22pt; background: #22d3ee; margin: 6pt 0 14pt; }
+.side h3 { font-size: 9pt; color: #22d3ee; font-family: 'Courier New', monospace; letter-spacing: 0.5px; margin-top: 12pt; margin-bottom: 5pt; }
+.side ul { list-style: none; padding-left: 0; margin-top: 0; }
+.side li { font-size: 9.5pt; color: #e5e7eb; margin-bottom: 3pt; word-break: break-all; }
+.side .stack { display: flex; flex-wrap: wrap; gap: 3pt; }
+.side .stack .tag { font-family: 'Courier New', monospace; font-size: 8.5pt; color: #a5f3fc; padding: 2pt 6pt; border-radius: 3pt; background: rgba(34,211,238,0.10); border: 0.4pt solid rgba(34,211,238,0.30); }
+.main { flex: 1; padding-top: 4pt; }
+.main h2 { font-family: 'Courier New', monospace; font-size: 10.5pt; font-weight: 700; color: #0b1220; letter-spacing: 0.5px; margin-bottom: 8pt; }
+.main .hash { color: #22d3ee; }
+.section { margin-bottom: 14pt; }
+.role { margin-bottom: 10pt; padding: 8pt 10pt; background: #fafafa; border: 0.5pt solid #e5e7eb; border-radius: 4pt; }
+.role-row { display: flex; justify-content: space-between; align-items: baseline; gap: 10pt; }
+.role-title { font-size: 11pt; color: #0b1220; }
+.role-tag { font-family: 'Courier New', monospace; font-size: 9pt; color: #0e7490; background: rgba(34,211,238,0.10); padding: 2pt 6pt; border-radius: 3pt; white-space: nowrap; }
+.role-meta { font-size: 10pt; color: #6b7280; margin-bottom: 3pt; }
+p { font-size: 10.5pt; }
+li { font-size: 10.5pt; }
+</style></head><body>
+  <div class="layout">
+    <aside class="side">
+      ${photoHtml}
+      <div class="who">$ whoami</div>
+      <div class="name">${escapeHtml(cv.full_name)}</div>
+      <div class="accent"></div>
+      <h3>// contact</h3>
+      <ul>${[cv.email, cv.phone, cv.location, cv.linkedin].filter(Boolean).map((c) => `<li>${escapeHtml(c)}</li>`).join('')}</ul>
+      ${skills.length > 0 ? `<h3>// stack</h3><div class="stack">${skills.map((s) => `<span class="tag">${escapeHtml(s)}</span>`).join('')}</div>` : ''}
+      ${langs.length > 0 ? `<h3>// langs</h3><ul>${langs.map((l) => `<li>${escapeHtml(langText(l))}</li>`).join('')}</ul>` : ''}
+      ${certs.length > 0 ? `<h3>// certs</h3><ul>${certs.map((c) => `<li>${escapeHtml(certText(c))}</li>`).join('')}</ul>` : ''}
+    </aside>
+    <div class="main">
+      ${cv.summary ? `<div class="section"><h2><span class="hash">#</span> README.md</h2><p>${escapeHtml(cv.summary)}</p></div>` : ''}
+      ${experienceHtml}
+      ${renderEducation(cv)}
+    </div>
+  </div>
+</body></html>`;
+}
+
+/* ═══════════════════════ Sales Performance (KPI pills auto-detect) ═══════════════════════ */
+
+function salesTemplate(cv) {
+  const contactLine = [cv.email, cv.phone, cv.location, cv.linkedin].filter(Boolean).join('  •  ');
+  const skills = (cv.skills || []).filter((s) => s && String(s).trim());
+
+  // Pull the first KPI-style number (%, $, K/M/B, or 2+ digits) out of a bullet
+  // and render it as a green pill on the left so achievements jump off the page.
+  const kpiBulletHtml = (bullet) => {
+    const trimmed = String(bullet || '').trim();
+    if (!trimmed) return '';
+    const m = trimmed.match(/([+\-]?\$?\d[\d,.]*[KMBkmb]?%?)/);
+    if (!m) return `<li>${escapeHtml(trimmed)}</li>`;
+    const raw = m[0];
+    const looksLikeMetric = /[\$%]/.test(raw) || /\d{2,}/.test(raw) || /[KMBkmb]/.test(raw);
+    if (!looksLikeMetric) return `<li>${escapeHtml(trimmed)}</li>`;
+    const before = trimmed.slice(0, m.index);
+    const after = trimmed.slice(m.index + raw.length).replace(/^[\s\-—:.,]*/, '');
+    const rest = (before + after).replace(/\s+/g, ' ').trim();
+    return `<li class="kpi-li"><span class="kpi">${escapeHtml(raw)}</span><span>${escapeHtml(rest)}</span></li>`;
+  };
+
+  const experienceHtml = !cv.experience || cv.experience.length === 0 ? '' : `
+    <div class="section">
+      <h2>Track Record</h2>
+      ${cv.experience.map((role) => `
+        <div class="role">
+          <div class="role-row">
+            <div>
+              <div class="role-title"><strong>${escapeHtml(role.title)}</strong></div>
+              ${role.company ? `<div class="role-meta">${escapeHtml(role.company)}</div>` : ''}
+            </div>
+            ${role.duration ? `<span class="role-date">${escapeHtml(role.duration)}</span>` : ''}
+          </div>
+          ${role.bullets && role.bullets.length > 0 ? `
+            <ul class="kpi-list">${role.bullets.map(kpiBulletHtml).join('')}</ul>
+          ` : ''}
+        </div>
+      `).join('')}
+    </div>
+  `;
+
+  const skillsHtml = skills.length === 0 ? '' : `
+    <div class="section">
+      <h2>Core Competencies</h2>
+      <div class="comp-list">
+        ${skills.map((s) => `<span class="comp-pill">${escapeHtml(s)}</span>`).join('')}
+      </div>
+    </div>
+  `;
+
+  return `<!DOCTYPE html>
+<html><head><meta charset="utf-8"><style>
+${baseStyles()}
+body { font-family: 'Inter', 'Segoe UI', Arial, sans-serif; font-size: 10.5pt; line-height: 1.55; color: #1f2937; border-top: 4pt solid #065f46; padding-top: 8pt; }
+.head-row { display: flex; justify-content: space-between; align-items: baseline; gap: 12pt; flex-wrap: wrap; }
+.name { font-size: 24pt; font-weight: 800; color: #0a0a0a; letter-spacing: -0.3px; line-height: 1.1; }
+.qpill { font-size: 8.5pt; font-weight: 800; color: #065f46; background: rgba(16,185,129,0.10); border: 0.5pt solid rgba(16,185,129,0.30); padding: 3pt 9pt; border-radius: 12pt; letter-spacing: 0.5px; }
+.contact { font-size: 10pt; color: #4b5563; margin-top: 4pt; }
+.section { margin-top: 14pt; }
+h2 { font-size: 10pt; font-weight: 800; text-transform: uppercase; letter-spacing: 2.5px; color: #065f46; border-bottom: 1.5pt solid #10b981; padding-bottom: 2pt; padding-right: 12pt; display: inline-block; margin-bottom: 8pt; }
+.role { margin-bottom: 10pt; }
+.role-row { display: flex; justify-content: space-between; align-items: baseline; gap: 10pt; }
+.role-title { font-size: 11pt; color: #0a0a0a; }
+.role-meta { font-size: 10pt; color: #6b7280; margin-bottom: 3pt; }
+.role-date { font-size: 9.5pt; font-weight: 700; color: #065f46; text-transform: uppercase; letter-spacing: 1px; white-space: nowrap; }
+ul.kpi-list { list-style: none; padding-left: 0; margin-top: 4pt; }
+li.kpi-li { display: flex; gap: 7pt; align-items: flex-start; font-size: 10.5pt; margin-bottom: 4pt; }
+li.kpi-li .kpi { background: #10b981; color: #fff; font-weight: 800; padding: 2pt 7pt; border-radius: 3pt; font-size: 9.5pt; min-width: 36pt; text-align: center; flex-shrink: 0; }
+ul.kpi-list li:not(.kpi-li) { padding-left: 12pt; position: relative; font-size: 10.5pt; margin-bottom: 4pt; }
+ul.kpi-list li:not(.kpi-li)::before { content: ''; position: absolute; left: 2pt; top: 6pt; width: 4pt; height: 4pt; background: #065f46; border-radius: 50%; }
+.comp-list { display: flex; flex-wrap: wrap; gap: 4pt; }
+.comp-pill { font-size: 9.5pt; font-weight: 600; color: #065f46; background: #f0fdf4; border: 0.5pt solid rgba(16,185,129,0.25); padding: 3pt 9pt; border-radius: 3pt; }
+p { font-size: 10.5pt; }
+</style></head><body>
+  <div class="head-row">
+    <div class="name">${escapeHtml(cv.full_name)}</div>
+    <span class="qpill">QUOTA · ACHIEVEMENT · GROWTH</span>
+  </div>
+  ${contactLine ? `<div class="contact">${escapeHtml(contactLine)}</div>` : ''}
+  ${cv.summary ? `<div class="section"><h2>Performance Summary</h2><p>${escapeHtml(cv.summary)}</p></div>` : ''}
+  ${experienceHtml}
+  ${skillsHtml}
+  ${renderEducation(cv)}
+  ${renderLanguages(cv)}
+  ${renderCertifications(cv)}
+</body></html>`;
+}
+
+/* ═══════════════════════ Career Changer (skills hero) ═══════════════════════ */
+
+function functionalTemplate(cv) {
+  const contactLine = [cv.email, cv.phone, cv.location, cv.linkedin].filter(Boolean).join('  ·  ');
+  const skills = (cv.skills || []).filter((s) => s && String(s).trim());
+  const certs = (cv.certifications || []).filter((c) => certText(c).length > 0);
+
+  const skillsHtml = skills.length === 0 ? '' : `
+    <div class="section">
+      <h2>Core Strengths <span class="sub">— Transferable skills built across roles</span></h2>
+      <div class="grid">
+        ${skills.map((s, i) => `
+          <div class="strength ${i % 2 === 0 ? 'plum' : 'teal'}">
+            <span class="dot"></span>${escapeHtml(s)}
+          </div>
+        `).join('')}
+      </div>
+    </div>
+  `;
+
+  const experienceHtml = !cv.experience || cv.experience.length === 0 ? '' : `
+    <div class="section">
+      <h2>Experience <span class="sub">— Most relevant roles</span></h2>
+      ${cv.experience.map((role) => `
+        <div class="role">
+          <div class="role-row">
+            <span class="role-title"><strong>${escapeHtml(role.title)}</strong></span>
+            ${role.duration ? `<span class="role-date">${escapeHtml(role.duration)}</span>` : ''}
+          </div>
+          ${role.company ? `<div class="role-meta"><em>${escapeHtml(role.company)}</em></div>` : ''}
+          ${role.bullets && role.bullets.length > 0 ? `
+            <ul>${role.bullets.map((b) => `<li>${escapeHtml(b)}</li>`).join('')}</ul>
+          ` : ''}
+        </div>
+      `).join('')}
+    </div>
+  `;
+
+  const certsHtml = certs.length === 0 ? '' : `
+    <div class="section">
+      <h2>Certifications &amp; Training</h2>
+      <div class="grid">
+        ${certs.map((c) => `
+          <div class="cert-card">
+            <div class="cert-name">${escapeHtml(certText(c))}</div>
+            ${certExtrasHtml(c)}
+          </div>
+        `).join('')}
+      </div>
+    </div>
+  `;
+
+  return `<!DOCTYPE html>
+<html><head><meta charset="utf-8"><style>
+${baseStyles()}
+body { font-family: 'Inter', 'Segoe UI', Arial, sans-serif; font-size: 10.5pt; line-height: 1.55; color: #1f2937; }
+.hero { background: #faf5ff; padding: 18pt 20pt; text-align: center; margin: -0.6in -0.7in 16pt; }
+.hero .name { font-size: 24pt; font-weight: 800; color: #5b21b6; letter-spacing: -0.3px; }
+.hero .contact { font-size: 10pt; color: #6b7280; margin-top: 4pt; }
+.hero .summary { font-size: 10.5pt; color: #374151; max-width: 480pt; margin: 8pt auto 0; line-height: 1.65; }
+.section { margin-bottom: 14pt; }
+h2 { font-size: 11pt; font-weight: 800; text-transform: uppercase; letter-spacing: 2px; color: #5b21b6; margin-bottom: 8pt; }
+h2 .sub { font-size: 9.5pt; font-weight: 400; text-transform: none; letter-spacing: normal; color: #9ca3af; margin-left: 6pt; }
+.grid { display: grid; grid-template-columns: 1fr 1fr; gap: 5pt; }
+.strength { display: flex; align-items: center; gap: 6pt; padding: 5pt 9pt; border-radius: 5pt; font-size: 10pt; font-weight: 600; }
+.strength .dot { width: 5pt; height: 5pt; border-radius: 50%; flex-shrink: 0; }
+.strength.plum { background: rgba(91,33,182,0.06); border: 0.5pt solid rgba(91,33,182,0.18); }
+.strength.plum .dot { background: #5b21b6; }
+.strength.teal { background: rgba(13,148,136,0.06); border: 0.5pt solid rgba(13,148,136,0.20); }
+.strength.teal .dot { background: #0d9488; }
+.role { margin-bottom: 9pt; }
+.role-row { display: flex; justify-content: space-between; align-items: baseline; gap: 10pt; }
+.role-title { font-size: 11pt; color: #5b21b6; }
+.role-date { font-size: 9.5pt; font-weight: 700; color: #0d9488; text-transform: uppercase; letter-spacing: 1px; white-space: nowrap; }
+.role-meta { font-size: 10pt; color: #6b7280; font-style: italic; margin-bottom: 3pt; }
+.cert-card { background: #fafafa; border: 0.5pt solid #e5e7eb; border-radius: 5pt; padding: 6pt 9pt; }
+.cert-name { font-size: 10pt; font-weight: 600; color: #111; }
+ul li::marker { content: '✓  '; color: #0d9488; }
+p { font-size: 10.5pt; }
+li { font-size: 10.5pt; }
+</style></head><body>
+  <div class="hero">
+    <div class="name">${escapeHtml(cv.full_name)}</div>
+    ${contactLine ? `<div class="contact">${escapeHtml(contactLine)}</div>` : ''}
+    ${cv.summary ? `<div class="summary">${escapeHtml(cv.summary)}</div>` : ''}
+  </div>
+  ${skillsHtml}
+  ${experienceHtml}
+  ${renderEducation(cv)}
+  ${renderLanguages(cv)}
+  ${certsHtml}
+</body></html>`;
+}
+
+/* ═══════════════════════ Elegant Serif (premium serif + gold) ═══════════════════════ */
+
+function serifTemplate(cv, photo) {
+  const contactLine = [cv.email, cv.phone, cv.location, cv.linkedin].filter(Boolean).join('   ·   ');
+  const skills = (cv.skills || []).filter((s) => s && String(s).trim());
+  const langs = (cv.languages || []).filter((l) => langText(l).length > 0);
+  const certs = (cv.certifications || []).filter((c) => certText(c).length > 0);
+  const photoHtml = photo ? `<img src="${photo}" class="photo" alt="Profile" />` : '';
+
+  const experienceHtml = !cv.experience || cv.experience.length === 0 ? '' : `
+    <div class="section">
+      <h2>Experience</h2>
+      ${cv.experience.map((role) => `
+        <div class="role">
+          <div class="role-row">
+            <span class="role-title"><strong>${escapeHtml(role.title)}</strong></span>
+            ${role.duration ? `<span class="role-date"><em>${escapeHtml(role.duration)}</em></span>` : ''}
+          </div>
+          ${role.company ? `<div class="role-meta"><em>${escapeHtml(role.company)}</em></div>` : ''}
+          ${role.bullets && role.bullets.length > 0 ? `
+            <ul>${role.bullets.map((b) => `<li>${escapeHtml(b)}</li>`).join('')}</ul>
+          ` : ''}
+        </div>
+      `).join('')}
+    </div>
+  `;
+
+  return `<!DOCTYPE html>
+<html><head><meta charset="utf-8"><style>
+${baseStyles()}
+body { font-family: 'Source Serif Pro', Georgia, 'Times New Roman', serif; font-size: 11pt; line-height: 1.65; color: #111827; }
+.head { text-align: center; }
+.photo { width: 70pt; height: 70pt; object-fit: cover; border-radius: 50%; border: 1.5pt solid #b45309; padding: 2pt; display: block; margin: 0 auto 8pt; }
+.name { font-family: 'Playfair Display', Georgia, serif; font-size: 26pt; font-weight: 700; letter-spacing: -0.3px; color: #111827; line-height: 1.05; }
+.gold-rule { display: flex; align-items: center; justify-content: center; gap: 6pt; margin: 10pt 0 6pt; }
+.gold-rule .line { height: 0.6pt; width: 50pt; background: #b45309; }
+.gold-rule .diamond { width: 4pt; height: 4pt; background: #b45309; transform: rotate(45deg); }
+.contact { font-size: 10pt; color: #374151; font-style: italic; }
+.body { margin-top: 18pt; }
+.section { margin-bottom: 16pt; }
+h2 { font-family: 'Playfair Display', Georgia, serif; text-align: center; font-size: 11.5pt; font-weight: 600; text-transform: uppercase; letter-spacing: 5px; color: #111827; padding-bottom: 3pt; border-bottom: 0.5pt solid #b45309; margin-bottom: 10pt; }
+.role { margin-bottom: 10pt; }
+.role-row { display: flex; justify-content: space-between; align-items: baseline; gap: 10pt; }
+.role-title { font-family: 'Playfair Display', Georgia, serif; font-size: 11.5pt; }
+.role-date { font-size: 9.5pt; color: #b45309; font-style: italic; white-space: nowrap; }
+.role-meta { font-size: 10.5pt; color: #4b5563; margin-bottom: 3pt; }
+ul { padding-left: 18pt; margin-top: 3pt; }
+li { font-size: 11pt; }
+li::marker { content: '— '; color: #4b5563; }
+.skills-list { text-align: center; font-size: 10.5pt; font-style: italic; line-height: 1.85; }
+.langs-list { text-align: center; font-size: 10.5pt; font-style: italic; }
+p { font-size: 11pt; }
+.justify p { text-align: justify; }
+</style></head><body>
+  <div class="head">
+    ${photoHtml}
+    <div class="name">${escapeHtml(cv.full_name)}</div>
+    <div class="gold-rule"><span class="line"></span><span class="diamond"></span><span class="line"></span></div>
+    ${contactLine ? `<div class="contact">${escapeHtml(contactLine)}</div>` : ''}
+  </div>
+  <div class="body">
+    ${cv.summary ? `<div class="section justify"><h2>Profile</h2><p>${escapeHtml(cv.summary)}</p></div>` : ''}
+    ${experienceHtml}
+    ${skills.length > 0 ? `<div class="section"><h2>Areas of Expertise</h2><div class="skills-list">${escapeHtml(skills.join('   ·   '))}</div></div>` : ''}
+    ${renderEducation(cv)}
+    ${langs.length > 0 ? `<div class="section"><h2>Languages</h2><div class="langs-list">${escapeHtml(langs.map(langText).join('   ·   '))}</div></div>` : ''}
+    ${certs.length > 0 ? `<div class="section"><h2>Certifications</h2>${certs.map((c) => `<div class="entry"><p style="font-family:'Playfair Display',serif;font-weight:600;">${escapeHtml(certText(c))}</p>${certExtrasHtml(c)}</div>`).join('')}</div>` : ''}
+  </div>
 </body></html>`;
 }
 
