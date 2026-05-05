@@ -235,26 +235,22 @@ Return ONLY this JSON:
 
 // Stage 3 — Rewrite + Humanize. Uses parsed data + JD fingerprint only,
 // so it can run in parallel with the audit.
+//
+// Output is a PATCH — only the fields the rewrite actually changes (summary,
+// experience bullets, optionally skills). Education/certs/languages/contact
+// info are merged server-side from the parsed CV. This roughly halves the
+// output token count and is the dominant latency win on this stage.
 const runRewriteStage = (cvText, parsedData, experienceForRewrite, dateAdjustment, requiredYears, m) => callProvider(
   `You are a world-class CV writer and humanization expert.
-Your job is to produce a FINAL, ATS-optimized, undetectably-human CV in a single pass.
+Your job is to produce ATS-optimized, undetectably-human CV CONTENT in a single pass.
 
 Pass 1 — Voice preservation & intelligent rewrite:
 1. Study the original CV text carefully. Detect vocabulary complexity, avg sentence length,
    first vs third person, formality level, quantification style.
-2. Rewrite every section in that exact voice — only stronger, sharper, more specific.
+2. Rewrite every bullet in that exact voice — only stronger, sharper, more specific.
 3. Naturally embed all missing JD keywords without sounding forced.
 4. Never fabricate skills, experience, employers, dates, or achievements.
 5. Transform weak bullets into strong achievement-focused statements.
-6. PRESERVE every certification, license, degree, and education entry from the parsed CV.
-   NEVER drop or empty them. If the parsed CV lists certifications, the final_cv.certifications
-   array MUST contain them (rewritten/normalized in wording is fine, but the items themselves
-   must survive). Same for education entries. Dropping factual credentials is a critical failure.
-7. PRESERVE every URL exactly as given (certificate links, institution websites). Do NOT
-   shorten, rewrite, or drop URLs. Copy them character-for-character into the "url" field.
-   Same for city, country, and year fields — carry them through verbatim.
-8. LANGUAGES must always include BOTH "name" and "level" for every entry. Never output
-   a language with just a level and no name. Example: [{"name":"English","level":"B2"}].
 
 Pass 2 — Heavy humanization (applied in the SAME output):
 - Vary sentence length drastically — mix short punchy bullets with longer descriptive ones.
@@ -268,34 +264,34 @@ Pass 2 — Heavy humanization (applied in the SAME output):
 - The final output must pass GPTZero / Originality.ai / Turnitin.
 
 Strict constraints:
-- Preserve ALL work experience dates exactly as provided (including any adjusted ones).
+- Preserve ALL work experience dates EXACTLY as provided (including any adjusted ones).
+- Keep the experience array in the SAME ORDER as the input, with the same title + company
+  + duration on each entry. Only the bullets change.
 - If the summary references years of experience, keep it consistent with the dates.
-- Preserve contact details exactly as provided.
-- Return a single valid JSON. No markdown. No explanation.`,
+- Skills: return the FULL updated skills array (parsed skills + any JD keywords you
+  naturally added). Don't drop existing skills.
+- Return strict valid JSON. No markdown. No explanation.`,
   `Original CV text (source of voice and facts):
 ${cvText}
 
-Parsed CV data (use these as the facts; dates are authoritative):
-${JSON.stringify({ ...parsedData.cv_parsed, experience: experienceForRewrite })}
+Parsed CV experience (rewrite the bullets, keep title/company/duration verbatim):
+${JSON.stringify(experienceForRewrite)}
+
+Existing skills (keep all + add JD keywords naturally):
+${JSON.stringify(parsedData.cv_parsed.skills || [])}
+
+Existing summary (rewrite in the same voice; keep YoE consistent with dates):
+${JSON.stringify(parsedData.cv_parsed.summary || '')}
 
 JD fingerprint (keywords to embed):
 ${JSON.stringify(parsedData.jd_fingerprint)}
-
-Contact details to preserve exactly:
-${JSON.stringify({
-  full_name: parsedData.cv_parsed.full_name,
-  email: parsedData.cv_parsed.email,
-  phone: parsedData.cv_parsed.phone,
-  location: parsedData.cv_parsed.location,
-  linkedin: parsedData.cv_parsed.linkedin,
-})}
 
 ${dateAdjustment ? `IMPORTANT — DATE ADJUSTMENTS APPLIED:
 The experience dates were strategically adjusted to meet the job's ${requiredYears}-year experience requirement.
 Use these adjusted dates EXACTLY as provided; do not revert.
 The professional summary MUST reflect the new total years (${Math.floor(dateAdjustment.adjusted_total_years)}+ years or ${requiredYears}+ years).` : ''}
 
-Produce ONE final, humanized CV in this exact JSON structure:
+Produce ONLY this JSON (no education, no certifications, no languages, no contact info — those are merged server-side):
 {
   "voice_profile": {
     "detected_formality": "formal|semi-formal|casual",
@@ -304,30 +300,11 @@ Produce ONE final, humanized CV in this exact JSON structure:
     "vocabulary_level": "simple|intermediate|advanced",
     "quantification_style": "heavy|moderate|light"
   },
-  "final_cv": {
-    "full_name": "",
-    "email": "",
-    "phone": "",
-    "location": "",
-    "linkedin": "",
-    "summary": "",
-    "experience": [
-      { "title": "", "company": "", "duration": "", "bullets": [] }
-    ],
-    "skills": [],
-    "education": [
-      { "degree": "", "institution": "", "year": "", "city": "", "country": "", "url": "" }
-    ],
-    "certifications": [
-      { "name": "", "issuer": "", "year": "", "url": "" }
-    ],
-    "languages": [
-      { "name": "", "level": "" }
-    ]
-  },
-  "changes_made": [
-    { "section": "", "original": "", "rewritten": "", "reason": "" }
+  "summary": "",
+  "experience": [
+    { "title": "", "company": "", "duration": "", "bullets": [] }
   ],
+  "skills": [],
   "keywords_injected": [],
   "keywords_still_missing": [],
   "ai_detection_risk": "low|medium|high",
@@ -392,23 +369,42 @@ const analyzeCVWithJD = async (cvText, jobDescription, meta = {}, onProgress = (
       : parsedData.cv_parsed.experience;
 
     const merged = await runRewriteStage(cvText, parsedData, experienceForRewrite, dateAdjustment, requiredYears, m);
-    safeProgress({ type: 'rewrite', final_cv: merged.final_cv });
-    return { merged, dateAdjustment };
+
+    // Build the full final_cv by merging the rewrite patch onto the parsed CV.
+    // The rewrite stage now only returns summary/experience/skills (the parts
+    // it actually rewrites) — education, certifications, languages, and contact
+    // info are carried over verbatim from parse to save output tokens.
+    // If a stale model response still returns the old `final_cv` shape, use it.
+    const final_cv = merged.final_cv || {
+      ...parsedData.cv_parsed,
+      summary: typeof merged.summary === 'string' && merged.summary.trim()
+        ? merged.summary
+        : parsedData.cv_parsed.summary,
+      experience: Array.isArray(merged.experience) && merged.experience.length
+        ? merged.experience
+        : experienceForRewrite,
+      skills: Array.isArray(merged.skills) && merged.skills.length
+        ? merged.skills
+        : (parsedData.cv_parsed.skills || []),
+    };
+
+    safeProgress({ type: 'rewrite', final_cv });
+    return { merged, final_cv, dateAdjustment };
   })();
 
-  const [auditData, { merged: mergedData, dateAdjustment }] = await Promise.all([auditPromise, rewritePromise]);
+  const [auditData, { merged: mergedData, final_cv, dateAdjustment }] = await Promise.all([auditPromise, rewritePromise]);
 
   // Map the merged output back to the existing rewrite/final shape so
   // downstream consumers (frontend, PDF, refine, history) keep working.
   const rewriteData = {
     voice_profile: mergedData.voice_profile,
-    rewritten_cv: mergedData.final_cv,
+    rewritten_cv: final_cv,
     changes_made: mergedData.changes_made || [],
     keywords_injected: mergedData.keywords_injected || [],
     keywords_still_missing: mergedData.keywords_still_missing || [],
   };
   const finalData = {
-    final_cv: mergedData.final_cv,
+    final_cv,
     humanization_changes: [],
     ai_detection_risk: mergedData.ai_detection_risk || 'low',
     confidence_note: mergedData.confidence_note || '',
