@@ -4,11 +4,11 @@ import { useState } from 'react';
 import {
   User, Mail, Phone, MapPin, Link2, Briefcase, GraduationCap, Wrench,
   Award, Sparkles, Plus, Trash2, Download, ArrowLeft, Palette, Globe,
-  ChevronDown, ChevronUp, Check,
+  ChevronDown, ChevronUp, Check, X, FileText, FileType, FileCode,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useRouter } from 'next/navigation';
-import { createCV, downloadCVPdf, type CreateCVData } from '@/lib/api';
+import { createCV, downloadCVPdf, type CreateCVData, type CVExportFormat } from '@/lib/api';
 import { useSubscriptionStore } from '@/store/subscriptionStore';
 import { useDashboardStore } from '@/store/dashboardStore';
 import TemplatePicker, { TemplateThumbnail } from './TemplatePicker';
@@ -16,6 +16,24 @@ import PhotoUpload from './PhotoUpload';
 import CVPreview from './CVPreview';
 import QuickEditBox from './QuickEditBox';
 import { TEMPLATES, type TemplateId } from './templates';
+
+const FORMAT_OPTIONS: Array<{ key: CVExportFormat; label: string; ext: string; Icon: typeof FileText }> = [
+  { key: 'pdf',  label: 'PDF',  ext: 'pdf',  Icon: FileText },
+  { key: 'docx', label: 'Word', ext: 'docx', Icon: FileType },
+  { key: 'txt',  label: 'Text', ext: 'txt',  Icon: FileCode },
+];
+
+// Slugify a name into a safe default filename: "Eljo Shurdhi" -> "eljo_shurdhi_cv"
+const buildDefaultFilename = (name?: string | null): string => {
+  if (!name) return 'cv_optimized';
+  const slug = name
+    .toLowerCase()
+    .normalize('NFKD')
+    .replace(/[̀-ͯ]/g, '')
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '');
+  return slug ? `${slug}_cv` : 'cv_optimized';
+};
 
 interface CreateCVFormProps {
   onSubmittingChange?: (submitting: boolean) => void;
@@ -79,6 +97,11 @@ export default function CreateCVForm({ onSubmittingChange }: CreateCVFormProps =
   const [cvRecordId, setCvRecordId] = useState<string | null>(null);
   const [generatedCV, setGeneratedCV] = useState<any>(null);
   const [templatesExpanded, setTemplatesExpanded] = useState(false);
+
+  /* ─── Download dialog state — mirrors the analyzer page ─── */
+  const [downloadDialogOpen, setDownloadDialogOpen] = useState(false);
+  const [dlFilename, setDlFilename] = useState('cv_optimized');
+  const [dlFormat, setDlFormat] = useState<CVExportFormat>('pdf');
 
   /* ─── Experience handlers ─── */
   const addExperience = () => setExperience((xs) => [...xs, emptyExperience()]);
@@ -189,16 +212,34 @@ export default function CreateCVForm({ onSubmittingChange }: CreateCVFormProps =
     setGeneratedCV(updatedCV);
   };
 
-  const handleDownload = async () => {
+  const openDownloadDialog = () => {
     if (!cvRecordId) return;
+    const nameSource = generatedCV?.full_name || fullName || '';
+    setDlFilename(buildDefaultFilename(nameSource));
+    setDlFormat('pdf');
+    setDownloadDialogOpen(true);
+  };
+
+  const handleConfirmDownload = async () => {
+    if (!cvRecordId) return;
+    const safeName = (dlFilename.trim() || 'cv_optimized')
+      .replace(/[\\/:*?"<>|]/g, '')
+      .replace(/\.[a-z0-9]+$/i, '')
+      .slice(0, 100) || 'cv_optimized';
+
+    setDownloadDialogOpen(false);
     setDownloading(true);
     try {
+      const photoForExport = TEMPLATES[template].supportsPhoto ? photo : null;
       await downloadCVPdf(cvRecordId, {
         template,
-        photo: template === 'european' ? photo : null,
+        photo: photoForExport,
+        format: dlFormat,
+        filename: safeName,
       });
+      toast.success(`${dlFormat.toUpperCase()} downloaded`);
     } catch {
-      toast.error('Failed to download PDF');
+      toast.error('Failed to download file');
     } finally {
       setDownloading(false);
     }
@@ -229,7 +270,7 @@ export default function CreateCVForm({ onSubmittingChange }: CreateCVFormProps =
             <Sparkles className="h-4 w-4" style={{ color: '#a78bfa' }} />
             <p className="text-xs font-bold uppercase tracking-widest text-white/50">Preview</p>
           </div>
-          <CVPreview cv={generatedCV} template={template} photo={template === 'european' ? photo : null} />
+          <CVPreview cv={generatedCV} template={template} photo={TEMPLATES[template].supportsPhoto ? photo : null} />
         </div>
 
         {/* Template picker — collapsible to save screen room */}
@@ -328,7 +369,7 @@ export default function CreateCVForm({ onSubmittingChange }: CreateCVFormProps =
         {/* Download */}
         <button
           type="button"
-          onClick={handleDownload}
+          onClick={openDownloadDialog}
           disabled={downloading}
           className="mt-5 w-full flex items-center justify-center gap-2 rounded-xl py-3.5 text-sm font-bold transition-all disabled:opacity-40"
           style={{
@@ -340,12 +381,12 @@ export default function CreateCVForm({ onSubmittingChange }: CreateCVFormProps =
           {downloading ? (
             <>
               <span className="lds-roller-sm"><span /><span /><span /><span /><span /><span /><span /><span /></span>
-              Preparing PDF…
+              Preparing file…
             </>
           ) : (
             <>
               <Download className="h-4 w-4" />
-              Download CV (PDF)
+              Download CV
             </>
           )}
         </button>
@@ -353,6 +394,148 @@ export default function CreateCVForm({ onSubmittingChange }: CreateCVFormProps =
         <p className="text-[11px] text-white/35 mt-3 text-center">
           Your CV is already saved to History — you can come back and re-download it later in any template.
         </p>
+
+        {/* Download options modal — pick filename + format (PDF / Word / Text). */}
+        {downloadDialogOpen && (
+          <div
+            className="fixed inset-0 z-[60] flex items-center justify-center px-4"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="dl-options-title"
+          >
+            <div
+              className="absolute inset-0"
+              style={{ background: 'rgba(4,6,20,0.72)', backdropFilter: 'blur(6px)' }}
+              onClick={() => !downloading && setDownloadDialogOpen(false)}
+            />
+            <div
+              className="relative w-full max-w-md rounded-2xl overflow-hidden"
+              style={{
+                background: 'rgba(15,10,40,0.95)',
+                border: '1px solid rgba(118,77,240,0.35)',
+                boxShadow: '0 24px 60px rgba(0,0,0,0.55)',
+              }}
+            >
+              <div style={{ height: '2px', background: 'linear-gradient(90deg,transparent,rgba(118,77,240,0.9),transparent)' }} />
+              <div className="px-6 pt-6 pb-4">
+                <div className="flex items-start gap-3">
+                  <div
+                    className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl"
+                    style={{ background: 'rgba(118,77,240,0.18)', border: '1px solid rgba(118,77,240,0.35)' }}
+                  >
+                    <Download className="h-5 w-5" style={{ color: '#c4b5fd' }} />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <h3 id="dl-options-title" className="text-base font-bold tracking-tight" style={{ color: '#f5f3ff' }}>
+                      Download options
+                    </h3>
+                    <p className="mt-1 text-[12px] leading-relaxed" style={{ color: 'rgba(255,255,255,0.55)' }}>
+                      Name the file and pick a format.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setDownloadDialogOpen(false)}
+                    disabled={downloading}
+                    className="flex h-7 w-7 items-center justify-center rounded-lg disabled:opacity-30"
+                    style={{ color: 'rgba(255,255,255,0.4)' }}
+                    aria-label="Close"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
+
+              <div className="px-6 pb-4">
+                <label
+                  htmlFor="cc-dl-filename"
+                  className="block text-[10px] font-bold uppercase tracking-widest mb-2"
+                  style={{ color: 'rgba(255,255,255,0.4)' }}
+                >
+                  File name
+                </label>
+                <div
+                  className="flex items-stretch rounded-xl overflow-hidden"
+                  style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)' }}
+                >
+                  <input
+                    id="cc-dl-filename"
+                    type="text"
+                    value={dlFilename}
+                    onChange={(e) => setDlFilename(e.target.value)}
+                    placeholder="my_cv"
+                    maxLength={100}
+                    className="flex-1 min-w-0 bg-transparent px-3 py-2.5 text-sm outline-none"
+                    style={{ color: '#f5f3ff' }}
+                  />
+                  <span
+                    className="flex items-center px-3 text-xs font-bold"
+                    style={{ color: 'rgba(255,255,255,0.4)', borderLeft: '1px solid rgba(255,255,255,0.08)' }}
+                  >
+                    .{FORMAT_OPTIONS.find((f) => f.key === dlFormat)?.ext ?? 'pdf'}
+                  </span>
+                </div>
+              </div>
+
+              <div className="px-6 pb-5">
+                <p className="text-[10px] font-bold uppercase tracking-widest mb-2" style={{ color: 'rgba(255,255,255,0.4)' }}>
+                  Format
+                </p>
+                <div className="grid grid-cols-3 gap-2">
+                  {FORMAT_OPTIONS.map(({ key, label, Icon }) => {
+                    const selected = dlFormat === key;
+                    return (
+                      <button
+                        key={key}
+                        type="button"
+                        onClick={() => setDlFormat(key)}
+                        className="flex flex-col items-center justify-center gap-1.5 rounded-xl py-3 transition-colors"
+                        style={
+                          selected
+                            ? { background: 'rgba(118,77,240,0.22)', border: '1px solid rgba(167,139,250,0.5)', color: '#f5f3ff' }
+                            : { background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.7)' }
+                        }
+                      >
+                        <Icon className="h-4 w-4" />
+                        <span className="text-[12px] font-bold">{label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div
+                className="flex items-center justify-end gap-2 px-6 py-3"
+                style={{ borderTop: '1px solid rgba(255,255,255,0.06)', background: 'rgba(255,255,255,0.02)' }}
+              >
+                <button
+                  type="button"
+                  onClick={() => setDownloadDialogOpen(false)}
+                  disabled={downloading}
+                  className="rounded-lg px-3 py-2 text-[12px] font-semibold disabled:opacity-40"
+                  style={{ color: 'rgba(255,255,255,0.5)' }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleConfirmDownload}
+                  disabled={downloading}
+                  className="flex items-center gap-2 rounded-lg px-4 py-2 text-[12px] font-bold disabled:opacity-50"
+                  style={{
+                    background: 'linear-gradient(135deg, rgba(118,77,240,0.32), rgba(91,33,182,0.32))',
+                    border: '1px solid rgba(167,139,250,0.5)',
+                    color: '#f5f3ff',
+                    boxShadow: '0 6px 16px rgba(118,77,240,0.25)',
+                  }}
+                >
+                  <Download className="h-3.5 w-3.5" />
+                  {downloading ? 'Downloading…' : 'Download'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
