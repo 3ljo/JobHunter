@@ -1,7 +1,7 @@
 {
   "ai_provider": "openai",
   "ai_model_anthropic": "claude-sonnet-4-20250514",
-  "ai_model_openai": "gpt-4o-mini",
+  "ai_model_openai": "gpt-4.1-nano",
   "ai_model_gemini": "gemini-2.0-flash",
   "max_tokens": 4000,
   "rate_limit_cv_per_day": 10,
