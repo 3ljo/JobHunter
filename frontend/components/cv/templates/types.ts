@@ -95,7 +95,57 @@ export type TemplateId =
   | 'threecol'
   | 'horizontal'
   | 'infographic'
-  | 'cards';
+  | 'cards'
+  | 'nursing'
+  | 'faculty'
+  | 'dental'
+  | 'solicitor'
+  | 'police'
+  | 'military'
+  | 'aviation'
+  | 'culinary'
+  | 'fitness'
+  | 'ngofield'
+  | 'translator'
+  | 'accountant'
+  | 'arctic'
+  | 'terracotta'
+  | 'lavender'
+  | 'emerald'
+  | 'sapphire'
+  | 'plum'
+  | 'mustard'
+  | 'seafoam'
+  | 'rose'
+  | 'coal'
+  | 'forest'
+  | 'crimson'
+  | 'mocha'
+  | 'cobalt'
+  | 'ash'
+  | 'retro'
+  | 'modernist'
+  | 'ultramin'
+  | 'coolgrad'
+  | 'chrome'
+  | 'pastoral'
+  | 'zen'
+  | 'industrial'
+  | 'paperback'
+  | 'midnight'
+  | 'coralcalm'
+  | 'ashfog'
+  | 'goldroyal'
+  | 'scarlet'
+  | 'tealclean'
+  | 'navycoral'
+  | 'bronze'
+  | 'violet'
+  | 'orangebold'
+  | 'charcoalserif'
+  | 'maroon'
+  | 'jade'
+  | 'silverelite';
 
 export interface TemplateMeta {
   id: TemplateId;
@@ -576,6 +626,64 @@ export const TEMPLATES: Record<TemplateId, TemplateMeta> = {
     region: 'Global',
     proOnly: true,
   },
+
+  /* ── Industry-specific (12) ──────────────────────────────── */
+  nursing: { id: 'nursing', name: 'Nursing Care', description: 'Cardinal-red palette with pill skills. Built for RNs, NPs, and healthcare assistants.', supportsPhoto: true, atsScore: 95, region: 'Global', proOnly: true },
+  faculty: { id: 'faculty', name: 'University Faculty', description: 'Forest serif with amber accents. Built for professors, lecturers, and academic staff.', supportsPhoto: true, atsScore: 95, region: 'Global', proOnly: true },
+  dental: { id: 'dental', name: 'Dental Practice', description: 'Teal and sage palette with pill skills. Built for dentists, hygienists, and orthodontic roles.', supportsPhoto: true, atsScore: 94, region: 'Global', proOnly: true },
+  solicitor: { id: 'solicitor', name: 'Solicitor / Barrister', description: 'Oxblood serif with bronze accents — UK legal profession standard.', supportsPhoto: false, atsScore: 96, region: 'UK / EU', proOnly: true },
+  police: { id: 'police', name: 'Law Enforcement', description: 'Navy band with gold accents. Built for police, federal, and security professionals.', supportsPhoto: false, atsScore: 96, region: 'Global', proOnly: true },
+  military: { id: 'military', name: 'Military / Veteran', description: 'Olive and tan with centered headers. Built for active-duty, veterans, and defense roles.', supportsPhoto: false, atsScore: 96, region: 'Global', proOnly: true },
+  aviation: { id: 'aviation', name: 'Aviation / Pilot', description: 'Slate band with silver accents. Built for pilots, ATC, and aviation maintenance.', supportsPhoto: true, atsScore: 95, region: 'Global', proOnly: true },
+  culinary: { id: 'culinary', name: 'Culinary Chef', description: 'Cocoa serif with crimson accents. Built for chefs, F&B, and hospitality leadership.', supportsPhoto: true, atsScore: 92, region: 'Global', proOnly: true },
+  fitness: { id: 'fitness', name: 'Fitness Trainer', description: 'High-contrast black band with safety-orange tabs. Built for trainers, coaches, and instructors.', supportsPhoto: true, atsScore: 92, region: 'Global', proOnly: true },
+  ngofield: { id: 'ngofield', name: 'NGO Field Worker', description: 'Earthy ochre with amber accents. Built for field staff, programs, and humanitarian work.', supportsPhoto: false, atsScore: 93, region: 'Global', proOnly: true },
+  translator: { id: 'translator', name: 'Translator / Linguist', description: 'Indigo with mustard accents. Built for translators, interpreters, and localization staff.', supportsPhoto: false, atsScore: 95, region: 'Global', proOnly: true },
+  accountant: { id: 'accountant', name: 'CPA / Accountant', description: 'Forest centered with lime accents. Built for CPAs, auditors, and tax professionals.', supportsPhoto: false, atsScore: 96, region: 'Global', proOnly: true },
+
+  /* ── Aesthetic (15) ─────────────────────────────────────── */
+  arctic: { id: 'arctic', name: 'Arctic Minimal', description: 'Ice-blue background with deep teal text. Quiet, cool, modern.', supportsPhoto: true, atsScore: 91, region: 'Global', proOnly: true },
+  terracotta: { id: 'terracotta', name: 'Terracotta Earth', description: 'Warm clay palette on cream. Built for designers, makers, and earthy brands.', supportsPhoto: true, atsScore: 89, region: 'Global', proOnly: true },
+  lavender: { id: 'lavender', name: 'Lavender Calm', description: 'Soft violet with lilac accents. Calm, considered, inviting.', supportsPhoto: true, atsScore: 90, region: 'Global', proOnly: true },
+  emerald: { id: 'emerald', name: 'Emerald Luxe', description: 'Deep emerald band with gold accents. Built for luxury, jewelry, and premium retail.', supportsPhoto: true, atsScore: 91, region: 'Global', proOnly: true },
+  sapphire: { id: 'sapphire', name: 'Sapphire Royal', description: 'Sapphire band with silver accents and block-style sections. Bold and regal.', supportsPhoto: true, atsScore: 91, region: 'Global', proOnly: true },
+  plum: { id: 'plum', name: 'Plum Modern', description: 'Plum primary with peach accents. Stylish without being loud.', supportsPhoto: true, atsScore: 90, region: 'Global', proOnly: true },
+  mustard: { id: 'mustard', name: 'Mustard Bold', description: 'Mustard band with navy tabs. High-contrast, confident statement piece.', supportsPhoto: true, atsScore: 89, region: 'Global', proOnly: true },
+  seafoam: { id: 'seafoam', name: 'Seafoam Coastal', description: 'Seafoam teal on cream with sand accents. Built for hospitality and coastal brands.', supportsPhoto: true, atsScore: 90, region: 'Global', proOnly: true },
+  rose: { id: 'rose', name: 'Rose Elegant', description: 'Rose serif with blush accents — formal yet warm.', supportsPhoto: true, atsScore: 92, region: 'Global', proOnly: true },
+  coal: { id: 'coal', name: 'Coal Industrial', description: 'Charcoal monospace with steel accents. Built for utilities, energy, heavy industry.', supportsPhoto: false, atsScore: 91, region: 'Global', proOnly: true },
+  forest: { id: 'forest', name: 'Forest Deep', description: 'Forest green with lime accents. Built for environment, sustainability, outdoor brands.', supportsPhoto: true, atsScore: 92, region: 'Global', proOnly: true },
+  crimson: { id: 'crimson', name: 'Crimson Power', description: 'Crimson band with rose accents. Bold, decisive, leadership-ready.', supportsPhoto: false, atsScore: 91, region: 'Global', proOnly: true },
+  mocha: { id: 'mocha', name: 'Mocha Warm', description: 'Cocoa serif on warm cream. Built for hospitality, lifestyle, food and beverage roles.', supportsPhoto: true, atsScore: 91, region: 'Global', proOnly: true },
+  cobalt: { id: 'cobalt', name: 'Cobalt Tech', description: 'Cobalt monospace with amber tabs. Built for engineers, infra, dev-rel.', supportsPhoto: false, atsScore: 92, region: 'Global', proOnly: true },
+  ash: { id: 'ash', name: 'Ash Quiet', description: 'Neutral ash palette — minimal, no color, lots of whitespace.', supportsPhoto: true, atsScore: 93, region: 'Global', proOnly: true },
+
+  /* ── Style / mood (15) ──────────────────────────────────── */
+  retro: { id: 'retro', name: 'Retro 80s', description: 'Magenta and cyan synthwave palette in monospace. Bold retro statement.', supportsPhoto: false, atsScore: 87, region: 'Global', proOnly: true },
+  modernist: { id: 'modernist', name: 'Modernist Bold', description: 'Heavy black-and-red with strong tabs. High-contrast Bauhaus-inspired.', supportsPhoto: true, atsScore: 90, region: 'Global', proOnly: true },
+  ultramin: { id: 'ultramin', name: 'Ultra Minimal', description: 'Black on white with no color. Maximum whitespace, minimum chrome.', supportsPhoto: false, atsScore: 95, region: 'Global', proOnly: false },
+  coolgrad: { id: 'coolgrad', name: 'Cool Gradient', description: 'Deep blue band fading to violet pill skills. Modern dev-team energy.', supportsPhoto: true, atsScore: 91, region: 'Global', proOnly: true },
+  chrome: { id: 'chrome', name: 'Chrome Metal', description: 'Black band with chrome silver accents in monospace. Cyber-industrial.', supportsPhoto: false, atsScore: 90, region: 'Global', proOnly: true },
+  pastoral: { id: 'pastoral', name: 'Pastoral Country', description: 'Warm sepia serif on cream. Vintage countryside aesthetic.', supportsPhoto: true, atsScore: 89, region: 'Global', proOnly: true },
+  zen: { id: 'zen', name: 'Zen Japandi', description: 'Cocoa serif on bone with stone accents. Calm, minimal, considered.', supportsPhoto: true, atsScore: 92, region: 'Global', proOnly: true },
+  industrial: { id: 'industrial', name: 'Industrial Steel', description: 'Gunmetal band with safety-orange tabs. Built for manufacturing, energy, and ops.', supportsPhoto: false, atsScore: 92, region: 'Global', proOnly: true },
+  paperback: { id: 'paperback', name: 'Paperback Novel', description: 'Sepia serif on warm beige. Reads like a paperback book.', supportsPhoto: false, atsScore: 90, region: 'Global', proOnly: true },
+  midnight: { id: 'midnight', name: 'Midnight Blue', description: 'Deep navy band with cyan blocks. Premium, sleek, tech-forward.', supportsPhoto: true, atsScore: 91, region: 'Global', proOnly: true },
+  coralcalm: { id: 'coralcalm', name: 'Coral Calm', description: 'Burnt coral with peach accents — centered and approachable.', supportsPhoto: true, atsScore: 90, region: 'Global', proOnly: true },
+  ashfog: { id: 'ashfog', name: 'Ash Fog', description: 'Slate primary with foggy grey pill skills. Quiet professional.', supportsPhoto: true, atsScore: 92, region: 'Global', proOnly: true },
+  goldroyal: { id: 'goldroyal', name: 'Gold Royal', description: 'Black serif with gold rule accents. Premium luxury aesthetic.', supportsPhoto: false, atsScore: 92, region: 'Global', proOnly: true },
+  scarlet: { id: 'scarlet', name: 'Scarlet Pro', description: 'Bold scarlet band on cream. Energetic, eye-catching, modern.', supportsPhoto: false, atsScore: 90, region: 'Global', proOnly: true },
+  tealclean: { id: 'tealclean', name: 'Teal Clean', description: 'Teal primary with mint pill skills. Fresh, modern, friendly.', supportsPhoto: true, atsScore: 92, region: 'Global', proOnly: true },
+
+  /* ── Final mix (8) ──────────────────────────────────────── */
+  navycoral: { id: 'navycoral', name: 'Navy & Coral', description: 'Navy primary with coral accents. Classic professional with a warm twist.', supportsPhoto: true, atsScore: 92, region: 'Global', proOnly: true },
+  bronze: { id: 'bronze', name: 'Bronze Warm', description: 'Bronze serif with amber accents — centered and stately.', supportsPhoto: false, atsScore: 91, region: 'Global', proOnly: true },
+  violet: { id: 'violet', name: 'Violet Elegant', description: 'Royal violet with silver accents. Refined, modern, distinctive.', supportsPhoto: true, atsScore: 91, region: 'Global', proOnly: true },
+  orangebold: { id: 'orangebold', name: 'Orange Bold', description: 'Charcoal band with safety-orange blocks. Confident and direct.', supportsPhoto: false, atsScore: 90, region: 'Global', proOnly: true },
+  charcoalserif: { id: 'charcoalserif', name: 'Charcoal Serif', description: 'Centered charcoal serif with grey accents. Editorial executive.', supportsPhoto: true, atsScore: 92, region: 'Global', proOnly: true },
+  maroon: { id: 'maroon', name: 'Maroon Classic', description: 'Maroon serif on warm vellum. Traditional, scholarly, timeless.', supportsPhoto: false, atsScore: 92, region: 'Global', proOnly: true },
+  jade: { id: 'jade', name: 'Jade Natural', description: 'Jade primary with mint pill skills. Calm, organic, balanced.', supportsPhoto: true, atsScore: 92, region: 'Global', proOnly: true },
+  silverelite: { id: 'silverelite', name: 'Silver Elite', description: 'Slate band with silver pill accents. Polished, executive, premium.', supportsPhoto: true, atsScore: 93, region: 'Global', proOnly: true },
 };
 
 export const DEFAULT_TEMPLATE: TemplateId = 'harvard';

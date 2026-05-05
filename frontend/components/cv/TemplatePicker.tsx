@@ -1,6 +1,7 @@
 'use client';
 
-import { Check, Crown, Lock } from 'lucide-react';
+import { Check, Crown, Lock, Search, X } from 'lucide-react';
+import { useMemo, useState } from 'react';
 import { TEMPLATES, type TemplateId } from './templates';
 
 interface TemplatePickerProps {
@@ -12,66 +13,189 @@ interface TemplatePickerProps {
   exclude?: TemplateId[];
 }
 
+type Category = 'all' | 'classic' | 'modern' | 'creative' | 'tech' | 'photo' | 'free';
+
+const CATEGORIES: { id: Category; label: string }[] = [
+  { id: 'all', label: 'All' },
+  { id: 'classic', label: 'Classic' },
+  { id: 'modern', label: 'Modern' },
+  { id: 'creative', label: 'Creative' },
+  { id: 'tech', label: 'Tech' },
+  { id: 'photo', label: 'With photo' },
+  { id: 'free', label: 'Free' },
+];
+
+const TEMPLATE_CATEGORIES: Partial<Record<TemplateId, Exclude<Category, 'all' | 'photo' | 'free'>>> = {
+  // existing
+  original: 'modern',
+  harvard: 'classic', modern: 'modern', minimalist: 'classic', european: 'modern',
+  tech: 'tech', compact: 'modern', executive: 'classic', academic: 'classic',
+  consulting: 'modern', swiss: 'modern', sidebar: 'creative', creative: 'creative',
+  darktech: 'tech', sales: 'modern', functional: 'modern', serif: 'classic',
+  mono: 'modern', timeline: 'modern', banking: 'classic', healthcare: 'modern',
+  government: 'classic', designer: 'creative', marketing: 'creative', legal: 'classic',
+  twotone: 'modern', startup: 'tech', realestate: 'classic', education: 'modern',
+  nonprofit: 'modern', construction: 'modern', journalism: 'classic', finance: 'modern',
+  research: 'modern', media: 'creative', retail: 'classic', logistics: 'modern',
+  pastel: 'creative', noir: 'creative', botanical: 'creative', sunset: 'creative',
+  neon: 'tech', kraft: 'creative', typewriter: 'tech', booklet: 'classic',
+  blocks: 'modern', magazine: 'creative', rightcol: 'modern', threecol: 'modern',
+  horizontal: 'modern', infographic: 'modern', cards: 'modern',
+  // new bulk
+  nursing: 'modern', faculty: 'classic', dental: 'modern', solicitor: 'classic',
+  police: 'classic', military: 'classic', aviation: 'modern', culinary: 'classic',
+  fitness: 'creative', ngofield: 'modern', translator: 'modern', accountant: 'modern',
+  arctic: 'modern', terracotta: 'creative', lavender: 'creative', emerald: 'creative',
+  sapphire: 'creative', plum: 'creative', mustard: 'creative', seafoam: 'creative',
+  rose: 'classic', coal: 'tech', forest: 'creative', crimson: 'creative',
+  mocha: 'classic', cobalt: 'tech', ash: 'modern', retro: 'creative',
+  modernist: 'creative', ultramin: 'modern', coolgrad: 'creative', chrome: 'tech',
+  pastoral: 'classic', zen: 'modern', industrial: 'tech', paperback: 'classic',
+  midnight: 'creative', coralcalm: 'creative', ashfog: 'modern', goldroyal: 'classic',
+  scarlet: 'creative', tealclean: 'modern', navycoral: 'modern', bronze: 'classic',
+  violet: 'creative', orangebold: 'creative', charcoalserif: 'classic', maroon: 'classic',
+  jade: 'modern', silverelite: 'tech',
+};
+
 export default function TemplatePicker({ value, onChange, isPro = false, onUpgrade, exclude }: TemplatePickerProps) {
-  const excluded = new Set(exclude || []);
-  const list = Object.values(TEMPLATES).filter((t) => !excluded.has(t.id));
+  const [query, setQuery] = useState('');
+  const [category, setCategory] = useState<Category>('all');
+  const excluded = useMemo(() => new Set(exclude || []), [exclude]);
+
+  const baseList = useMemo(() => Object.values(TEMPLATES).filter((t) => !excluded.has(t.id)), [excluded]);
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return baseList.filter((t) => {
+      if (category === 'photo' && !t.supportsPhoto) return false;
+      else if (category === 'free' && t.proOnly) return false;
+      else if (category !== 'all' && category !== 'photo' && category !== 'free') {
+        const c = TEMPLATE_CATEGORIES[t.id] || 'modern';
+        if (c !== category) return false;
+      }
+      if (q && !t.name.toLowerCase().includes(q) && !t.description.toLowerCase().includes(q) && !t.region.toLowerCase().includes(q)) return false;
+      return true;
+    });
+  }, [baseList, query, category]);
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-2.5">
-      {list.map((t) => {
-        const isActive = value === t.id;
-        const locked = t.proOnly && !isPro;
+    <div>
+      <div className="mb-2.5 flex items-center gap-2">
+        <div
+          className="flex items-center gap-2 flex-1 rounded-md px-2.5 py-1.5"
+          style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}
+        >
+          <Search className="h-3.5 w-3.5 text-white/40 shrink-0" />
+          <input
+            type="search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search 100+ templates by name, style, or region…"
+            className="flex-1 bg-transparent text-[12px] text-white placeholder:text-white/35 focus:outline-none"
+          />
+          {query && (
+            <button
+              type="button"
+              aria-label="Clear search"
+              onClick={() => setQuery('')}
+              className="text-white/40 hover:text-white"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          )}
+        </div>
+      </div>
 
-        return (
-          <button
-            key={t.id}
-            type="button"
-            onClick={() => {
-              if (locked) { onUpgrade?.(); return; }
-              onChange(t.id);
-            }}
-            className="relative text-left rounded-lg p-2 sm:p-2.5 transition-all duration-150"
-            style={{
-              background: isActive ? 'rgba(118,77,240,0.14)' : 'rgba(255,255,255,0.025)',
-              border: isActive ? '1px solid rgba(118,77,240,0.55)' : '1px solid rgba(255,255,255,0.06)',
-              cursor: locked ? 'not-allowed' : 'pointer',
-              opacity: locked ? 0.72 : 1,
-              boxShadow: isActive ? '0 0 0 3px rgba(118,77,240,0.10)' : 'none',
-            }}
-          >
-            <div className="relative">
-              <TemplateThumbnail id={t.id} />
-              {locked && (
-                <div
-                  className="absolute inset-0 flex items-center justify-center rounded-md"
-                  style={{ background: 'rgba(15,10,40,0.55)', backdropFilter: 'blur(1px)' }}
-                >
-                  <Lock className="h-4 w-4 text-white/80" />
-                </div>
-              )}
-              {isActive && (
-                <span
-                  className="absolute top-1 right-1 flex h-4 w-4 items-center justify-center rounded-full"
-                  style={{ background: '#764df0' }}
-                >
-                  <Check className="h-2.5 w-2.5 text-white" />
-                </span>
-              )}
-            </div>
+      <div className="mb-2.5 flex gap-1.5 flex-wrap">
+        {CATEGORIES.map((c) => {
+          const active = category === c.id;
+          return (
+            <button
+              key={c.id}
+              type="button"
+              onClick={() => setCategory(c.id)}
+              className="text-[11px] font-medium px-2.5 py-1 rounded-full transition-colors"
+              style={{
+                background: active ? 'rgba(118,77,240,0.22)' : 'rgba(255,255,255,0.05)',
+                color: active ? '#fff' : 'rgba(255,255,255,0.65)',
+                border: active ? '1px solid rgba(118,77,240,0.55)' : '1px solid rgba(255,255,255,0.08)',
+              }}
+            >
+              {c.label}
+            </button>
+          );
+        })}
+      </div>
 
-            <div className="flex items-center gap-1 mt-2 min-w-0">
-              <p className="text-[11px] sm:text-[12px] font-semibold text-white truncate flex-1">{t.name}</p>
-              {t.proOnly && !locked && (
-                <Crown className="h-2.5 w-2.5 shrink-0" style={{ color: '#fbbf24' }} />
-              )}
-            </div>
-            <div className="flex items-center gap-1.5 mt-0.5">
-              <span className="text-[9px] font-bold" style={{ color: '#34d399' }}>ATS {t.atsScore}%</span>
-              <span className="text-[9px] text-white/35 truncate">· {t.region}</span>
-            </div>
-          </button>
-        );
-      })}
+      <div
+        className="overflow-y-auto pr-1 -mr-1"
+        style={{ maxHeight: 520, scrollbarGutter: 'stable' }}
+      >
+        {filtered.length === 0 ? (
+          <p className="text-center text-[12px] text-white/50 py-10">No templates match. Try a different search or category.</p>
+        ) : (
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-2.5">
+            {filtered.map((t) => {
+              const isActive = value === t.id;
+              const locked = t.proOnly && !isPro;
+
+              return (
+                <button
+                  key={t.id}
+                  type="button"
+                  onClick={() => {
+                    if (locked) { onUpgrade?.(); return; }
+                    onChange(t.id);
+                  }}
+                  className="relative text-left rounded-lg p-2 sm:p-2.5 transition-all duration-150"
+                  style={{
+                    background: isActive ? 'rgba(118,77,240,0.14)' : 'rgba(255,255,255,0.025)',
+                    border: isActive ? '1px solid rgba(118,77,240,0.55)' : '1px solid rgba(255,255,255,0.06)',
+                    cursor: locked ? 'not-allowed' : 'pointer',
+                    opacity: locked ? 0.72 : 1,
+                    boxShadow: isActive ? '0 0 0 3px rgba(118,77,240,0.10)' : 'none',
+                  }}
+                >
+                  <div className="relative">
+                    <TemplateThumbnail id={t.id} />
+                    {locked && (
+                      <div
+                        className="absolute inset-0 flex items-center justify-center rounded-md"
+                        style={{ background: 'rgba(15,10,40,0.55)', backdropFilter: 'blur(1px)' }}
+                      >
+                        <Lock className="h-4 w-4 text-white/80" />
+                      </div>
+                    )}
+                    {isActive && (
+                      <span
+                        className="absolute top-1 right-1 flex h-4 w-4 items-center justify-center rounded-full"
+                        style={{ background: '#764df0' }}
+                      >
+                        <Check className="h-2.5 w-2.5 text-white" />
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-1 mt-2 min-w-0">
+                    <p className="text-[11px] sm:text-[12px] font-semibold text-white truncate flex-1">{t.name}</p>
+                    {t.proOnly && !locked && (
+                      <Crown className="h-2.5 w-2.5 shrink-0" style={{ color: '#fbbf24' }} />
+                    )}
+                  </div>
+                  <div className="flex items-center gap-1.5 mt-0.5">
+                    <span className="text-[9px] font-bold" style={{ color: '#34d399' }}>ATS {t.atsScore}%</span>
+                    <span className="text-[9px] text-white/35 truncate">· {t.region}</span>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      <p className="text-[10.5px] text-white/40 mt-2">
+        Showing {filtered.length} of {baseList.length} templates
+      </p>
     </div>
   );
 }
@@ -949,6 +1073,60 @@ const THUMB_THEMES: Partial<Record<TemplateId, ThumbTheme>> = {
   horizontal: { primary: '#0f172a', accent: '#f97316', layout: 'horizontal' },
   infographic: { primary: '#0f766e', accent: '#facc15', layout: 'bars' },
   cards: { primary: '#312e81', accent: '#818cf8', bg: '#f8fafc', layout: 'cards' },
+  // Industry
+  nursing: { primary: '#9f1239', accent: '#fb7185', layout: 'centered' },
+  faculty: { primary: '#14532d', accent: '#92400e', layout: 'centered', fontHint: 'serif' },
+  dental: { primary: '#0d9488', accent: '#86efac', layout: 'single' },
+  solicitor: { primary: '#7f1d1d', accent: '#a16207', layout: 'centered', fontHint: 'serif' },
+  police: { primary: '#1e3a8a', accent: '#fbbf24', layout: 'band' },
+  military: { primary: '#365314', accent: '#a3a380', layout: 'centered' },
+  aviation: { primary: '#1e293b', accent: '#cbd5e1', layout: 'band' },
+  culinary: { primary: '#451a03', accent: '#dc2626', layout: 'centered', fontHint: 'serif' },
+  fitness: { primary: '#0a0a0a', accent: '#f97316', layout: 'band' },
+  ngofield: { primary: '#92400e', accent: '#fbbf24', layout: 'single' },
+  translator: { primary: '#3730a3', accent: '#fcd34d', layout: 'single' },
+  accountant: { primary: '#14532d', accent: '#bef264', layout: 'centered' },
+  // Aesthetic
+  arctic: { primary: '#0c4a6e', accent: '#7dd3fc', bg: '#f0f9ff', layout: 'single' },
+  terracotta: { primary: '#92400e', accent: '#fdba74', bg: '#fef9f3', layout: 'centered', fontHint: 'serif' },
+  lavender: { primary: '#5b21b6', accent: '#c4b5fd', layout: 'single' },
+  emerald: { primary: '#065f46', accent: '#fbbf24', layout: 'band', fontHint: 'serif' },
+  sapphire: { primary: '#1e3a8a', accent: '#94a3b8', layout: 'band', fontHint: 'serif' },
+  plum: { primary: '#86198f', accent: '#fda4af', layout: 'single' },
+  mustard: { primary: '#854d0e', accent: '#1e3a8a', layout: 'band' },
+  seafoam: { primary: '#0f766e', accent: '#fde68a', bg: '#f0fdfa', layout: 'centered' },
+  rose: { primary: '#9f1239', accent: '#f5d0c0', layout: 'centered', fontHint: 'serif' },
+  coal: { primary: '#1f2937', accent: '#94a3b8', layout: 'single', fontHint: 'mono' },
+  forest: { primary: '#14532d', accent: '#a3e635', layout: 'single' },
+  crimson: { primary: '#7f1d1d', accent: '#fecaca', layout: 'band' },
+  mocha: { primary: '#451a03', accent: '#92400e', bg: '#fdf6e3', layout: 'centered', fontHint: 'serif' },
+  cobalt: { primary: '#1e40af', accent: '#fbbf24', layout: 'band', fontHint: 'mono' },
+  ash: { primary: '#404040', accent: '#a3a3a3', layout: 'single' },
+  // Style/mood
+  retro: { primary: '#86198f', accent: '#06b6d4', layout: 'band', fontHint: 'mono' },
+  modernist: { primary: '#0a0a0a', accent: '#dc2626', layout: 'band' },
+  ultramin: { primary: '#0a0a0a', accent: '#9ca3af', layout: 'single' },
+  coolgrad: { primary: '#1e40af', accent: '#a78bfa', layout: 'band' },
+  chrome: { primary: '#1a1a1a', accent: '#9ca3af', layout: 'band', fontHint: 'mono' },
+  pastoral: { primary: '#78350f', accent: '#d6c8a3', bg: '#fef9e7', layout: 'centered', fontHint: 'serif' },
+  zen: { primary: '#3f2a14', accent: '#a8a29e', bg: '#fafaf9', layout: 'centered', fontHint: 'serif' },
+  industrial: { primary: '#27272a', accent: '#f97316', layout: 'band' },
+  paperback: { primary: '#451a03', accent: '#92400e', bg: '#f5e6c4', layout: 'single', fontHint: 'serif' },
+  midnight: { primary: '#0c1d3d', accent: '#22d3ee', layout: 'band' },
+  coralcalm: { primary: '#9a3412', accent: '#fed7aa', layout: 'centered' },
+  ashfog: { primary: '#475569', accent: '#cbd5e1', layout: 'single' },
+  goldroyal: { primary: '#0a0a0a', accent: '#d4af37', layout: 'centered', fontHint: 'serif' },
+  scarlet: { primary: '#dc2626', accent: '#fef3c7', layout: 'band' },
+  tealclean: { primary: '#0f766e', accent: '#a7f3d0', layout: 'single' },
+  // Final mix
+  navycoral: { primary: '#1e3a8a', accent: '#f87171', layout: 'single' },
+  bronze: { primary: '#78350f', accent: '#fcd34d', layout: 'centered', fontHint: 'serif' },
+  violet: { primary: '#6b21a8', accent: '#cbd5e1', layout: 'single' },
+  orangebold: { primary: '#27272a', accent: '#f97316', layout: 'band' },
+  charcoalserif: { primary: '#1f2937', accent: '#9ca3af', layout: 'centered', fontHint: 'serif' },
+  maroon: { primary: '#7f1d1d', accent: '#a16207', bg: '#fffbeb', layout: 'centered', fontHint: 'serif' },
+  jade: { primary: '#047857', accent: '#a7f3d0', layout: 'single' },
+  silverelite: { primary: '#1f2937', accent: '#cbd5e1', layout: 'band' },
 };
 
 function ThemeThumbnail({ theme }: { theme: ThumbTheme }) {
