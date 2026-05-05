@@ -70,7 +70,32 @@ export type TemplateId =
   | 'marketing'
   | 'legal'
   | 'twotone'
-  | 'startup';
+  | 'startup'
+  | 'realestate'
+  | 'education'
+  | 'nonprofit'
+  | 'construction'
+  | 'journalism'
+  | 'finance'
+  | 'research'
+  | 'media'
+  | 'retail'
+  | 'logistics'
+  | 'pastel'
+  | 'noir'
+  | 'botanical'
+  | 'sunset'
+  | 'neon'
+  | 'kraft'
+  | 'typewriter'
+  | 'booklet'
+  | 'blocks'
+  | 'magazine'
+  | 'rightcol'
+  | 'threecol'
+  | 'horizontal'
+  | 'infographic'
+  | 'cards';
 
 export interface TemplateMeta {
   id: TemplateId;
@@ -325,6 +350,231 @@ export const TEMPLATES: Record<TemplateId, TemplateMeta> = {
     atsScore: 92,
     region: 'Global',
     proOnly: false,
+  },
+  realestate: {
+    id: 'realestate',
+    name: 'Real Estate Pro',
+    description: 'Playfair serif with gold double-rule. Built for brokers, agents, and property professionals.',
+    supportsPhoto: false,
+    atsScore: 94,
+    region: 'US / UK',
+    proOnly: true,
+  },
+  education: {
+    id: 'education',
+    name: 'Education Teacher',
+    description: 'Friendly green with amber pill skills. Built for teachers, instructors, and curriculum staff.',
+    supportsPhoto: true,
+    atsScore: 95,
+    region: 'Global',
+    proOnly: false,
+  },
+  nonprofit: {
+    id: 'nonprofit',
+    name: 'Nonprofit Mission',
+    description: 'Centered earth-tone palette for mission-driven roles in nonprofit, NGO, and social impact.',
+    supportsPhoto: true,
+    atsScore: 94,
+    region: 'Global',
+    proOnly: true,
+  },
+  construction: {
+    id: 'construction',
+    name: 'Skilled Trades',
+    description: 'Charcoal band with safety-orange tabs. Built for trades, construction, and field roles.',
+    supportsPhoto: false,
+    atsScore: 95,
+    region: 'Global',
+    proOnly: false,
+  },
+  journalism: {
+    id: 'journalism',
+    name: 'Journalist Editorial',
+    description: 'Newspaper-style serif, all monochrome. Built for reporters, editors, and writers.',
+    supportsPhoto: false,
+    atsScore: 96,
+    region: 'Global',
+    proOnly: true,
+  },
+  finance: {
+    id: 'finance',
+    name: 'Finance Analyst',
+    description: 'Forest-green band with emerald accents. Built for analysts, accountants, and FP&A roles.',
+    supportsPhoto: false,
+    atsScore: 96,
+    region: 'Global',
+    proOnly: true,
+  },
+  research: {
+    id: 'research',
+    name: 'Research Scientist',
+    description: 'IBM Plex Sans with lab-blue accents. Built for R&D, biotech, and lab scientists.',
+    supportsPhoto: false,
+    atsScore: 95,
+    region: 'Global',
+    proOnly: true,
+  },
+  media: {
+    id: 'media',
+    name: 'Media Production',
+    description: 'Charcoal band with rose accents. Built for film, broadcast, and content production roles.',
+    supportsPhoto: true,
+    atsScore: 92,
+    region: 'Global',
+    proOnly: true,
+  },
+  retail: {
+    id: 'retail',
+    name: 'Retail Manager',
+    description: 'Centered burgundy with amber rule. Built for store managers, ops, and customer-facing roles.',
+    supportsPhoto: false,
+    atsScore: 94,
+    region: 'Global',
+    proOnly: false,
+  },
+  logistics: {
+    id: 'logistics',
+    name: 'Logistics & Supply Chain',
+    description: 'Steel-blue palette with clean typography. Built for supply chain, ops, and procurement.',
+    supportsPhoto: false,
+    atsScore: 95,
+    region: 'Global',
+    proOnly: true,
+  },
+  pastel: {
+    id: 'pastel',
+    name: 'Pastel Soft',
+    description: 'Soft fuchsia palette with pill skills on a blush background. Friendly modern aesthetic.',
+    supportsPhoto: true,
+    atsScore: 88,
+    region: 'Global',
+    proOnly: true,
+  },
+  noir: {
+    id: 'noir',
+    name: 'Noir Cinema',
+    description: 'Charcoal band with cinematic red tab accents. Bold, high-contrast personality.',
+    supportsPhoto: true,
+    atsScore: 90,
+    region: 'Global',
+    proOnly: true,
+  },
+  botanical: {
+    id: 'botanical',
+    name: 'Botanical Sage',
+    description: 'Cormorant serif on warm cream with sage olive. Calm and natural — designers and editors.',
+    supportsPhoto: true,
+    atsScore: 90,
+    region: 'Global',
+    proOnly: true,
+  },
+  sunset: {
+    id: 'sunset',
+    name: 'Sunset Gradient',
+    description: 'Warm orange band with amber accents on cream. Energetic — sales, hospitality, marketing.',
+    supportsPhoto: true,
+    atsScore: 90,
+    region: 'Global',
+    proOnly: true,
+  },
+  neon: {
+    id: 'neon',
+    name: 'Neon Cyber',
+    description: 'JetBrains Mono with violet/cyan blocks. Built for cyber, infra, and dev-rel roles.',
+    supportsPhoto: false,
+    atsScore: 89,
+    region: 'Global',
+    proOnly: true,
+  },
+  kraft: {
+    id: 'kraft',
+    name: 'Kraft Paper',
+    description: 'Vintage kraft-paper background with brown ink and Courier text. Distinctive, tactile feel.',
+    supportsPhoto: false,
+    atsScore: 86,
+    region: 'Global',
+    proOnly: true,
+  },
+  typewriter: {
+    id: 'typewriter',
+    name: 'Typewriter Mono',
+    description: 'All Courier monospace with hard rules. Mechanical, deliberate — for writers and engineers.',
+    supportsPhoto: false,
+    atsScore: 92,
+    region: 'Global',
+    proOnly: false,
+  },
+  booklet: {
+    id: 'booklet',
+    name: 'Booklet Centered',
+    description: 'Crimson Pro serif with centered headers and ample margins. Reads like a published booklet.',
+    supportsPhoto: true,
+    atsScore: 93,
+    region: 'Global',
+    proOnly: true,
+  },
+  blocks: {
+    id: 'blocks',
+    name: 'Color Blocks',
+    description: 'Indigo block-style section labels with violet pill skills. Bold, structured, modern.',
+    supportsPhoto: true,
+    atsScore: 91,
+    region: 'Global',
+    proOnly: true,
+  },
+  magazine: {
+    id: 'magazine',
+    name: 'Magazine Editorial',
+    description: 'Volume-style header with red drop-cap on the summary. Editorial flair for senior creatives.',
+    supportsPhoto: false,
+    atsScore: 89,
+    region: 'Global',
+    proOnly: true,
+  },
+  rightcol: {
+    id: 'rightcol',
+    name: 'Right Sidebar',
+    description: 'Sand-yellow sidebar on the right with photo, contact, skills. Mirror of the classic two-column.',
+    supportsPhoto: true,
+    atsScore: 91,
+    region: 'Global',
+    proOnly: true,
+  },
+  threecol: {
+    id: 'threecol',
+    name: 'Three Column',
+    description: 'Two-thirds experience, one-third skills/edu/certs. Dense, fits a lot on one page.',
+    supportsPhoto: false,
+    atsScore: 93,
+    region: 'Global',
+    proOnly: true,
+  },
+  horizontal: {
+    id: 'horizontal',
+    name: 'Horizontal Header',
+    description: 'Oversized name with side-by-side contact and date column for experience. Wide, modern.',
+    supportsPhoto: false,
+    atsScore: 94,
+    region: 'Global',
+    proOnly: true,
+  },
+  infographic: {
+    id: 'infographic',
+    name: 'Infographic Visual',
+    description: 'Skill proficiency bars and teal headers. Visual — useful when skills are the headline.',
+    supportsPhoto: false,
+    atsScore: 89,
+    region: 'Global',
+    proOnly: true,
+  },
+  cards: {
+    id: 'cards',
+    name: 'Section Cards',
+    description: 'Each section in its own white card on a soft slate background. Clean, app-like feel.',
+    supportsPhoto: true,
+    atsScore: 91,
+    region: 'Global',
+    proOnly: true,
   },
 };
 

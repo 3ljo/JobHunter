@@ -891,6 +891,11 @@ export function TemplateThumbnail({ id }: { id: TemplateId }) {
     );
   }
 
+  const theme = THUMB_THEMES[id];
+  if (theme) {
+    return <ThemeThumbnail theme={theme} />;
+  }
+
   // Fallback — generic single-column look
   return (
     <div className={common} style={paperStyle}>
@@ -904,6 +909,349 @@ export function TemplateThumbnail({ id }: { id: TemplateId }) {
         <rect x="8" y="38" width="14" height="1.3" fill="#111" />
         <rect x="8" y="41" width="40" height="1" fill="#aaa" />
         <rect x="8" y="43" width="36" height="1" fill="#aaa" />
+      </svg>
+    </div>
+  );
+}
+
+interface ThumbTheme {
+  primary: string;
+  accent: string;
+  bg?: string;
+  layout?: 'single' | 'centered' | 'band' | 'sidebar-right' | 'sidebar-left' | 'three' | 'horizontal' | 'cards' | 'magazine' | 'bars' | 'mono';
+  hasPhoto?: boolean;
+  fontHint?: 'serif' | 'sans' | 'mono';
+}
+
+const THUMB_THEMES: Partial<Record<TemplateId, ThumbTheme>> = {
+  realestate: { primary: '#1f2937', accent: '#b8860b', layout: 'centered', fontHint: 'serif' },
+  education: { primary: '#15803d', accent: '#f59e0b', layout: 'single' },
+  nonprofit: { primary: '#365314', accent: '#84cc16', layout: 'centered' },
+  construction: { primary: '#1f2937', accent: '#ea580c', layout: 'band' },
+  journalism: { primary: '#0a0a0a', accent: '#0a0a0a', layout: 'centered', fontHint: 'serif' },
+  finance: { primary: '#064e3b', accent: '#10b981', layout: 'band' },
+  research: { primary: '#1e40af', accent: '#0ea5e9', layout: 'single' },
+  media: { primary: '#27272a', accent: '#f43f5e', layout: 'band' },
+  retail: { primary: '#7c2d12', accent: '#f59e0b', layout: 'centered' },
+  logistics: { primary: '#1e3a8a', accent: '#64748b', layout: 'single' },
+  pastel: { primary: '#86198f', accent: '#f0abfc', bg: '#fdf4ff', layout: 'single' },
+  noir: { primary: '#18181b', accent: '#ef4444', layout: 'band' },
+  botanical: { primary: '#3f6212', accent: '#a3a380', bg: '#f7f8f3', layout: 'centered', fontHint: 'serif' },
+  sunset: { primary: '#9a3412', accent: '#fbbf24', bg: '#fff7ed', layout: 'band' },
+  neon: { primary: '#581c87', accent: '#06b6d4', layout: 'band', fontHint: 'mono' },
+  kraft: { primary: '#3f2a14', accent: '#92400e', bg: '#e8d8b0', layout: 'centered', fontHint: 'mono' },
+  typewriter: { primary: '#1a1a1a', accent: '#1a1a1a', layout: 'mono', fontHint: 'mono' },
+  booklet: { primary: '#0f172a', accent: '#475569', layout: 'centered', fontHint: 'serif' },
+  blocks: { primary: '#4338ca', accent: '#a78bfa', layout: 'single' },
+  magazine: { primary: '#0a0a0a', accent: '#dc2626', layout: 'magazine', fontHint: 'serif' },
+  rightcol: { primary: '#0e7490', accent: '#fef3c7', layout: 'sidebar-right', hasPhoto: true },
+  threecol: { primary: '#1e3a8a', accent: '#0ea5e9', layout: 'three' },
+  horizontal: { primary: '#0f172a', accent: '#f97316', layout: 'horizontal' },
+  infographic: { primary: '#0f766e', accent: '#facc15', layout: 'bars' },
+  cards: { primary: '#312e81', accent: '#818cf8', bg: '#f8fafc', layout: 'cards' },
+};
+
+function ThemeThumbnail({ theme }: { theme: ThumbTheme }) {
+  const bg = theme.bg || '#ffffff';
+  const p = theme.primary;
+  const a = theme.accent;
+  const layout = theme.layout || 'single';
+
+  const baseClass = 'w-full aspect-[4/5] rounded-md overflow-hidden';
+
+  if (layout === 'sidebar-right') {
+    return (
+      <div className={baseClass} style={{ background: bg }}>
+        <svg viewBox="0 0 60 80" preserveAspectRatio="xMidYMid meet" className="w-full h-full">
+          <rect x="38" y="0" width="22" height="80" fill={a} />
+          <circle cx="49" cy="14" r="5" fill="#fff" stroke={p} strokeWidth="0.6" />
+          <rect x="41" y="22" width="16" height="0.9" fill={p} opacity="0.7" />
+          <rect x="41" y="24" width="14" height="0.9" fill={p} opacity="0.7" />
+          <rect x="41" y="32" width="10" height="1" fill={p} />
+          <rect x="41" y="35" width="14" height="0.8" fill={p} opacity="0.6" />
+          <rect x="41" y="37" width="13" height="0.8" fill={p} opacity="0.6" />
+          <rect x="6" y="10" width="22" height="3" fill={p} />
+          <rect x="6" y="15" width="22" height="0.9" fill="#888" />
+          <rect x="6" y="22" width="3" height="0.6" fill={a} />
+          <rect x="6" y="26" width="12" height="1.3" fill={p} />
+          <line x1="6" y1="29" x2="36" y2="29" stroke={p} strokeWidth="0.6" />
+          <rect x="6" y="32" width="28" height="0.9" fill="#aaa" />
+          <rect x="6" y="34" width="24" height="0.9" fill="#aaa" />
+          <rect x="6" y="40" width="12" height="1.3" fill={p} />
+          <line x1="6" y1="43" x2="36" y2="43" stroke={p} strokeWidth="0.6" />
+          <rect x="6" y="46" width="18" height="1" fill={p} />
+          <rect x="6" y="48.5" width="28" height="0.9" fill="#aaa" />
+          <rect x="6" y="50.5" width="24" height="0.9" fill="#aaa" />
+          <rect x="6" y="56" width="12" height="1.3" fill={p} />
+          <line x1="6" y1="59" x2="36" y2="59" stroke={p} strokeWidth="0.6" />
+          <rect x="6" y="62" width="26" height="0.9" fill="#aaa" />
+        </svg>
+      </div>
+    );
+  }
+
+  if (layout === 'sidebar-left') {
+    return (
+      <div className={baseClass} style={{ background: bg }}>
+        <svg viewBox="0 0 60 80" preserveAspectRatio="xMidYMid meet" className="w-full h-full">
+          <rect x="0" y="0" width="22" height="80" fill={p} />
+          <circle cx="11" cy="14" r="5" fill="#fff" opacity="0.92" />
+          <rect x="3" y="22" width="16" height="1.4" fill="#fff" />
+          <rect x="3" y="28" width="10" height="0.9" fill={a} />
+          <rect x="3" y="31" width="14" height="0.8" fill="#fff" opacity="0.7" />
+          <rect x="3" y="33" width="12" height="0.8" fill="#fff" opacity="0.7" />
+          <rect x="26" y="10" width="14" height="1.3" fill={p} />
+          <line x1="26" y1="14" x2="56" y2="14" stroke={p} strokeWidth="0.6" />
+          <rect x="26" y="20" width="14" height="1.3" fill={p} />
+          <rect x="48" y="20" width="6" height="1" fill={a} />
+          <rect x="26" y="23" width="26" height="0.9" fill="#aaa" />
+          <rect x="28" y="25" width="24" height="0.9" fill="#aaa" />
+          <rect x="26" y="34" width="14" height="1.3" fill={p} />
+          <rect x="26" y="37" width="26" height="0.9" fill="#aaa" />
+          <rect x="26" y="46" width="14" height="1.3" fill={p} />
+          <rect x="26" y="49" width="26" height="0.9" fill="#aaa" />
+        </svg>
+      </div>
+    );
+  }
+
+  if (layout === 'three') {
+    return (
+      <div className={baseClass} style={{ background: bg }}>
+        <svg viewBox="0 0 60 80" preserveAspectRatio="xMidYMid meet" className="w-full h-full">
+          <rect x="6" y="9" width="22" height="3" fill={p} />
+          <rect x="6" y="14" width="28" height="1" fill="#888" />
+          <rect x="6" y="18" width="10" height="1" fill={a} />
+          <rect x="6" y="26" width="12" height="1.3" fill={p} />
+          <line x1="6" y1="29" x2="40" y2="29" stroke={p} strokeWidth="0.6" />
+          <rect x="6" y="32" width="32" height="1" fill={p} opacity="0.4" />
+          <rect x="6" y="36" width="12" height="1.3" fill={p} />
+          <rect x="6" y="38.5" width="32" height="0.9" fill="#aaa" />
+          <rect x="6" y="40.3" width="28" height="0.9" fill="#aaa" />
+          <rect x="6" y="46" width="32" height="1" fill={p} opacity="0.4" />
+          <rect x="6" y="48" width="32" height="0.9" fill="#aaa" />
+          <rect x="6" y="50" width="28" height="0.9" fill="#aaa" />
+          <rect x="42" y="26" width="12" height="1.3" fill={p} />
+          <line x1="42" y1="29" x2="54" y2="29" stroke={p} strokeWidth="0.6" />
+          <rect x="42" y="32" width="11" height="0.9" fill="#aaa" />
+          <rect x="42" y="34" width="9" height="0.9" fill="#aaa" />
+          <rect x="42" y="40" width="12" height="1.3" fill={p} />
+          <line x1="42" y1="43" x2="54" y2="43" stroke={p} strokeWidth="0.6" />
+          <rect x="42" y="46" width="11" height="0.9" fill="#aaa" />
+          <rect x="42" y="48" width="9" height="0.9" fill="#aaa" />
+          <rect x="42" y="54" width="12" height="1.3" fill={p} />
+          <line x1="42" y1="57" x2="54" y2="57" stroke={p} strokeWidth="0.6" />
+          <rect x="42" y="60" width="11" height="0.9" fill="#aaa" />
+        </svg>
+      </div>
+    );
+  }
+
+  if (layout === 'horizontal') {
+    return (
+      <div className={baseClass} style={{ background: bg }}>
+        <svg viewBox="0 0 60 80" preserveAspectRatio="xMidYMid meet" className="w-full h-full">
+          <rect x="6" y="10" width="34" height="5" fill={p} />
+          <rect x="44" y="10" width="10" height="0.8" fill="#888" />
+          <rect x="44" y="12" width="9" height="0.8" fill="#888" />
+          <rect x="44" y="14" width="10" height="0.8" fill="#888" />
+          <line x1="6" y1="20" x2="54" y2="20" stroke={a} strokeWidth="1.2" />
+          <rect x="6" y="26" width="14" height="1.3" fill={p} />
+          <line x1="6" y1="29" x2="54" y2="29" stroke={a} strokeWidth="0.5" />
+          <rect x="6" y="32" width="44" height="0.9" fill="#aaa" />
+          <rect x="6" y="38" width="14" height="1.3" fill={p} />
+          <line x1="6" y1="41" x2="54" y2="41" stroke={a} strokeWidth="0.5" />
+          <rect x="6" y="44" width="8" height="1" fill={a} />
+          <rect x="20" y="44" width="20" height="1.1" fill={p} />
+          <rect x="20" y="46" width="32" height="0.9" fill="#aaa" />
+          <rect x="6" y="52" width="8" height="1" fill={a} />
+          <rect x="20" y="52" width="22" height="1.1" fill={p} />
+          <rect x="20" y="54" width="32" height="0.9" fill="#aaa" />
+          <rect x="6" y="60" width="14" height="1.3" fill={p} />
+          <line x1="6" y1="63" x2="54" y2="63" stroke={a} strokeWidth="0.5" />
+          <rect x="6" y="66" width="40" height="0.9" fill="#aaa" />
+        </svg>
+      </div>
+    );
+  }
+
+  if (layout === 'bars') {
+    return (
+      <div className={baseClass} style={{ background: bg }}>
+        <svg viewBox="0 0 60 80" preserveAspectRatio="xMidYMid meet" className="w-full h-full">
+          <rect x="6" y="9" width="22" height="3" fill={p} />
+          <rect x="6" y="14" width="30" height="1" fill="#888" />
+          <rect x="6" y="18" width="10" height="1" fill={a} />
+          <rect x="6" y="24" width="14" height="1.3" fill={p} />
+          <line x1="6" y1="27" x2="54" y2="27" stroke={p} strokeWidth="0.5" />
+          <rect x="6" y="30" width="40" height="0.9" fill="#aaa" />
+          <rect x="6" y="32" width="36" height="0.9" fill="#aaa" />
+          <rect x="6" y="38" width="14" height="1.3" fill={p} />
+          <line x1="6" y1="41" x2="54" y2="41" stroke={p} strokeWidth="0.5" />
+          {[0, 1, 2, 3, 4].map((i) => {
+            const widths = [42, 36, 30, 38, 28];
+            return (
+              <g key={i}>
+                <rect x="6" y={44 + i * 4} width="14" height="0.7" fill="#888" />
+                <rect x="22" y={44 + i * 4} width="32" height="1.4" rx="0.7" fill="#e2e8f0" />
+                <rect x="22" y={44 + i * 4} width={widths[i] * 0.5} height="1.4" rx="0.7" fill={p} />
+              </g>
+            );
+          })}
+        </svg>
+      </div>
+    );
+  }
+
+  if (layout === 'cards') {
+    return (
+      <div className={baseClass} style={{ background: bg }}>
+        <svg viewBox="0 0 60 80" preserveAspectRatio="xMidYMid meet" className="w-full h-full">
+          <rect x="6" y="9" width="22" height="3" fill={p} />
+          <rect x="6" y="14" width="30" height="1" fill="#888" />
+          <rect x="6" y="18" width="10" height="1" fill={a} />
+          {[24, 38, 54, 68].map((y, i) => {
+            const heights = [12, 14, 12, 8];
+            return (
+              <g key={i}>
+                <rect x="6" y={y} width="48" height={heights[i]} rx="1.2" fill="#fff" stroke="#e2e8f0" strokeWidth="0.4" />
+                <rect x="9" y={y + 2} width="14" height="1" fill={p} />
+                <rect x="9" y={y + 4.5} width="40" height="0.8" fill="#aaa" />
+                {heights[i] > 9 && <rect x="9" y={y + 6.5} width="36" height="0.8" fill="#aaa" />}
+                {heights[i] > 11 && <rect x="9" y={y + 8.5} width="38" height="0.8" fill="#aaa" />}
+              </g>
+            );
+          })}
+        </svg>
+      </div>
+    );
+  }
+
+  if (layout === 'magazine') {
+    return (
+      <div className={baseClass} style={{ background: bg }}>
+        <svg viewBox="0 0 60 80" preserveAspectRatio="xMidYMid meet" className="w-full h-full">
+          <rect x="6" y="8" width="14" height="1" fill={a} />
+          <rect x="6" y="12" width="42" height="6" fill={p} />
+          <rect x="6" y="20" width="22" height="1" fill="#888" />
+          <line x1="6" y1="24" x2="54" y2="24" stroke={p} strokeWidth="0.8" />
+          <rect x="6" y="28" width="6" height="6" fill={a} />
+          <rect x="14" y="29" width="38" height="0.8" fill="#444" />
+          <rect x="14" y="31" width="38" height="0.8" fill="#444" />
+          <rect x="14" y="33" width="34" height="0.8" fill="#444" />
+          <rect x="6" y="40" width="14" height="1.3" fill={p} />
+          <line x1="6" y1="43" x2="54" y2="43" stroke={p} strokeWidth="0.6" />
+          <rect x="6" y="46" width="20" height="1" fill={p} />
+          <rect x="44" y="46" width="10" height="0.9" fill={a} />
+          <rect x="6" y="48.5" width="44" height="0.8" fill="#aaa" />
+          <rect x="6" y="56" width="14" height="1.3" fill={p} />
+          <line x1="6" y1="59" x2="54" y2="59" stroke={p} strokeWidth="0.6" />
+          <rect x="6" y="62" width="42" height="0.9" fill="#aaa" />
+        </svg>
+      </div>
+    );
+  }
+
+  if (layout === 'mono') {
+    return (
+      <div className={baseClass} style={{ background: bg }}>
+        <svg viewBox="0 0 60 80" preserveAspectRatio="xMidYMid meet" className="w-full h-full">
+          <rect x="6" y="10" width="22" height="2" fill={p} />
+          <rect x="6" y="14" width="34" height="0.8" fill="#666" />
+          <line x1="6" y1="18" x2="54" y2="18" stroke={p} strokeWidth="0.4" />
+          <rect x="6" y="22" width="10" height="1" fill={p} />
+          <line x1="6" y1="24" x2="54" y2="24" stroke={p} strokeWidth="0.4" />
+          <rect x="6" y="27" width="40" height="0.7" fill="#888" />
+          <rect x="6" y="29" width="36" height="0.7" fill="#888" />
+          <rect x="6" y="34" width="10" height="1" fill={p} />
+          <line x1="6" y1="36" x2="54" y2="36" stroke={p} strokeWidth="0.4" />
+          <rect x="6" y="39" width="42" height="0.7" fill="#888" />
+          <rect x="6" y="41" width="38" height="0.7" fill="#888" />
+          <rect x="6" y="46" width="10" height="1" fill={p} />
+          <line x1="6" y1="48" x2="54" y2="48" stroke={p} strokeWidth="0.4" />
+          <rect x="6" y="51" width="40" height="0.7" fill="#888" />
+        </svg>
+      </div>
+    );
+  }
+
+  if (layout === 'centered') {
+    return (
+      <div className={baseClass} style={{ background: bg }}>
+        <svg viewBox="0 0 60 80" preserveAspectRatio="xMidYMid meet" className="w-full h-full">
+          <rect x="14" y="10" width="32" height="3.5" fill={p} />
+          <rect x="20" y="15.5" width="20" height="1" fill={a} />
+          <line x1="10" y1="20" x2="50" y2="20" stroke={p} strokeWidth="0.6" />
+          <rect x="14" y="26" width="14" height="1.4" fill={p} />
+          <line x1="10" y1="29" x2="50" y2="29" stroke={p} strokeWidth="0.5" />
+          <rect x="6" y="32" width="48" height="0.9" fill="#888" />
+          <rect x="6" y="34" width="44" height="0.9" fill="#888" />
+          <rect x="14" y="40" width="14" height="1.4" fill={p} />
+          <line x1="10" y1="43" x2="50" y2="43" stroke={p} strokeWidth="0.5" />
+          <rect x="6" y="46" width="22" height="1.1" fill={p} />
+          <rect x="42" y="46" width="10" height="1" fill={a} />
+          <rect x="6" y="48.5" width="48" height="0.9" fill="#aaa" />
+          <rect x="6" y="50.5" width="44" height="0.9" fill="#aaa" />
+          <rect x="14" y="58" width="14" height="1.4" fill={p} />
+          <line x1="10" y1="61" x2="50" y2="61" stroke={p} strokeWidth="0.5" />
+          <rect x="6" y="64" width="44" height="0.9" fill="#aaa" />
+        </svg>
+      </div>
+    );
+  }
+
+  if (layout === 'band') {
+    return (
+      <div className={baseClass} style={{ background: bg }}>
+        <svg viewBox="0 0 60 80" preserveAspectRatio="xMidYMid meet" className="w-full h-full">
+          <rect x="0" y="0" width="60" height="20" fill={p} />
+          <rect x="6" y="7" width="32" height="3.5" fill="#fff" />
+          <rect x="6" y="13" width="14" height="1" fill={a} />
+          <rect x="6" y="15" width="22" height="0.9" fill="#fff" opacity="0.7" />
+          <rect x="6" y="26" width="14" height="1.3" fill={p} />
+          <rect x="6" y="29" width="2" height="3" fill={a} />
+          <rect x="9" y="32" width="44" height="0.9" fill="#888" />
+          <rect x="9" y="34" width="38" height="0.9" fill="#888" />
+          <rect x="6" y="40" width="14" height="1.3" fill={p} />
+          <rect x="6" y="43" width="2" height="3" fill={a} />
+          <rect x="9" y="46" width="22" height="1.1" fill={p} />
+          <rect x="42" y="46" width="10" height="1" fill={a} />
+          <rect x="9" y="48.5" width="42" height="0.9" fill="#aaa" />
+          <rect x="9" y="50.5" width="38" height="0.9" fill="#aaa" />
+          <rect x="6" y="56" width="14" height="1.3" fill={p} />
+          <rect x="6" y="59" width="2" height="3" fill={a} />
+          <rect x="9" y="62" width="9" height="2" rx="1" fill={a} opacity="0.20" />
+          <rect x="20" y="62" width="11" height="2" rx="1" fill={a} opacity="0.20" />
+          <rect x="32" y="62" width="9" height="2" rx="1" fill={a} opacity="0.20" />
+          <rect x="42" y="62" width="11" height="2" rx="1" fill={a} opacity="0.20" />
+        </svg>
+      </div>
+    );
+  }
+
+  // single (default) — left-aligned name with accent rule
+  return (
+    <div className={baseClass} style={{ background: bg }}>
+      <svg viewBox="0 0 60 80" preserveAspectRatio="xMidYMid meet" className="w-full h-full">
+        <rect x="6" y="9" width="22" height="3" fill={p} />
+        <rect x="6" y="14" width="30" height="1" fill="#888" />
+        <rect x="6" y="18" width="10" height="1" fill={a} />
+        <rect x="6" y="24" width="14" height="1.3" fill={p} />
+        <line x1="6" y1="27" x2="54" y2="27" stroke={p} strokeWidth="0.5" />
+        <rect x="6" y="30" width="44" height="0.9" fill="#888" />
+        <rect x="6" y="32" width="38" height="0.9" fill="#888" />
+        <rect x="6" y="38" width="14" height="1.3" fill={p} />
+        <line x1="6" y1="41" x2="54" y2="41" stroke={p} strokeWidth="0.5" />
+        <rect x="6" y="44" width="22" height="1.1" fill={p} />
+        <rect x="42" y="44" width="10" height="1" fill={a} />
+        <rect x="6" y="46.5" width="42" height="0.9" fill="#aaa" />
+        <rect x="6" y="48.5" width="38" height="0.9" fill="#aaa" />
+        <rect x="6" y="54" width="14" height="1.3" fill={p} />
+        <line x1="6" y1="57" x2="54" y2="57" stroke={p} strokeWidth="0.5" />
+        <rect x="6" y="60" width="9" height="2" rx="0.6" fill={a} opacity="0.20" />
+        <rect x="17" y="60" width="11" height="2" rx="0.6" fill={a} opacity="0.20" />
+        <rect x="30" y="60" width="9" height="2" rx="0.6" fill={a} opacity="0.20" />
+        <rect x="40" y="60" width="13" height="2" rx="0.6" fill={a} opacity="0.20" />
       </svg>
     </div>
   );
