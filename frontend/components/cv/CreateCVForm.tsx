@@ -346,7 +346,7 @@ export default function CreateCVForm({ onSubmittingChange }: CreateCVFormProps =
                 }}
               >
                 <ChevronDown className="h-3.5 w-3.5" />
-                Show all 10 templates
+                Show all {Object.values(TEMPLATES).filter((t) => t.id !== 'original').length} templates
               </button>
             </div>
           )}
