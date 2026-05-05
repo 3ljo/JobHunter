@@ -119,25 +119,34 @@ const createCheckout = async (req, res) => {
     }
 
     if (provider === 'nowpayments') {
-      const successUrl = `${canonicalFrontend()}/checkout/success?provider=nowpayments`;
-      const cancelUrl = `${canonicalFrontend()}/pricing?checkout=canceled`;
       // Build the IPN URL from the request host so dev / staging / prod
       // all hit themselves. Falls back to BACKEND_URL if set.
       const backendBase = (process.env.BACKEND_URL || `${req.protocol}://${req.get('host')}`).replace(/\/$/, '');
       const ipnCallbackUrl = `${backendBase}/api/subscription/nowpayments/webhook`;
       try {
-        const { invoiceUrl } = await np.createInvoice({
+        const payment = await np.createPayment({
           userId: req.user.id,
-          email: req.user.email,
           plan,
           interval,
-          successUrl,
-          cancelUrl,
           ipnCallbackUrl,
         });
-        return res.json({ url: invoiceUrl });
+        // Return payment details inline. Frontend renders an in-app
+        // payment screen (address + QR + amount) and polls status —
+        // no redirect away from cvclimber.lol.
+        return res.json({
+          provider: 'nowpayments',
+          payment: {
+            payment_id: payment.paymentId,
+            pay_address: payment.payAddress,
+            pay_amount: payment.payAmount,
+            pay_currency: payment.payCurrency,
+            price_amount: payment.priceAmount,
+            price_currency: payment.priceCurrency,
+            expires_at: payment.expiresAt,
+          },
+        });
       } catch (err) {
-        console.error('NOWPayments invoice error:', err.message, err.npStatus, err.npHint);
+        console.error('NOWPayments payment error:', err.message, err.npStatus, err.npHint);
         if (err.npHint === 'api_key_missing' || err.npHint === 'price_missing') {
           return res.status(503).json({
             error: 'Crypto checkout is not configured. Please choose another payment method.',
@@ -1039,4 +1048,29 @@ const handleNowpaymentsWebhook = async (req, res) => {
   }
 };
 
-module.exports = { getSubscription, createCheckout, createPortal, handleWebhook, handlePaypalWebhook, handleNowpaymentsWebhook, configCheck, resyncSubscription };
+// GET /api/subscription/nowpayments/status?id=PAYMENT_ID
+// Lightweight polling endpoint the inline crypto checkout calls every
+// few seconds while the customer is sending the deposit. Returns the
+// raw NOWPayments status string so the frontend can show "waiting" /
+// "confirming" / "finished" states. Auth-gated to prevent strangers
+// from probing arbitrary payment IDs.
+const getNowpaymentsStatus = async (req, res) => {
+  const id = (req.query.id || '').toString().trim();
+  if (!id) return res.status(400).json({ error: 'Missing payment id' });
+  try {
+    const result = await np.getPaymentStatus(id);
+    // Confirm the payment belongs to the requesting user — the order_id
+    // is encoded with the buyer's user_id, so we can spot mismatches
+    // and refuse cross-user lookups.
+    const decoded = np.decodeOrderId(result.orderId);
+    if (decoded && decoded.userId && decoded.userId !== req.user.id) {
+      return res.status(404).json({ error: 'Not found' });
+    }
+    return res.json({ status: result.status, payment_id: result.paymentId });
+  } catch (err) {
+    console.error('NOWPayments status error:', err.message);
+    return res.status(502).json({ error: 'Could not query payment status' });
+  }
+};
+
+module.exports = { getSubscription, createCheckout, createPortal, handleWebhook, handlePaypalWebhook, handleNowpaymentsWebhook, getNowpaymentsStatus, configCheck, resyncSubscription };

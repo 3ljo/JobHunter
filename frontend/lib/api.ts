@@ -377,13 +377,32 @@ export const redeemGift = (code: string) =>
 export const getSubscription = () =>
   api.get<SubscriptionResponse>('/api/subscription');
 
+export interface CryptoPayment {
+  payment_id: string;
+  pay_address: string;
+  pay_amount: number;
+  pay_currency: string;
+  price_amount: number;
+  price_currency: string;
+  expires_at: string | null;
+}
+
+export interface CheckoutResponse {
+  url?: string;
+  provider?: 'nowpayments';
+  payment?: CryptoPayment;
+}
+
 export const createCheckoutSession = (
   plan: string,
   interval: 'month' | 'year' | 'once',
   payment_method?: string,
   provider?: 'lemonsqueezy' | 'paypal' | 'nowpayments',
 ) =>
-  api.post<{ url: string }>('/api/subscription/checkout', { plan, interval, payment_method, provider });
+  api.post<CheckoutResponse>('/api/subscription/checkout', { plan, interval, payment_method, provider });
+
+export const getNowpaymentsStatus = (paymentId: string) =>
+  api.get<{ status: string; payment_id: string }>('/api/subscription/nowpayments/status', { params: { id: paymentId } });
 
 export const createPortalSession = () =>
   api.post<{ url: string }>('/api/subscription/portal');

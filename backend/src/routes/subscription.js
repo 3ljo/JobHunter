@@ -4,7 +4,7 @@
 const express = require('express');
 const router = express.Router();
 const requireAuth = require('../middleware/requireAuth');
-const { getSubscription, createCheckout, createPortal, configCheck, resyncSubscription } = require('../controllers/subscriptionController');
+const { getSubscription, createCheckout, createPortal, configCheck, resyncSubscription, getNowpaymentsStatus } = require('../controllers/subscriptionController');
 const { getSetting } = require('../services/settingsService');
 
 // All routes except webhook require auth
@@ -21,6 +21,10 @@ router.post('/resync', requireAuth, resyncSubscription);
 // the controller — exposes booleans + an LS liveness status, never
 // secret values.
 router.get('/config-check', configCheck);
+
+// NOWPayments crypto payment status polling (auth-gated). Used by the
+// inline USDT checkout to detect when the on-chain payment lands.
+router.get('/nowpayments/status', requireAuth, getNowpaymentsStatus);
 
 // Public — USDT wallet config for checkout page
 router.get('/usdt-config', (req, res) => {

@@ -3,11 +3,11 @@
 import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useSubscriptionStore } from '@/store/subscriptionStore';
-import { useCheckoutConfigStore } from '@/store/checkoutConfigStore';
-import { createCheckoutSession, validatePromoCode } from '@/lib/api';
+import { createCheckoutSession, validatePromoCode, getNowpaymentsStatus, type CryptoPayment } from '@/lib/api';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
-import { Tag, Check, X, CreditCard, Smartphone, Lock } from 'lucide-react';
+import { Tag, Check, X, CreditCard, Smartphone, Lock, Loader2 } from 'lucide-react';
+import { QRCodeSVG } from 'qrcode.react';
 
 /* ── Plan data (mirrors pricing page) ── */
 interface PlanEntry {
@@ -92,10 +92,6 @@ function CheckoutForm() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const { fetchSubscription } = useSubscriptionStore();
-  const {
-    usdtConfig,
-    load: loadCheckoutConfig,
-  } = useCheckoutConfigStore();
 
   const planKey = searchParams.get('plan') || 'pro';
   const intervalParam = (searchParams.get('interval') as 'month' | 'year' | 'once') || 'month';
@@ -103,7 +99,6 @@ function CheckoutForm() {
   const [interval, setInterval] = useState<'month' | 'year' | 'once'>(intervalParam);
   const [loading, setLoading] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<'card' | 'crypto'>('card');
-  const [usdtCopied, setUsdtCopied] = useState(false);
 
   // Discount state — promo is user-entered (not cached).
   const [promoInput, setPromoInput] = useState('');
@@ -111,16 +106,12 @@ function CheckoutForm() {
   const [promoError, setPromoError] = useState('');
   const [discount, setDiscount] = useState<Discount | null>(null);
 
-  const usdtWallet = usdtConfig?.wallet ?? '';
-  const usdtNetwork = usdtConfig?.network ?? 'TRC-20';
-
   const plan = PLANS[planKey];
   const isOneTime = plan?.oneTimeOnly === true;
 
   useEffect(() => {
     fetchSubscription();
-    loadCheckoutConfig();
-  }, [fetchSubscription, loadCheckoutConfig]);
+  }, [fetchSubscription]);
 
   // Force one-time plans onto `interval=once`; force subscription plans onto month/year.
   useEffect(() => {
@@ -185,23 +176,87 @@ function CheckoutForm() {
 
   const [stripeNotReady] = useState(false); // legacy gate — kept false; real errors now surface as toasts
 
-  const [showUsdtPayment, setShowUsdtPayment] = useState(false);
+  // Crypto in-app payment state (USDT TRC-20 via NOWPayments). When the
+  // user clicks Buy Now with USDT selected, we don't redirect — we render
+  // the deposit address + QR + amount inline and poll status until the
+  // on-chain payment confirms.
+  const [cryptoPayment, setCryptoPayment] = useState<CryptoPayment | null>(null);
+  const [cryptoStatus, setCryptoStatus] = useState<string>('waiting');
+  const [cryptoCopied, setCryptoCopied] = useState(false);
+
+  // Poll NOWPayments status every 5 seconds while a crypto payment is
+  // pending. Stops when the payment finishes (and redirects to success)
+  // or the component unmounts.
+  useEffect(() => {
+    if (!cryptoPayment) return;
+    const TERMINAL = ['finished', 'confirmed', 'failed', 'expired', 'refunded'];
+    let stopped = false;
+
+    const tick = async () => {
+      if (stopped) return;
+      try {
+        const r = await getNowpaymentsStatus(cryptoPayment.payment_id);
+        if (stopped) return;
+        const status = r.data.status;
+        setCryptoStatus(status);
+        if (status === 'finished' || status === 'confirmed') {
+          stopped = true;
+          // Subscription is now active — refetch and redirect.
+          await fetchSubscription();
+          router.push('/checkout/success?provider=nowpayments');
+          return;
+        }
+        if (TERMINAL.includes(status)) {
+          stopped = true;
+        }
+      } catch {
+        // Transient — keep polling. Real config errors surface from
+        // createCheckoutSession before we ever set cryptoPayment.
+      }
+    };
+
+    tick();
+    // window.setInterval to avoid collision with the `setInterval`
+    // useState setter declared above (billing interval).
+    const id = window.setInterval(tick, 5000);
+    return () => { stopped = true; window.clearInterval(id); };
+  }, [cryptoPayment, fetchSubscription, router]);
 
   const handleBuyNow = async () => {
-    setShowUsdtPayment(false);
     setLoading(true);
     try {
-      // Crypto goes through NOWPayments (hosted checkout, picks coin/network
-      // there). Card goes through Lemon Squeezy (which also offers PayPal,
-      // Apple Pay, Google Pay at its hosted checkout).
       const provider = paymentMethod === 'crypto' ? 'nowpayments' : 'lemonsqueezy';
       const res = await createCheckoutSession(planKey, interval, paymentMethod, provider);
-      window.location.href = res.data.url;
+      // Card path → redirect to LS hosted checkout.
+      // Crypto path → render inline (no redirect).
+      if (res.data.provider === 'nowpayments' && res.data.payment) {
+        setCryptoPayment(res.data.payment);
+        setCryptoStatus('waiting');
+        setLoading(false);
+        return;
+      }
+      if (res.data.url) {
+        window.location.href = res.data.url;
+        return;
+      }
+      throw new Error('Empty checkout response');
     } catch (err: any) {
       const msg = err.response?.data?.error || 'Failed to start checkout';
       toast.error(msg);
       setLoading(false);
     }
+  };
+
+  const handleCopyAddress = () => {
+    if (!cryptoPayment) return;
+    navigator.clipboard.writeText(cryptoPayment.pay_address);
+    setCryptoCopied(true);
+    setTimeout(() => setCryptoCopied(false), 2000);
+  };
+
+  const handleCancelCrypto = () => {
+    setCryptoPayment(null);
+    setCryptoStatus('waiting');
   };
 
   return (
@@ -630,62 +685,95 @@ function CheckoutForm() {
             </p>
           </div>
 
-          {/* USDT payment details */}
-          {showUsdtPayment && (
+          {/* USDT payment details — rendered after the user clicks Buy
+              Now with USDT selected. The address + amount come from
+              NOWPayments (unique per order), and we poll status every
+              5s so the page auto-redirects to /checkout/success the
+              moment the on-chain payment confirms. */}
+          {cryptoPayment && (
             <div
               className="mt-4 rounded-xl p-5"
               style={{ background: 'rgba(38,161,123,0.08)', border: '1px solid rgba(38,161,123,0.25)' }}
             >
-              <p className="text-sm font-semibold mb-3" style={{ color: '#26a17b' }}>
-                Send USDT to complete your order
-              </p>
+              <div className="flex items-center justify-between mb-4">
+                <p className="text-sm font-semibold" style={{ color: '#26a17b' }}>
+                  Send USDT to complete your order
+                </p>
+                <button
+                  onClick={handleCancelCrypto}
+                  className="text-white/30 hover:text-white/60 transition-colors"
+                  title="Cancel"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+
+              {/* QR */}
+              <div className="flex justify-center mb-4">
+                <div className="rounded-lg p-3" style={{ background: '#fff' }}>
+                  <QRCodeSVG value={cryptoPayment.pay_address} size={160} level="M" />
+                </div>
+              </div>
 
               <div className="mb-3">
                 <label className="text-[10px] font-bold uppercase tracking-widest text-white/40 block mb-1">Amount to send</label>
-                <p className="text-xl font-black text-white">{finalPrice.toFixed(2)} <span className="text-sm font-normal text-white/40">USDT</span></p>
+                <p className="text-xl font-black text-white">
+                  {cryptoPayment.pay_amount} <span className="text-sm font-normal text-white/40">USDT</span>
+                </p>
+                <p className="text-[11px] text-white/35 mt-0.5">
+                  ≈ ${cryptoPayment.price_amount} {cryptoPayment.price_currency.toUpperCase()}
+                </p>
               </div>
 
               <div className="mb-3">
                 <label className="text-[10px] font-bold uppercase tracking-widest text-white/40 block mb-1">Network</label>
-                <p className="text-sm text-white/70 font-semibold">{usdtNetwork}</p>
+                <p className="text-sm text-white/70 font-semibold">USDT TRC-20 (Tron)</p>
               </div>
 
               <div className="mb-3">
                 <label className="text-[10px] font-bold uppercase tracking-widest text-white/40 block mb-1">Wallet Address</label>
-                {usdtWallet ? (
-                  <div className="flex items-center gap-2">
-                    <div
-                      className="flex-1 h-10 flex items-center rounded-lg px-3 text-xs text-white/70 font-mono truncate"
-                      style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)' }}
-                    >
-                      {usdtWallet}
-                    </div>
-                    <button
-                      onClick={() => {
-                        navigator.clipboard.writeText(usdtWallet);
-                        setUsdtCopied(true);
-                        setTimeout(() => setUsdtCopied(false), 2000);
-                      }}
-                      className="h-10 px-3 rounded-lg text-xs font-semibold transition-all shrink-0"
-                      style={{
-                        background: usdtCopied ? 'rgba(38,161,123,0.2)' : 'rgba(255,255,255,0.06)',
-                        color: usdtCopied ? '#26a17b' : 'rgba(255,255,255,0.5)',
-                        border: '1px solid ' + (usdtCopied ? 'rgba(38,161,123,0.3)' : 'rgba(255,255,255,0.1)'),
-                      }}
-                    >
-                      {usdtCopied ? 'Copied!' : 'Copy'}
-                    </button>
+                <div className="flex items-center gap-2">
+                  <div
+                    className="flex-1 h-10 flex items-center rounded-lg px-3 text-xs text-white/70 font-mono truncate"
+                    style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)' }}
+                  >
+                    {cryptoPayment.pay_address}
                   </div>
-                ) : (
-                  <p className="text-xs text-white/30">USDT payments are not configured yet. Please use Card or PayPal.</p>
-                )}
+                  <button
+                    onClick={handleCopyAddress}
+                    className="h-10 px-3 rounded-lg text-xs font-semibold transition-all shrink-0"
+                    style={{
+                      background: cryptoCopied ? 'rgba(38,161,123,0.2)' : 'rgba(255,255,255,0.06)',
+                      color: cryptoCopied ? '#26a17b' : 'rgba(255,255,255,0.5)',
+                      border: '1px solid ' + (cryptoCopied ? 'rgba(38,161,123,0.3)' : 'rgba(255,255,255,0.1)'),
+                    }}
+                  >
+                    {cryptoCopied ? 'Copied!' : 'Copy'}
+                  </button>
+                </div>
               </div>
 
               <div className="border-white-bottom-op-2 my-3" />
 
+              {/* Live status */}
+              <div className="flex items-center gap-2 mb-2">
+                {(cryptoStatus === 'waiting' || cryptoStatus === 'confirming') && (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" style={{ color: '#26a17b' }} />
+                )}
+                <p className="text-xs font-semibold" style={{ color: '#26a17b' }}>
+                  {cryptoStatus === 'waiting' && 'Waiting for your payment…'}
+                  {cryptoStatus === 'confirming' && 'Payment detected — confirming on-chain…'}
+                  {cryptoStatus === 'partially_paid' && 'Partial payment detected — please send the remainder.'}
+                  {cryptoStatus === 'finished' && 'Payment received! Activating your plan…'}
+                  {cryptoStatus === 'confirmed' && 'Payment confirmed! Activating your plan…'}
+                  {cryptoStatus === 'failed' && 'Payment failed. Please try again.'}
+                  {cryptoStatus === 'expired' && 'Payment window expired. Please retry.'}
+                  {cryptoStatus === 'refunded' && 'Payment was refunded.'}
+                </p>
+              </div>
+
               <p className="text-[11px] text-white/35 leading-relaxed" style={{ fontWeight: 400 }}>
-                Send exactly <span className="text-white/60 font-semibold">{finalPrice.toFixed(2)} USDT</span> on the <span className="text-white/60 font-semibold">{usdtNetwork}</span> network.
-                Your subscription will be activated within 24 hours once the transaction is verified.
+                Send exactly <span className="text-white/60 font-semibold">{cryptoPayment.pay_amount} USDT</span> on the <span className="text-white/60 font-semibold">TRC-20 (Tron)</span> network. Your plan activates automatically the moment the payment confirms.
               </p>
             </div>
           )}

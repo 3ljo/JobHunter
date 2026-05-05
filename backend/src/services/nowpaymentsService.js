@@ -56,10 +56,11 @@ const decodeOrderId = (orderId) => {
   return { userId: parts[0], plan: parts[1], interval: parts[2] };
 };
 
-// POST /v1/invoice — creates a hosted crypto checkout page. Customer
-// picks the coin/network on NOWPayments' page, sends, and we get an
-// IPN once the payment confirms on-chain.
-const createInvoice = async ({ userId, email, plan, interval, successUrl, cancelUrl, ipnCallbackUrl }) => {
+// POST /v1/payment — creates a direct crypto payment with the coin/
+// network pre-locked to USDT TRC-20. Returns the deposit address and
+// exact amount, so we can render our own payment UI on cvclimber.lol
+// and the customer never sees NOWPayments' branding or asset chooser.
+const createPayment = async ({ userId, plan, interval, ipnCallbackUrl }) => {
   const apiKey = env('NOWPAYMENTS_API_KEY');
   if (!apiKey) {
     const err = new Error('NOWPAYMENTS_API_KEY not configured');
@@ -79,16 +80,14 @@ const createInvoice = async ({ userId, email, plan, interval, successUrl, cancel
   const body = {
     price_amount: priceUSD,
     price_currency: 'usd',
+    pay_currency: 'usdttrc20',
     order_id: orderId,
     order_description: `CvClimber ${PLANS[plan]?.name || plan} (${interval})`,
     ipn_callback_url: ipnCallbackUrl,
-    success_url: successUrl,
-    cancel_url: cancelUrl,
-    is_fixed_rate: true,
     is_fee_paid_by_user: false,
   };
 
-  const r = await fetch(`${API_BASE}/invoice`, {
+  const r = await fetch(`${API_BASE}/payment`, {
     method: 'POST',
     headers: {
       'x-api-key': apiKey,
@@ -99,19 +98,51 @@ const createInvoice = async ({ userId, email, plan, interval, successUrl, cancel
 
   if (!r.ok) {
     const text = await r.text().catch(() => '');
-    const err = new Error(`NOWPayments invoice ${r.status}: ${text.slice(0, 300)}`);
+    const err = new Error(`NOWPayments payment ${r.status}: ${text.slice(0, 300)}`);
     err.npStatus = r.status;
     err.npBody = text;
     throw err;
   }
 
   const data = await r.json();
-  if (!data?.invoice_url) {
-    const err = new Error('NOWPayments invoice response missing invoice_url');
+  if (!data?.pay_address || !data?.pay_amount) {
+    const err = new Error('NOWPayments payment response missing pay_address/pay_amount');
     err.npBody = JSON.stringify(data).slice(0, 300);
     throw err;
   }
-  return { invoiceUrl: data.invoice_url, invoiceId: data.id, orderId };
+  return {
+    paymentId: String(data.payment_id),
+    payAddress: data.pay_address,
+    payAmount: data.pay_amount,
+    payCurrency: data.pay_currency,
+    priceAmount: data.price_amount,
+    priceCurrency: data.price_currency,
+    orderId,
+    expiresAt: data.expiration_estimate_date || null,
+  };
+};
+
+// GET /v1/payment/{id} — used by the checkout page to poll status while
+// the customer is sending the deposit.
+const getPaymentStatus = async (paymentId) => {
+  const apiKey = env('NOWPAYMENTS_API_KEY');
+  if (!apiKey) throw new Error('NOWPAYMENTS_API_KEY not configured');
+
+  const r = await fetch(`${API_BASE}/payment/${encodeURIComponent(paymentId)}`, {
+    headers: { 'x-api-key': apiKey },
+  });
+  if (!r.ok) {
+    const text = await r.text().catch(() => '');
+    const err = new Error(`NOWPayments status ${r.status}: ${text.slice(0, 300)}`);
+    err.npStatus = r.status;
+    throw err;
+  }
+  const data = await r.json();
+  return {
+    status: data.payment_status,
+    paymentId: String(data.payment_id),
+    orderId: data.order_id || null,
+  };
 };
 
 // IPN signature: HMAC-SHA512 of the JSON body with keys sorted
@@ -163,7 +194,8 @@ const isPaidStatus = (status) => status === 'finished' || status === 'confirmed'
 module.exports = {
   inspectConfig,
   getPriceUSD,
-  createInvoice,
+  createPayment,
+  getPaymentStatus,
   verifyIpnSignature,
   decodeOrderId,
   isPaidStatus,
