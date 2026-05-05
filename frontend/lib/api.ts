@@ -206,6 +206,114 @@ export const analyzeCV = (formData: FormData) =>
     timeout: 120000,
   });
 
+// Streaming CV analysis. The backend returns NDJSON — one JSON event per line:
+//   {type:'parsed', parsed}
+//   {type:'audit',  audit, scores}
+//   {type:'rewrite', final_cv}
+//   {type:'done',   result, cv_record_id}
+//   {type:'error',  error}
+// The caller gets each event via `onEvent` so the UI can render partial results
+// as they arrive instead of waiting for the whole pipeline.
+export type CVAnalyzeEvent =
+  | { type: 'parsed'; parsed: any }
+  | { type: 'audit'; audit: any; scores: any }
+  | { type: 'rewrite'; final_cv: any }
+  | { type: 'done'; result: CVAnalysisResult; cv_record_id: string | null }
+  | { type: 'error'; error: string };
+
+export const analyzeCVStream = async (
+  formData: FormData,
+  onEvent: (event: CVAnalyzeEvent) => void,
+  signal?: AbortSignal,
+): Promise<CVAnalysisResult> => {
+  const baseUrl = process.env.NEXT_PUBLIC_API_URL || '';
+  const token = useAuthStore.getState().accessToken;
+  const csrf = readCsrfToken();
+
+  const headers: Record<string, string> = {
+    Accept: 'application/x-ndjson',
+  };
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+  if (csrf) headers['X-CSRF-Token'] = csrf;
+  // Don't set Content-Type — the browser sets the multipart boundary itself.
+
+  const resp = await fetch(`${baseUrl}/api/cv/analyze`, {
+    method: 'POST',
+    body: formData,
+    credentials: 'include',
+    headers,
+    signal,
+  });
+
+  // 4xx errors return regular JSON (validation, quota, auth).
+  if (!resp.ok) {
+    const ct = resp.headers.get('content-type') || '';
+    if (ct.includes('application/json')) {
+      const body = await resp.json().catch(() => ({}));
+      const err: any = new Error(body.error || `Analyze failed (${resp.status})`);
+      err.response = { status: resp.status, data: body };
+      throw err;
+    }
+    const text = await resp.text().catch(() => '');
+    const err: any = new Error(text || `Analyze failed (${resp.status})`);
+    err.response = { status: resp.status, data: { error: text } };
+    throw err;
+  }
+
+  if (!resp.body) {
+    throw new Error('Streaming not supported by this browser');
+  }
+
+  const reader = resp.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+  let finalResult: CVAnalysisResult | null = null;
+  let errorMessage: string | null = null;
+
+  // eslint-disable-next-line no-constant-condition
+  while (true) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+
+    let nlIdx = buffer.indexOf('\n');
+    while (nlIdx >= 0) {
+      const line = buffer.slice(0, nlIdx).trim();
+      buffer = buffer.slice(nlIdx + 1);
+      if (line) {
+        try {
+          const event = JSON.parse(line) as CVAnalyzeEvent;
+          onEvent(event);
+          if (event.type === 'done') finalResult = event.result;
+          if (event.type === 'error') errorMessage = event.error;
+        } catch {
+          // Tolerate one bad line — the next one will be valid.
+        }
+      }
+      nlIdx = buffer.indexOf('\n');
+    }
+  }
+
+  // Flush any trailing line that didn't end with \n
+  const tail = buffer.trim();
+  if (tail) {
+    try {
+      const event = JSON.parse(tail) as CVAnalyzeEvent;
+      onEvent(event);
+      if (event.type === 'done') finalResult = event.result;
+      if (event.type === 'error') errorMessage = event.error;
+    } catch { /* ignore */ }
+  }
+
+  if (errorMessage) {
+    const err: any = new Error(errorMessage);
+    err.response = { status: 500, data: { error: errorMessage } };
+    throw err;
+  }
+  if (!finalResult) throw new Error('Analysis stream ended without a final result');
+  return finalResult;
+};
+
 export const getCVHistory = () =>
   api.get<{ cvs: CVRecord[] }>('/api/cv/history');
 

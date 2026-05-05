@@ -1,21 +1,35 @@
 import { create } from 'zustand';
 import { CVAnalysisResult } from '@/types';
-import { analyzeCV } from '@/lib/api';
+import { analyzeCVStream } from '@/lib/api';
 import toast from 'react-hot-toast';
 import { DEFAULT_TEMPLATE, type TemplateId } from '@/components/cv/templates';
 import { useSubscriptionStore } from '@/store/subscriptionStore';
 import { useDashboardStore } from '@/store/dashboardStore';
 
-const STEPS = ['Parsing & auditing...', 'Rewriting & humanizing...', 'Done'];
+const STEPS = ['Parsing your CV...', 'Auditing & rewriting...', 'Almost done...'];
 const TEMPLATE_KEY = 'cv_template_id';
 const PHOTO_KEY = 'cv_photo_data';
 const ORIGINAL_PDF_KEY = 'cv_original_pdf_data_url';
 const EDITS_KEY = 'cv_edits_applied';
 
+// What stage of the streaming analysis are we in? Drives the live preview UI.
+//   idle    — no analysis running
+//   parsing — Stage 1a in flight (parse + JD fingerprint)
+//   working — parsed; audit + rewrite running in parallel
+//   finalizing — both LLM stages done, controller is saving the record
+export type AnalysisPhase = 'idle' | 'parsing' | 'working' | 'finalizing';
+
 interface CVAnalysisState {
   loading: boolean;
   step: number;
   steps: string[];
+  phase: AnalysisPhase;
+  /** Partial parsed data emitted by Stage 1a — name, role, skills, experience. */
+  liveParsed: any | null;
+  /** Partial audit data emitted by Stage 1b — used to show ATS score early. */
+  liveAudit: any | null;
+  /** Partial rewritten CV emitted by Stage 3 — shown when it lands ahead of `done`. */
+  liveFinalCV: any | null;
   error: string | null;
   result: CVAnalysisResult | null;
   template: TemplateId;
@@ -43,6 +57,10 @@ export const useCVAnalysisStore = create<CVAnalysisState>((set, get) => ({
   loading: false,
   step: 0,
   steps: STEPS,
+  phase: 'idle',
+  liveParsed: null,
+  liveAudit: null,
+  liveFinalCV: null,
   error: null,
   result: (() => {
     if (typeof window === 'undefined') return null;
@@ -82,7 +100,16 @@ export const useCVAnalysisStore = create<CVAnalysisState>((set, get) => ({
 
     // Reset edits counter for the new analysis.
     try { sessionStorage.setItem(EDITS_KEY, '0'); } catch {}
-    set({ loading: true, step: 0, error: null, editsApplied: 0 });
+    set({
+      loading: true,
+      step: 0,
+      phase: 'parsing',
+      liveParsed: null,
+      liveAudit: null,
+      liveFinalCV: null,
+      error: null,
+      editsApplied: 0,
+    });
 
     // Stash the original PDF as a data URL so "Keep my CV" mode can show it.
     // Skip if the file is too large to fit in sessionStorage (~5MB after base64).
@@ -100,29 +127,49 @@ export const useCVAnalysisStore = create<CVAnalysisState>((set, get) => ({
       set({ originalPdfDataUrl: null });
     }
 
-    const interval = setInterval(() => {
-      const { step } = get();
-      if (step < STEPS.length - 2) {
-        set({ step: step + 1 });
-      }
-    }, 3000);
-
     try {
       const formData = new FormData();
       formData.append('cv_file', file);
       formData.append('job_description', jobDescription);
-      const res = await analyzeCV(formData);
 
-      clearInterval(interval);
-      set({ step: STEPS.length - 1, result: res.data, loading: false });
+      const result = await analyzeCVStream(formData, (event) => {
+        switch (event.type) {
+          case 'parsed':
+            // Stage 1a finished — we now know the candidate's name, role, skills.
+            // Move into "working" phase: audit + rewrite are running in parallel.
+            set({ liveParsed: event.parsed, phase: 'working', step: 1 });
+            break;
+          case 'audit':
+            // ATS score is in — render it live in the mini preview.
+            set({ liveAudit: event.audit });
+            break;
+          case 'rewrite':
+            // Final CV is ready — only the DB save remains.
+            set({ liveFinalCV: event.final_cv, phase: 'finalizing', step: 2 });
+            break;
+          case 'error':
+            // Surfaced on the rejection path below — nothing to do here.
+            break;
+          case 'done':
+            // Full result handled after the stream finishes.
+            break;
+        }
+      });
+
+      set({
+        step: STEPS.length - 1,
+        phase: 'idle',
+        result,
+        loading: false,
+      });
 
       // Persist result and cover letter data
-      sessionStorage.setItem('cv_analysis_result', JSON.stringify(res.data));
+      sessionStorage.setItem('cv_analysis_result', JSON.stringify(result));
       sessionStorage.setItem('cl_job_description', jobDescription);
-      if (res.data?.parsed?.raw_text) {
-        sessionStorage.setItem('cl_cv_text', res.data.parsed.raw_text);
-      } else if (res.data?.final?.final_cv) {
-        sessionStorage.setItem('cl_cv_text', JSON.stringify(res.data.final.final_cv));
+      if (result?.parsed?.raw_text) {
+        sessionStorage.setItem('cl_cv_text', result.parsed.raw_text);
+      } else if (result?.final?.final_cv) {
+        sessionStorage.setItem('cl_cv_text', JSON.stringify(result.final.final_cv));
       }
 
       toast.success('CV analysis complete!');
@@ -132,10 +179,9 @@ export const useCVAnalysisStore = create<CVAnalysisState>((set, get) => ({
       // Dashboard's CV count is now stale — drop cache so next visit refetches
       try { useDashboardStore.getState().invalidate(); } catch { /* noop */ }
     } catch (err: any) {
-      clearInterval(interval);
       const status = err.response?.status;
-      const message = err.response?.data?.error || 'Analysis failed';
-      set({ loading: false, error: message });
+      const message = err.response?.data?.error || err.message || 'Analysis failed';
+      set({ loading: false, phase: 'idle', error: message });
 
       if (status === 429) {
         // Force-refresh subscription so the lock UI kicks in without a reload
@@ -182,6 +228,10 @@ export const useCVAnalysisStore = create<CVAnalysisState>((set, get) => ({
     set({
       loading: false,
       step: 0,
+      phase: 'idle',
+      liveParsed: null,
+      liveAudit: null,
+      liveFinalCV: null,
       error: null,
       result: null,
       originalPdfDataUrl: null,

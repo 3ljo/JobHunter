@@ -4,6 +4,7 @@ import Image from 'next/image';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import CVUpload from '@/components/cv/CVUpload';
+import LiveAnalysisPreview from '@/components/cv/LiveAnalysisPreview';
 import CVPreview from '@/components/cv/CVPreview';
 import QuickEditBox from '@/components/cv/QuickEditBox';
 import ScoreRing from '@/components/cv/ScoreRing';
@@ -328,6 +329,9 @@ export default function CVPage() {
                     ))}
                   </div>
                 </div>
+
+                {/* Live preview — fills in as parsed → audit → rewrite events arrive */}
+                <LiveAnalysisPreview />
               </div>
             ) : (
               /* ── UPLOAD STATE: left-aligned with image bg ── */

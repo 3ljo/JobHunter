@@ -68,11 +68,38 @@ const analyzeCV = async (req, res) => {
     uploadedFilePath = req.file.path;
     const jobDescription = jobDescriptionRaw;
 
-    // Stage 1: Parse the PDF
+    // Parse the PDF before flipping the response into streaming mode, so any
+    // parse error still returns a normal JSON 4xx/5xx with the right status.
     const cvText = await parsePDF(uploadedFilePath);
 
-    // Stages 2-7: Run the full AI analysis pipeline
-    const result = await analyzeCVWithJD(cvText, jobDescription, { userId: req.user.id, userEmail: req.user.email });
+    // ── Stream NDJSON ─────────────────────────────────────────────────────
+    // Each AI stage finishes in parallel — we flush a `{type, ...}\n` chunk
+    // as soon as each one completes so the UI can render partial results.
+    // Final shape: ...progress events..., then `{type:"done", result, cv_record_id}`.
+    res.status(200);
+    res.setHeader('Content-Type', 'application/x-ndjson; charset=utf-8');
+    res.setHeader('Cache-Control', 'no-cache, no-transform');
+    res.setHeader('Connection', 'keep-alive');
+    // Disable proxy buffering (nginx, some Render edges) so chunks reach the browser live.
+    res.setHeader('X-Accel-Buffering', 'no');
+    if (typeof res.flushHeaders === 'function') res.flushHeaders();
+
+    const writeEvent = (event) => {
+      if (res.writableEnded || res.destroyed) return;
+      try {
+        res.write(JSON.stringify(event) + '\n');
+        if (typeof res.flush === 'function') res.flush();
+      } catch (_) {
+        /* socket gone — analysis continues but events are dropped */
+      }
+    };
+
+    const result = await analyzeCVWithJD(
+      cvText,
+      jobDescription,
+      { userId: req.user.id, userEmail: req.user.email },
+      writeEvent,
+    );
 
     // Pipeline succeeded — count this as one analysis against the user's daily quota.
     await incrementUsage(req.user.id, 'cv_analysis');
@@ -110,13 +137,23 @@ const analyzeCV = async (req, res) => {
       }
     }
 
-    return res.status(200).json({
-      ...result,
-      download_url: null,
+    writeEvent({
+      type: 'done',
+      result: { ...result, download_url: null, cv_record_id: cvRecord ? cvRecord.id : null },
       cv_record_id: cvRecord ? cvRecord.id : null,
     });
+    return res.end();
   } catch (err) {
     console.error('CV analysis error:', err.message);
+    // If we already flipped to NDJSON streaming, send the error as an event
+    // and end the stream — `res.status(500).json(...)` would crash with
+    // "Cannot set headers after they are sent".
+    if (res.headersSent) {
+      try {
+        res.write(JSON.stringify({ type: 'error', error: err.message || 'CV analysis failed' }) + '\n');
+      } catch (_) { /* socket already closed */ }
+      return res.end();
+    }
     return res.status(500).json({ error: err.message || 'CV analysis failed' });
   } finally {
     // Clean up temp files

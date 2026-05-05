@@ -113,26 +113,13 @@ Adjust the dates to meet the ${requiredYears}-year requirement. Return ONLY this
   );
 };
 
-const analyzeCVWithJD = async (cvText, jobDescription, meta = {}) => {
-  const m = { ...meta, feature: 'cv_analysis' };
-  // ──────────────────────────────────────────────
-  // STAGE 1 — PARSE + AUDIT (merged into one call)
-  // Was 2 sequential calls; merging saves one full LLM round-trip.
-  // ──────────────────────────────────────────────
-  const stage1 = await callProvider(
-    `You are a combined expert CV parser, JD analyst, and senior ATS optimization expert.
-You know Workday, Taleo, iCIMS, Greenhouse, and Lever deeply.
-Your output must always be valid JSON only. No markdown, no explanation, no extra text.
-
-Key ATS facts you must apply in the audit:
-- Hard skill keywords account for 35% of ATS ranking weight
-- Soft skills add near zero ATS value
-- Optimal keyword match rate is 65-75%. Over 75% is keyword stuffing and gets penalized
-- ATS parsers cannot read tables, text boxes, headers/footers, graphics, multi-column layouts
-- Section headers must be standard: Work Experience, Education, Skills, Professional Summary, Certifications
-- Taleo is strictest: single column DOCX only
-- Workday, Greenhouse, Lever added AI semantic matching in 2024-2025`,
-    `Parse the CV and the job description, then audit the CV against the JD.
+// Stage 1a — Parse the CV + extract JD fingerprint. Small, fast call.
+// Pulled out of the old "Parse + Audit" merged stage so the audit and the
+// rewrite can run in parallel (rewrite needs only the parsed data).
+const runParseStage = (cvText, jobDescription, m) => callProvider(
+  `You are an expert CV parser and JD analyst. Your job is to extract clean, structured
+data from a CV and a job description. Output strict JSON only — no markdown, no prose.`,
+  `Parse the CV and the job description into structured data.
 
 CV TEXT:
 ${cvText}
@@ -140,15 +127,14 @@ ${cvText}
 JOB DESCRIPTION:
 ${jobDescription}
 
-Return ONLY this JSON structure, nothing else. Preserve ALL certifications and education
-entries from the CV — never drop a factual credential. If an entry has a URL (certificate
-link, institution website, course page), you MUST capture it in the "url" field. Also
-capture city and country if present next to the institution. Dropping URLs or locations
-is a critical failure.
+Return ONLY this JSON. Preserve ALL certifications and education entries from the CV
+— never drop a factual credential. If an entry has a URL (certificate link, institution
+website, course page), capture it in the "url" field. Capture city and country if
+present next to the institution. Dropping URLs or locations is a critical failure.
 
-Languages: every language entry MUST have BOTH a "name" (e.g., "English", "Italian",
-"German") AND a "level" (e.g., "B2", "Native", "Fluent"). NEVER output just a level with
-no name. If the CV lists "English B2" and "Italian B1", output
+Languages: every language entry MUST have BOTH a "name" (e.g., "English", "Italian")
+AND a "level" (e.g., "B2", "Native", "Fluent"). NEVER output just a level with no name.
+If the CV lists "English B2" and "Italian B1", output
 [{"name":"English","level":"B2"},{"name":"Italian","level":"B1"}] — not ["B2","B1"].
 
 {
@@ -183,71 +169,74 @@ no name. If the CV lists "English B2" and "Italian B1", output
     "required_certifications": [],
     "company_culture_signals": [],
     "keyword_frequency": {}
-  },
-  "audit": {
-    "ats_scores": {
-      "overall": 0,
-      "formatting": 0,
-      "keyword_match": 0,
-      "bullet_quality": 0,
-      "section_structure": 0,
-      "job_title_alignment": 0
-    },
-    "formatting_audit": [
-      { "item": "", "status": "PASS|FAIL|WARNING", "fix": "" }
-    ],
-    "keyword_analysis": {
-      "critical_missing": [],
-      "present_exact_match": [],
-      "present_wrong_phrasing": [
-        { "cv_phrase": "", "jd_phrase": "", "fix": "" }
-      ],
-      "keyword_match_percentage": 0
-    },
-    "bullet_analysis": [
-      { "original": "", "issues": [], "weak_verb": true, "missing_metric": true, "buried_keyword": true }
-    ],
-    "top_5_quick_wins": [
-      { "priority": 1, "action": "", "impact": "high|medium|low", "reason": "" }
-    ],
-    "projected_score_after_fixes": 0
   }
 }`,
-    'Parse + Audit',
-    m
-  );
+  'Parse + JD',
+  m
+);
 
-  const parsedData = { cv_parsed: stage1.cv_parsed, jd_fingerprint: stage1.jd_fingerprint };
-  const auditData  = stage1.audit;
+// Stage 1b — ATS audit. Uses parsed CV + JD fingerprint, runs in parallel
+// with the rewrite. The rewrite no longer depends on this stage.
+const runAuditStage = (cvText, parsedData, m) => callProvider(
+  `You are a senior ATS optimization expert. You know Workday, Taleo, iCIMS, Greenhouse,
+and Lever deeply. Your output must always be valid JSON only — no markdown, no prose.
 
-  // ──────────────────────────────────────────────
-  // STAGE 2 — DATE ADJUSTMENT (conditional)
-  // ──────────────────────────────────────────────
-  const dateAdjustment = await runDateAdjustmentStage(parsedData, m);
+Key ATS facts you must apply:
+- Hard skill keywords account for 35% of ATS ranking weight
+- Soft skills add near zero ATS value
+- Optimal keyword match rate is 65-75%. Over 75% is keyword stuffing and gets penalized
+- ATS parsers cannot read tables, text boxes, headers/footers, graphics, multi-column layouts
+- Section headers must be standard: Work Experience, Education, Skills, Professional Summary, Certifications
+- Taleo is strictest: single column DOCX only
+- Workday, Greenhouse, Lever added AI semantic matching in 2024-2025`,
+  `Audit this CV against the job description.
 
-  const requiredYears = parseFloat(parsedData.jd_fingerprint.required_experience_years) || 0;
+ORIGINAL CV TEXT:
+${cvText}
 
-  const experienceForRewrite = dateAdjustment
-    ? dateAdjustment.adjusted_experience.map((adj) => {
-        const original = parsedData.cv_parsed.experience.find(
-          (e) => e.company === adj.company && e.title === adj.title
-        ) || {};
-        return {
-          ...original,
-          duration: adj.adjusted_duration,
-          original_duration: adj.original_duration,
-        };
-      })
-    : parsedData.cv_parsed.experience;
+PARSED CV:
+${JSON.stringify(parsedData.cv_parsed)}
 
-  // ──────────────────────────────────────────────
-  // STAGE 3 — REWRITE + HUMANIZE (merged into 1 call)
-  // Previously 2 sequential calls (~5-8s each); now 1 call that
-  // produces already-humanized output. Cuts roughly half the
-  // total analysis latency.
-  // ──────────────────────────────────────────────
-  const mergedData = await callProvider(
-    `You are a world-class CV writer and humanization expert.
+JD FINGERPRINT:
+${JSON.stringify(parsedData.jd_fingerprint)}
+
+Return ONLY this JSON:
+{
+  "ats_scores": {
+    "overall": 0,
+    "formatting": 0,
+    "keyword_match": 0,
+    "bullet_quality": 0,
+    "section_structure": 0,
+    "job_title_alignment": 0
+  },
+  "formatting_audit": [
+    { "item": "", "status": "PASS|FAIL|WARNING", "fix": "" }
+  ],
+  "keyword_analysis": {
+    "critical_missing": [],
+    "present_exact_match": [],
+    "present_wrong_phrasing": [
+      { "cv_phrase": "", "jd_phrase": "", "fix": "" }
+    ],
+    "keyword_match_percentage": 0
+  },
+  "bullet_analysis": [
+    { "original": "", "issues": [], "weak_verb": true, "missing_metric": true, "buried_keyword": true }
+  ],
+  "top_5_quick_wins": [
+    { "priority": 1, "action": "", "impact": "high|medium|low", "reason": "" }
+  ],
+  "projected_score_after_fixes": 0
+}`,
+  'Audit',
+  m
+);
+
+// Stage 3 — Rewrite + Humanize. Uses parsed data + JD fingerprint only,
+// so it can run in parallel with the audit.
+const runRewriteStage = (cvText, parsedData, experienceForRewrite, dateAdjustment, requiredYears, m) => callProvider(
+  `You are a world-class CV writer and humanization expert.
 Your job is to produce a FINAL, ATS-optimized, undetectably-human CV in a single pass.
 
 Pass 1 — Voice preservation & intelligent rewrite:
@@ -283,7 +272,7 @@ Strict constraints:
 - If the summary references years of experience, keep it consistent with the dates.
 - Preserve contact details exactly as provided.
 - Return a single valid JSON. No markdown. No explanation.`,
-    `Original CV text (source of voice and facts):
+  `Original CV text (source of voice and facts):
 ${cvText}
 
 Parsed CV data (use these as the facts; dates are authoritative):
@@ -291,9 +280,6 @@ ${JSON.stringify({ ...parsedData.cv_parsed, experience: experienceForRewrite })}
 
 JD fingerprint (keywords to embed):
 ${JSON.stringify(parsedData.jd_fingerprint)}
-
-ATS audit (issues to fix in the rewrite):
-${JSON.stringify(auditData)}
 
 Contact details to preserve exactly:
 ${JSON.stringify({
@@ -347,9 +333,70 @@ Produce ONE final, humanized CV in this exact JSON structure:
   "ai_detection_risk": "low|medium|high",
   "confidence_note": ""
 }`,
-    'Rewrite & Humanize',
-    m
-  );
+  'Rewrite & Humanize',
+  m
+);
+
+const buildScores = (auditData) => ({
+  current_ats: auditData?.ats_scores?.overall ?? 0,
+  projected_ats: auditData?.projected_score_after_fixes ?? 0,
+  formatting: auditData?.ats_scores?.formatting ?? 0,
+  keyword_match: auditData?.ats_scores?.keyword_match ?? 0,
+  bullet_quality: auditData?.ats_scores?.bullet_quality ?? 0,
+  section_structure: auditData?.ats_scores?.section_structure ?? 0,
+});
+
+// Pipeline:
+//   1a) Parse + JD fingerprint   (sequential — everything else needs this)
+//   1b) Audit                    ┐
+//   2 ) Date adjustment (cond.)  ├─ run in parallel after 1a
+//   3 ) Rewrite + Humanize       ┘
+//
+// `onProgress` is fired as each stage completes so the controller can stream
+// partial results to the client. It must never throw — wrap calls in try/catch.
+const analyzeCVWithJD = async (cvText, jobDescription, meta = {}, onProgress = () => {}) => {
+  const m = { ...meta, feature: 'cv_analysis' };
+  const safeProgress = (event) => {
+    try { onProgress(event); } catch (_) { /* progress sink errors must not break analysis */ }
+  };
+
+  // ──────────────────────────────────────────────
+  // STAGE 1a — PARSE + JD FINGERPRINT
+  // ──────────────────────────────────────────────
+  const stage1a = await runParseStage(cvText, jobDescription, m);
+  const parsedData = { cv_parsed: stage1a.cv_parsed, jd_fingerprint: stage1a.jd_fingerprint };
+  safeProgress({ type: 'parsed', parsed: parsedData });
+
+  // ──────────────────────────────────────────────
+  // STAGE 1b (audit) and STAGE 2+3 (date adj → rewrite) in parallel
+  // ──────────────────────────────────────────────
+  const auditPromise = runAuditStage(cvText, parsedData, m).then((audit) => {
+    safeProgress({ type: 'audit', audit, scores: buildScores(audit) });
+    return audit;
+  });
+
+  const rewritePromise = (async () => {
+    const dateAdjustment = await runDateAdjustmentStage(parsedData, m);
+    const requiredYears = parseFloat(parsedData.jd_fingerprint.required_experience_years) || 0;
+    const experienceForRewrite = dateAdjustment
+      ? dateAdjustment.adjusted_experience.map((adj) => {
+          const original = parsedData.cv_parsed.experience.find(
+            (e) => e.company === adj.company && e.title === adj.title
+          ) || {};
+          return {
+            ...original,
+            duration: adj.adjusted_duration,
+            original_duration: adj.original_duration,
+          };
+        })
+      : parsedData.cv_parsed.experience;
+
+    const merged = await runRewriteStage(cvText, parsedData, experienceForRewrite, dateAdjustment, requiredYears, m);
+    safeProgress({ type: 'rewrite', final_cv: merged.final_cv });
+    return { merged, dateAdjustment };
+  })();
+
+  const [auditData, { merged: mergedData, dateAdjustment }] = await Promise.all([auditPromise, rewritePromise]);
 
   // Map the merged output back to the existing rewrite/final shape so
   // downstream consumers (frontend, PDF, refine, history) keep working.
@@ -367,23 +414,13 @@ Produce ONE final, humanized CV in this exact JSON structure:
     confidence_note: mergedData.confidence_note || '',
   };
 
-  // ──────────────────────────────────────────────
-  // Return complete pipeline result
-  // ──────────────────────────────────────────────
   return {
     parsed: parsedData,
     audit: auditData,
-    dateAdjustment: dateAdjustment,
+    dateAdjustment,
     rewrite: rewriteData,
     final: finalData,
-    scores: {
-      current_ats: auditData.ats_scores.overall,
-      projected_ats: auditData.projected_score_after_fixes,
-      formatting: auditData.ats_scores.formatting,
-      keyword_match: auditData.ats_scores.keyword_match,
-      bullet_quality: auditData.ats_scores.bullet_quality,
-      section_structure: auditData.ats_scores.section_structure,
-    },
+    scores: buildScores(auditData),
   };
 };
 
