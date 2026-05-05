@@ -60,7 +60,17 @@ export type TemplateId =
   | 'darktech'
   | 'sales'
   | 'functional'
-  | 'serif';
+  | 'serif'
+  | 'mono'
+  | 'timeline'
+  | 'banking'
+  | 'healthcare'
+  | 'government'
+  | 'designer'
+  | 'marketing'
+  | 'legal'
+  | 'twotone'
+  | 'startup';
 
 export interface TemplateMeta {
   id: TemplateId;
@@ -225,6 +235,96 @@ export const TEMPLATES: Record<TemplateId, TemplateMeta> = {
     atsScore: 95,
     region: 'Global',
     proOnly: true,
+  },
+  mono: {
+    id: 'mono',
+    name: 'Monochrome Bold',
+    description: 'Brutalist black-and-white with a heavy name block. Maximum contrast, zero distraction.',
+    supportsPhoto: false,
+    atsScore: 95,
+    region: 'Global',
+    proOnly: false,
+  },
+  timeline: {
+    id: 'timeline',
+    name: 'Timeline Career',
+    description: 'Vertical timeline with date markers — visualises career progression at a glance.',
+    supportsPhoto: false,
+    atsScore: 92,
+    region: 'Global',
+    proOnly: true,
+  },
+  banking: {
+    id: 'banking',
+    name: 'Banking Conservative',
+    description: 'Centered serif with double-rule borders. Standard for IB, PE, and asset management.',
+    supportsPhoto: false,
+    atsScore: 96,
+    region: 'US / UK',
+    proOnly: true,
+  },
+  healthcare: {
+    id: 'healthcare',
+    name: 'Healthcare Professional',
+    description: 'Teal accent with optional photo and competency pills. Built for clinical and medical roles.',
+    supportsPhoto: true,
+    atsScore: 94,
+    region: 'Global',
+    proOnly: true,
+  },
+  government: {
+    id: 'government',
+    name: 'Government Federal',
+    description: 'USAJOBS-inspired layout with double-rule header and federal blue. Built for public-sector applications.',
+    supportsPhoto: false,
+    atsScore: 98,
+    region: 'US Federal',
+    proOnly: true,
+  },
+  designer: {
+    id: 'designer',
+    name: 'Designer Portfolio',
+    description: 'Coral and peach palette with rounded photo. Built for designers, illustrators, and creatives.',
+    supportsPhoto: true,
+    atsScore: 88,
+    region: 'Global',
+    proOnly: true,
+  },
+  marketing: {
+    id: 'marketing',
+    name: 'Marketing Spotlight',
+    description: 'Magenta-to-orange gradient header with pill date tags. Built for marketing, brand, and growth roles.',
+    supportsPhoto: false,
+    atsScore: 90,
+    region: 'Global',
+    proOnly: true,
+  },
+  legal: {
+    id: 'legal',
+    name: 'Legal Formal',
+    description: 'Garamond serif with burgundy diamond divider. Standard for law firms and judicial clerkships.',
+    supportsPhoto: false,
+    atsScore: 96,
+    region: 'US / UK',
+    proOnly: true,
+  },
+  twotone: {
+    id: 'twotone',
+    name: 'Modern Two-Tone',
+    description: 'Slate header block with sky-blue accent and optional photo. Polished hybrid of formal and modern.',
+    supportsPhoto: true,
+    atsScore: 93,
+    region: 'Global',
+    proOnly: true,
+  },
+  startup: {
+    id: 'startup',
+    name: 'Startup Founder',
+    description: 'Numbered sections with monospace dates and "shipping" pill. Built for founders, PMs, and early-stage hires.',
+    supportsPhoto: false,
+    atsScore: 92,
+    region: 'Global',
+    proOnly: false,
   },
 };
 

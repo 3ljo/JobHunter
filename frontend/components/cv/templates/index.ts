@@ -14,6 +14,16 @@ import DarkTech from './DarkTech';
 import SalesPerformance from './SalesPerformance';
 import CareerChanger from './CareerChanger';
 import ElegantSerif from './ElegantSerif';
+import MonochromeBold from './MonochromeBold';
+import TimelineCareer from './TimelineCareer';
+import BankingConservative from './BankingConservative';
+import HealthcareProfessional from './HealthcareProfessional';
+import GovernmentFederal from './GovernmentFederal';
+import DesignerPortfolio from './DesignerPortfolio';
+import MarketingSpotlight from './MarketingSpotlight';
+import LegalFormal from './LegalFormal';
+import ModernTwoTone from './ModernTwoTone';
+import StartupFounder from './StartupFounder';
 import { TEMPLATES, DEFAULT_TEMPLATE, type TemplateId, type TemplateMeta, type TemplateProps, type CVData } from './types';
 
 // 'original' is handled specially by CVPreview (renders the uploaded PDF in an iframe).
@@ -36,6 +46,16 @@ export const TEMPLATE_COMPONENTS: Record<TemplateId, React.FC<TemplateProps>> = 
   sales: SalesPerformance,
   functional: CareerChanger,
   serif: ElegantSerif,
+  mono: MonochromeBold,
+  timeline: TimelineCareer,
+  banking: BankingConservative,
+  healthcare: HealthcareProfessional,
+  government: GovernmentFederal,
+  designer: DesignerPortfolio,
+  marketing: MarketingSpotlight,
+  legal: LegalFormal,
+  twotone: ModernTwoTone,
+  startup: StartupFounder,
 };
 
 export { TEMPLATES, DEFAULT_TEMPLATE };

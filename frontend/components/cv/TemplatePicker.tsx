@@ -598,6 +598,299 @@ export function TemplateThumbnail({ id }: { id: TemplateId }) {
     );
   }
 
+  if (id === 'mono') {
+    return (
+      <div className={common} style={paperStyle}>
+        <svg viewBox="0 0 60 80" preserveAspectRatio="xMidYMid meet" className="w-full h-full">
+          <rect x="0" y="0" width="60" height="20" fill="#0a0a0a" />
+          <rect x="6" y="7" width="30" height="3.5" fill="#fff" />
+          <rect x="6" y="13" width="22" height="1" fill="#fff" opacity="0.7" />
+          <rect x="6" y="26" width="14" height="1.3" fill="#0a0a0a" />
+          <line x1="6" y1="29" x2="54" y2="29" stroke="#0a0a0a" strokeWidth="0.8" />
+          <rect x="6" y="32" width="44" height="1" fill="#888" />
+          <rect x="6" y="34" width="38" height="1" fill="#888" />
+          <rect x="6" y="40" width="14" height="1.3" fill="#0a0a0a" />
+          <line x1="6" y1="43" x2="54" y2="43" stroke="#0a0a0a" strokeWidth="0.8" />
+          <rect x="6" y="46" width="22" height="1.1" fill="#0a0a0a" />
+          <rect x="42" y="46" width="10" height="1.1" fill="#0a0a0a" />
+          <rect x="6" y="48.5" width="40" height="0.9" fill="#aaa" />
+          <rect x="6" y="50.5" width="36" height="0.9" fill="#aaa" />
+          <rect x="6" y="58" width="14" height="1.3" fill="#0a0a0a" />
+          <line x1="6" y1="61" x2="54" y2="61" stroke="#0a0a0a" strokeWidth="0.8" />
+          <rect x="6" y="64" width="42" height="0.9" fill="#aaa" />
+          <rect x="6" y="66" width="38" height="0.9" fill="#aaa" />
+        </svg>
+      </div>
+    );
+  }
+
+  if (id === 'timeline') {
+    return (
+      <div className={common} style={paperStyle}>
+        <svg viewBox="0 0 60 80" preserveAspectRatio="xMidYMid meet" className="w-full h-full">
+          <rect x="6" y="9" width="22" height="3" fill="#0f172a" />
+          <rect x="6" y="14" width="30" height="1" fill="#888" />
+          <rect x="6" y="18" width="10" height="1" fill="#2563eb" />
+          <rect x="6" y="24" width="12" height="1.4" fill="#0f172a" />
+          <line x1="14" y1="32" x2="14" y2="68" stroke="#2563eb" strokeWidth="0.6" />
+          <circle cx="14" cy="33" r="1.4" fill="#fff" stroke="#2563eb" strokeWidth="0.7" />
+          <rect x="18" y="32" width="10" height="0.9" fill="#2563eb" />
+          <rect x="18" y="34" width="20" height="1.1" fill="#0f172a" />
+          <rect x="18" y="36" width="16" height="0.8" fill="#888" />
+          <rect x="20" y="38.5" width="30" height="0.8" fill="#aaa" />
+          <rect x="20" y="40.3" width="26" height="0.8" fill="#aaa" />
+          <circle cx="14" cy="46" r="1.4" fill="#fff" stroke="#2563eb" strokeWidth="0.7" />
+          <rect x="18" y="45" width="10" height="0.9" fill="#2563eb" />
+          <rect x="18" y="47" width="22" height="1.1" fill="#0f172a" />
+          <rect x="20" y="49.5" width="30" height="0.8" fill="#aaa" />
+          <rect x="20" y="51.3" width="26" height="0.8" fill="#aaa" />
+          <circle cx="14" cy="58" r="1.4" fill="#fff" stroke="#2563eb" strokeWidth="0.7" />
+          <rect x="18" y="57" width="10" height="0.9" fill="#2563eb" />
+          <rect x="18" y="59" width="20" height="1.1" fill="#0f172a" />
+          <rect x="20" y="61.5" width="28" height="0.8" fill="#aaa" />
+          <rect x="6" y="72" width="9" height="2" rx="0.5" fill="#2563eb" opacity="0.18" />
+          <rect x="17" y="72" width="11" height="2" rx="0.5" fill="#2563eb" opacity="0.18" />
+          <rect x="30" y="72" width="9" height="2" rx="0.5" fill="#2563eb" opacity="0.18" />
+        </svg>
+      </div>
+    );
+  }
+
+  if (id === 'banking') {
+    return (
+      <div className={common} style={paperStyle}>
+        <svg viewBox="0 0 60 80" preserveAspectRatio="xMidYMid meet" className="w-full h-full">
+          <line x1="6" y1="11" x2="54" y2="11" stroke="#0c1d3d" strokeWidth="1" />
+          <rect x="20" y="13" width="20" height="3" fill="#0c1d3d" />
+          <rect x="20" y="18" width="20" height="0.9" fill="#444" />
+          <line x1="6" y1="22" x2="54" y2="22" stroke="#0c1d3d" strokeWidth="0.5" />
+          <rect x="6" y="27" width="22" height="1.4" fill="#0c1d3d" />
+          <line x1="6" y1="30" x2="54" y2="30" stroke="#0c1d3d" strokeWidth="0.4" />
+          <rect x="6" y="33" width="44" height="0.9" fill="#444" />
+          <rect x="6" y="35" width="38" height="0.9" fill="#444" />
+          <rect x="6" y="40" width="22" height="1.4" fill="#0c1d3d" />
+          <line x1="6" y1="43" x2="54" y2="43" stroke="#0c1d3d" strokeWidth="0.4" />
+          <rect x="6" y="46" width="22" height="1.1" fill="#0c1d3d" />
+          <rect x="42" y="46" width="10" height="1" fill="#666" />
+          <rect x="6" y="48" width="22" height="0.9" fill="#666" />
+          <rect x="8" y="50.5" width="40" height="0.9" fill="#aaa" />
+          <rect x="8" y="52.5" width="36" height="0.9" fill="#aaa" />
+          <rect x="6" y="58" width="22" height="1.4" fill="#0c1d3d" />
+          <line x1="6" y1="61" x2="54" y2="61" stroke="#0c1d3d" strokeWidth="0.4" />
+          <rect x="6" y="64" width="44" height="0.9" fill="#aaa" />
+        </svg>
+      </div>
+    );
+  }
+
+  if (id === 'healthcare') {
+    return (
+      <div className={common} style={paperStyle}>
+        <svg viewBox="0 0 60 80" preserveAspectRatio="xMidYMid meet" className="w-full h-full">
+          <rect x="0" y="0" width="60" height="2" fill="#0d9488" />
+          <circle cx="11" cy="14" r="5" fill="#e6fffb" stroke="#0d9488" strokeWidth="0.6" />
+          <rect x="20" y="10" width="28" height="3" fill="#115e59" />
+          <rect x="20" y="15" width="22" height="1" fill="#666" />
+          <rect x="6" y="24" width="22" height="1.4" fill="#115e59" />
+          <line x1="6" y1="27" x2="54" y2="27" stroke="#0d9488" strokeWidth="0.6" />
+          <rect x="6" y="30" width="40" height="0.9" fill="#888" />
+          <rect x="6" y="32" width="36" height="0.9" fill="#888" />
+          <rect x="6" y="38" width="22" height="1.4" fill="#115e59" />
+          <line x1="6" y1="41" x2="54" y2="41" stroke="#0d9488" strokeWidth="0.6" />
+          <rect x="6" y="44" width="20" height="1.1" fill="#115e59" />
+          <rect x="42" y="44" width="10" height="1" fill="#0d9488" />
+          <rect x="8" y="46.5" width="40" height="0.9" fill="#aaa" />
+          <rect x="6" y="54" width="22" height="1.4" fill="#115e59" />
+          <line x1="6" y1="57" x2="54" y2="57" stroke="#0d9488" strokeWidth="0.6" />
+          <rect x="6" y="60" width="9" height="2" rx="1" fill="#0d9488" opacity="0.18" />
+          <rect x="16" y="60" width="11" height="2" rx="1" fill="#0d9488" opacity="0.18" />
+          <rect x="28" y="60" width="9" height="2" rx="1" fill="#0d9488" opacity="0.18" />
+          <rect x="38" y="60" width="13" height="2" rx="1" fill="#0d9488" opacity="0.18" />
+        </svg>
+      </div>
+    );
+  }
+
+  if (id === 'government') {
+    return (
+      <div className={common} style={paperStyle}>
+        <svg viewBox="0 0 60 80" preserveAspectRatio="xMidYMid meet" className="w-full h-full">
+          <rect x="14" y="9" width="32" height="3" fill="#002868" />
+          <rect x="18" y="14" width="24" height="1" fill="#666" />
+          <line x1="6" y1="18" x2="54" y2="18" stroke="#002868" strokeWidth="0.5" />
+          <line x1="6" y1="20" x2="54" y2="20" stroke="#002868" strokeWidth="0.5" />
+          <rect x="6" y="25" width="22" height="1.4" fill="#002868" />
+          <line x1="6" y1="28" x2="54" y2="28" stroke="#002868" strokeWidth="1" />
+          <rect x="6" y="31" width="44" height="0.9" fill="#444" />
+          <rect x="6" y="33" width="38" height="0.9" fill="#444" />
+          <rect x="6" y="38" width="22" height="1.4" fill="#002868" />
+          <line x1="6" y1="41" x2="54" y2="41" stroke="#002868" strokeWidth="1" />
+          <rect x="6" y="44" width="20" height="1.1" fill="#002868" />
+          <rect x="6" y="46" width="22" height="0.9" fill="#666" />
+          <rect x="8" y="48" width="42" height="0.9" fill="#aaa" />
+          <rect x="8" y="50" width="38" height="0.9" fill="#aaa" />
+          <rect x="6" y="56" width="22" height="1.4" fill="#002868" />
+          <line x1="6" y1="59" x2="54" y2="59" stroke="#002868" strokeWidth="1" />
+          <rect x="6" y="62" width="22" height="1.1" fill="#002868" />
+          <rect x="6" y="64" width="20" height="0.9" fill="#666" />
+          <rect x="6" y="70" width="22" height="1.4" fill="#002868" />
+          <line x1="6" y1="73" x2="54" y2="73" stroke="#002868" strokeWidth="1" />
+          <rect x="6" y="76" width="40" height="0.9" fill="#aaa" />
+        </svg>
+      </div>
+    );
+  }
+
+  if (id === 'designer') {
+    return (
+      <div className={common} style={paperStyle}>
+        <svg viewBox="0 0 60 80" preserveAspectRatio="xMidYMid meet" className="w-full h-full">
+          <rect x="0" y="0" width="60" height="22" fill="#fef3ec" />
+          <rect x="6" y="6" width="11" height="11" rx="2" fill="#fff" stroke="#fb7185" strokeWidth="0.6" />
+          <rect x="20" y="6" width="14" height="1" fill="#fb7185" />
+          <rect x="20" y="9" width="28" height="3.5" fill="#1f1f2c" />
+          <rect x="20" y="15" width="22" height="1" fill="#5b5b6a" />
+          <rect x="6" y="26" width="14" height="1.3" fill="#1f1f2c" />
+          <line x1="6" y1="29" x2="20" y2="29" stroke="#fb7185" strokeWidth="0.8" />
+          <rect x="6" y="32" width="44" height="0.9" fill="#888" />
+          <rect x="6" y="34" width="38" height="0.9" fill="#888" />
+          <rect x="6" y="40" width="14" height="1.3" fill="#1f1f2c" />
+          <line x1="6" y1="43" x2="20" y2="43" stroke="#fb7185" strokeWidth="0.8" />
+          <rect x="6" y="46" width="20" height="1.1" fill="#1f1f2c" />
+          <rect x="42" y="46" width="10" height="1" fill="#fb7185" />
+          <rect x="8" y="48.5" width="40" height="0.9" fill="#aaa" />
+          <rect x="6" y="56" width="14" height="1.3" fill="#1f1f2c" />
+          <line x1="6" y1="59" x2="20" y2="59" stroke="#fb7185" strokeWidth="0.8" />
+          <rect x="6" y="62" width="9" height="2.2" rx="1.1" fill="#fef3ec" stroke="#fb718550" strokeWidth="0.4" />
+          <rect x="16" y="62" width="11" height="2.2" rx="1.1" fill="#fef3ec" stroke="#fb718550" strokeWidth="0.4" />
+          <rect x="28" y="62" width="9" height="2.2" rx="1.1" fill="#fef3ec" stroke="#fb718550" strokeWidth="0.4" />
+          <rect x="38" y="62" width="13" height="2.2" rx="1.1" fill="#fef3ec" stroke="#fb718550" strokeWidth="0.4" />
+        </svg>
+      </div>
+    );
+  }
+
+  if (id === 'marketing') {
+    return (
+      <div className={common} style={paperStyle}>
+        <svg viewBox="0 0 60 80" preserveAspectRatio="xMidYMid meet" className="w-full h-full">
+          <defs>
+            <linearGradient id="cv-mkt" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0%" stopColor="#db2777" />
+              <stop offset="100%" stopColor="#f97316" />
+            </linearGradient>
+          </defs>
+          <rect x="0" y="0" width="60" height="22" fill="url(#cv-mkt)" />
+          <rect x="6" y="8" width="34" height="3.5" fill="#fff" />
+          <rect x="6" y="14" width="28" height="1" fill="#fff" opacity="0.85" />
+          <rect x="6" y="26" width="3" height="1.4" fill="#db2777" />
+          <rect x="11" y="26" width="14" height="1.4" fill="#0f172a" />
+          <rect x="6" y="30" width="44" height="0.9" fill="#888" />
+          <rect x="6" y="32" width="38" height="0.9" fill="#888" />
+          <rect x="6" y="38" width="3" height="1.4" fill="#db2777" />
+          <rect x="11" y="38" width="14" height="1.4" fill="#0f172a" />
+          <rect x="6" y="42" width="22" height="1.1" fill="#db2777" />
+          <rect x="40" y="42" width="12" height="2" rx="1" fill="#f97316" opacity="0.20" />
+          <rect x="8" y="45" width="42" height="0.9" fill="#aaa" />
+          <rect x="8" y="47" width="38" height="0.9" fill="#aaa" />
+          <rect x="6" y="54" width="3" height="1.4" fill="#db2777" />
+          <rect x="11" y="54" width="14" height="1.4" fill="#0f172a" />
+          <rect x="6" y="58" width="9" height="2" rx="0.5" fill="#db2777" opacity="0.15" />
+          <rect x="16" y="58" width="11" height="2" rx="0.5" fill="#db2777" opacity="0.15" />
+          <rect x="28" y="58" width="9" height="2" rx="0.5" fill="#db2777" opacity="0.15" />
+          <rect x="38" y="58" width="13" height="2" rx="0.5" fill="#db2777" opacity="0.15" />
+        </svg>
+      </div>
+    );
+  }
+
+  if (id === 'legal') {
+    return (
+      <div className={common} style={paperStyle}>
+        <svg viewBox="0 0 60 80" preserveAspectRatio="xMidYMid meet" className="w-full h-full">
+          <rect x="18" y="9" width="24" height="3.5" fill="#1a1a1a" />
+          <line x1="20" y1="15" x2="28" y2="15" stroke="#7f1d1d" strokeWidth="0.5" />
+          <rect x="29" y="14" width="2" height="2" transform="rotate(45 30 15)" fill="#7f1d1d" />
+          <line x1="32" y1="15" x2="40" y2="15" stroke="#7f1d1d" strokeWidth="0.5" />
+          <rect x="20" y="17" width="20" height="1" fill="#666" />
+          <rect x="22" y="24" width="16" height="1.2" fill="#7f1d1d" />
+          <rect x="6" y="28" width="44" height="0.9" fill="#444" />
+          <rect x="6" y="30" width="40" height="0.9" fill="#444" />
+          <rect x="22" y="36" width="16" height="1.2" fill="#7f1d1d" />
+          <rect x="6" y="40" width="22" height="1.1" fill="#7f1d1d" />
+          <rect x="42" y="40" width="10" height="0.9" fill="#666" />
+          <rect x="6" y="42" width="20" height="0.9" fill="#666" />
+          <rect x="8" y="44.5" width="42" height="0.9" fill="#444" />
+          <rect x="8" y="46.5" width="38" height="0.9" fill="#444" />
+          <rect x="22" y="52" width="16" height="1.2" fill="#7f1d1d" />
+          <rect x="6" y="56" width="22" height="1.1" fill="#7f1d1d" />
+          <rect x="6" y="58" width="20" height="0.9" fill="#666" />
+          <rect x="22" y="64" width="16" height="1.2" fill="#7f1d1d" />
+          <rect x="6" y="68" width="40" height="0.9" fill="#444" />
+        </svg>
+      </div>
+    );
+  }
+
+  if (id === 'twotone') {
+    return (
+      <div className={common} style={paperStyle}>
+        <svg viewBox="0 0 60 80" preserveAspectRatio="xMidYMid meet" className="w-full h-full">
+          <rect x="0" y="0" width="60" height="24" fill="#1e293b" />
+          <circle cx="11" cy="13" r="5" fill="#fff" opacity="0.9" stroke="#38bdf8" strokeWidth="0.6" />
+          <rect x="20" y="9" width="28" height="3.5" fill="#fff" />
+          <rect x="20" y="15" width="14" height="1" fill="#38bdf8" />
+          <rect x="20" y="17.5" width="22" height="0.9" fill="#fff" opacity="0.78" />
+          <rect x="6" y="28" width="14" height="1.3" fill="#1e293b" />
+          <line x1="6" y1="31" x2="54" y2="31" stroke="#1e293b" strokeWidth="0.7" />
+          <rect x="6" y="34" width="44" height="0.9" fill="#888" />
+          <rect x="6" y="36" width="38" height="0.9" fill="#888" />
+          <rect x="6" y="42" width="14" height="1.3" fill="#1e293b" />
+          <line x1="6" y1="45" x2="54" y2="45" stroke="#1e293b" strokeWidth="0.7" />
+          <rect x="6" y="48" width="20" height="1.1" fill="#1e293b" />
+          <rect x="42" y="48" width="10" height="1" fill="#38bdf8" />
+          <rect x="8" y="50.5" width="42" height="0.9" fill="#aaa" />
+          <rect x="8" y="52.5" width="38" height="0.9" fill="#aaa" />
+          <rect x="6" y="58" width="14" height="1.3" fill="#1e293b" />
+          <line x1="6" y1="61" x2="54" y2="61" stroke="#1e293b" strokeWidth="0.7" />
+          <rect x="6" y="64" width="42" height="0.9" fill="#aaa" />
+        </svg>
+      </div>
+    );
+  }
+
+  if (id === 'startup') {
+    return (
+      <div className={common} style={paperStyle}>
+        <svg viewBox="0 0 60 80" preserveAspectRatio="xMidYMid meet" className="w-full h-full">
+          <rect x="6" y="9" width="22" height="3.5" fill="#0a0a0a" />
+          <rect x="30" y="10" width="14" height="2" rx="0.5" fill="#22c55e" />
+          <rect x="6" y="15" width="30" height="1" fill="#666" />
+          <rect x="6" y="22" width="3" height="1.2" fill="#0a0a0a" />
+          <rect x="11" y="22" width="14" height="1.3" fill="#0a0a0a" />
+          <rect x="6" y="26" width="44" height="0.9" fill="#444" />
+          <rect x="6" y="28" width="38" height="0.9" fill="#444" />
+          <rect x="6" y="34" width="3" height="1.2" fill="#0a0a0a" />
+          <rect x="11" y="34" width="14" height="1.3" fill="#0a0a0a" />
+          <rect x="6" y="38" width="22" height="1.1" fill="#0a0a0a" />
+          <rect x="42" y="38" width="10" height="2" rx="0.5" fill="#f4f4f5" />
+          <rect x="6" y="40" width="20" height="0.9" fill="#22c55e" />
+          <rect x="9" y="42.5" width="42" height="0.9" fill="#aaa" />
+          <rect x="9" y="44.3" width="38" height="0.9" fill="#aaa" />
+          <rect x="6" y="50" width="3" height="1.2" fill="#0a0a0a" />
+          <rect x="11" y="50" width="14" height="1.3" fill="#0a0a0a" />
+          <rect x="6" y="54" width="9" height="2" rx="0.5" fill="#f4f4f5" />
+          <rect x="16" y="54" width="11" height="2" rx="0.5" fill="#f4f4f5" />
+          <rect x="28" y="54" width="9" height="2" rx="0.5" fill="#f4f4f5" />
+          <rect x="38" y="54" width="13" height="2" rx="0.5" fill="#f4f4f5" />
+          <rect x="6" y="62" width="3" height="1.2" fill="#0a0a0a" />
+          <rect x="11" y="62" width="14" height="1.3" fill="#0a0a0a" />
+          <rect x="6" y="66" width="40" height="0.9" fill="#aaa" />
+        </svg>
+      </div>
+    );
+  }
+
   // Fallback — generic single-column look
   return (
     <div className={common} style={paperStyle}>
