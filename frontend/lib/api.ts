@@ -664,4 +664,18 @@ export const getLatestJobMatches = () =>
 export const clearJobMatches = () =>
   api.delete<{ message: string }>('/api/job-hunter/clear');
 
+// ═════════════════════ Chatbot (public) ═════════════════════
+
+export interface ChatBotMessage {
+  role: 'user' | 'assistant';
+  content: string;
+}
+
+export const sendChatBotMessage = (message: string, history: ChatBotMessage[]) =>
+  api.post<{ reply: string }>(
+    '/api/chatbot',
+    { message, history },
+    { timeout: 60000 }
+  );
+
 export default api;

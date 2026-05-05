@@ -3,6 +3,7 @@ import { Manrope } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "react-hot-toast";
 import CookieConsent from "@/components/consent/CookieConsent";
+import ChatBot from "@/components/chatbot/ChatBot";
 
 const manrope = Manrope({
   variable: "--font-manrope",
@@ -161,6 +162,7 @@ export default function RootLayout({
       </head>
       <body className="min-h-full flex flex-col" suppressHydrationWarning>
         {children}
+        <ChatBot />
         <CookieConsent />
         <Toaster
           position="top-center"
