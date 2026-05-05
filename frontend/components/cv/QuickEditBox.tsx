@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { refineCV } from '@/lib/api';
+import { refineCV, patchCV } from '@/lib/api';
 import toast from 'react-hot-toast';
 import { Send } from 'lucide-react';
 
@@ -31,6 +31,52 @@ const SUGGESTIONS = [
   'Make tone sound more senior',
 ];
 
+// Fast-path detector: catches atomic field updates the user clearly intends
+// (bare LinkedIn URL, email, phone) so they land instantly via /api/cv/patch
+// without burning a 5–15s AI round-trip. Returns null when the input needs
+// real reasoning and should fall through to the AI refine endpoint.
+function detectQuickPatch(input: string): Record<string, string> | null {
+  const text = input.trim();
+  if (!text) return null;
+
+  // 1. LinkedIn URL — most common atomic edit. Strip trailing punctuation
+  //    that users sometimes glue on (".", ",", ";").
+  const urlMatch = text.match(/https?:\/\/[^\s,;]+/i);
+  if (urlMatch) {
+    const url = urlMatch[0].replace(/[.,;]+$/, '');
+    if (/linkedin\.com\/in\//i.test(url)) {
+      return { linkedin: url };
+    }
+  }
+
+  // 2. Bare email — only treat as a fast-path if the email IS the dominant
+  //    content. "my email is foo@bar.com change it" qualifies; a sentence
+  //    that happens to contain an email does not.
+  const emailMatch = text.match(/[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/i);
+  if (emailMatch) {
+    const noise = text.replace(emailMatch[0], '').trim().toLowerCase();
+    if (noise.length < 60 && /^(my email|email|change it|this is my|this is|update|set)?[\s.,;:]*$/i.test(noise)) {
+      return { email: emailMatch[0] };
+    }
+  }
+
+  // 3. Bare phone (international or local). 7–15 digits is the realistic
+  //    range; anything outside is probably a year, ID, or salary number.
+  const phoneMatch = text.match(/\+?[\d][\d\s().-]{7,19}/);
+  if (phoneMatch) {
+    const phone = phoneMatch[0].trim();
+    const digits = phone.replace(/\D/g, '');
+    if (digits.length >= 7 && digits.length <= 15) {
+      const noise = text.replace(phoneMatch[0], '').trim().toLowerCase();
+      if (noise.length < 60 && /^(my phone|phone|number|change it|this is my|this is|update|set)?[\s.,;:]*$/i.test(noise)) {
+        return { phone };
+      }
+    }
+  }
+
+  return null;
+}
+
 export default function QuickEditBox({ cvRecordId, onRefine, prefill, onStaleRecord }: QuickEditBoxProps) {
   const [text, setText] = useState('');
   const [refining, setRefining] = useState(false);
@@ -53,6 +99,17 @@ export default function QuickEditBox({ cvRecordId, onRefine, prefill, onStaleRec
     }
     setRefining(true);
     try {
+      // Fast-path: bare URL/email/phone goes through the instant patch
+      // endpoint instead of the AI. ~150ms vs 5–15s and zero drift.
+      const quickPatch = detectQuickPatch(trimmed);
+      if (quickPatch) {
+        const res = await patchCV(cvRecordId, quickPatch);
+        onRefine(res.data.final_cv);
+        toast.success('Updated instantly');
+        setText('');
+        return;
+      }
+
       const res = await refineCV(cvRecordId, trimmed);
       onRefine(res.data.final_cv);
       toast.success('CV updated');

@@ -418,6 +418,73 @@ const refineCV = async (req, res) => {
   }
 };
 
+// POST /api/cv/patch — Direct field update, no AI involved. Used by the
+// QuickEditBox fast-path for atomic edits the frontend can detect
+// deterministically (bare LinkedIn URL, email, phone). Whitelist of allowed
+// fields prevents arbitrary structured writes from the client.
+const patchCV = async (req, res) => {
+  try {
+    const { cv_id, patch } = req.body;
+
+    if (!cv_id || !patch || typeof patch !== 'object') {
+      return res.status(400).json({ error: 'cv_id and patch are required' });
+    }
+
+    const ALLOWED_FIELDS = ['full_name', 'email', 'phone', 'location', 'linkedin'];
+    const cleanPatch = {};
+    for (const key of ALLOWED_FIELDS) {
+      if (typeof patch[key] === 'string') {
+        const value = patch[key].trim();
+        if (value.length > 0 && value.length <= 500) cleanPatch[key] = value;
+      }
+    }
+    if (Object.keys(cleanPatch).length === 0) {
+      return res.status(400).json({ error: 'No valid fields to patch' });
+    }
+
+    const { data: cv, error: fetchError } = await supabase
+      .from('cvs')
+      .select('*')
+      .eq('id', cv_id)
+      .eq('user_id', req.user.id)
+      .single();
+
+    if (fetchError || !cv) {
+      return res.status(404).json({ error: 'CV not found' });
+    }
+
+    const currentFinalCV = cv.ats_feedback?.final?.final_cv;
+    if (!currentFinalCV) {
+      return res.status(400).json({ error: 'No CV data to patch' });
+    }
+
+    const updatedCV = { ...currentFinalCV, ...cleanPatch };
+    const updatedFeedback = {
+      ...cv.ats_feedback,
+      final: { ...cv.ats_feedback.final, final_cv: updatedCV },
+    };
+
+    const { error: updateError } = await supabase
+      .from('cvs')
+      .update({ ats_feedback: updatedFeedback })
+      .eq('id', cv_id)
+      .eq('user_id', req.user.id);
+
+    if (updateError) {
+      return res.status(400).json({ error: updateError.message });
+    }
+
+    const labels = { full_name: 'name', email: 'email', phone: 'phone', location: 'location', linkedin: 'LinkedIn URL' };
+    return res.status(200).json({
+      final_cv: updatedCV,
+      changes_applied: Object.keys(cleanPatch).map((k) => `Updated ${labels[k] || k}`),
+    });
+  } catch (err) {
+    console.error('CV patch error:', err.message);
+    return res.status(500).json({ error: err.message || 'CV patch failed' });
+  }
+};
+
 // POST /api/cv/create — Generate a CV from user-supplied structured data (no AI analysis).
 // Saves to the `cvs` table using the same shape analyzeCV produces, so the existing
 // download/preview endpoints render it without any further changes.
@@ -549,4 +616,4 @@ const createCV = async (req, res) => {
   }
 };
 
-module.exports = { analyzeCV, createCV, getCVHistory, deleteCVRecord, downloadCVPdf, previewCVPdf, refineCV };
+module.exports = { analyzeCV, createCV, getCVHistory, deleteCVRecord, downloadCVPdf, previewCVPdf, refineCV, patchCV };

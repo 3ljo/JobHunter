@@ -370,6 +370,15 @@ export const refineCV = (cvId: string, instructions: string) =>
     instructions,
   }, { timeout: 60000 });
 
+// Direct field patch — bypasses AI entirely. Used by the QuickEditBox fast-path
+// for atomic edits the frontend can detect deterministically (bare LinkedIn URL,
+// email, phone). Backend whitelists which fields can be touched this way.
+export const patchCV = (cvId: string, patch: Record<string, string>) =>
+  api.post<{ final_cv: any; changes_applied: string[] }>('/api/cv/patch', {
+    cv_id: cvId,
+    patch,
+  }, { timeout: 15000 });
+
 export interface CreateCVData {
   full_name: string;
   email?: string;

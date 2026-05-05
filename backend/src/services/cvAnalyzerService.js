@@ -424,95 +424,86 @@ const analyzeCVWithJD = async (cvText, jobDescription, meta = {}, onProgress = (
   };
 };
 
-// Quick refine: single Claude call to apply user instructions to existing final CV
+// Quick refine: single AI call to apply user instructions to an existing final CV.
+//
+// The model returns a PATCH (only changed fields), not the whole CV. We merge it
+// on top of the current CV server-side. This is faster (smaller output = lower
+// latency), more reliable (model can't accidentally drop fields it forgot to
+// echo), and cheaper. Both `patch` and the legacy `final_cv` shape are accepted
+// so a stale prompt response is still safe.
 const refineCVWithInstructions = async (finalCV, instructions, meta = {}) => {
   const originalRawText = (meta && meta.originalRawText) || '';
 
   const refined = await callProvider(
-    `You are a CV editing assistant. You receive:
-1. The CURRENT CV (JSON) — the latest rewritten version shown to the user.
-2. The ORIGINAL CV TEXT — what the user originally uploaded, BEFORE any AI rewrites.
-3. User instructions.
+    `You are a precise CV editor. Apply the user's instructions to a CV.
 
-Apply the requested changes precisely. Do NOT change anything the user did not ask to change.
+You receive:
+1. CURRENT CV (JSON) — the latest version.
+2. ORIGINAL CV TEXT — only consult for restore/put-back requests.
+3. USER INSTRUCTIONS.
 
-Rules:
-- Preserve the exact same JSON structure.
-- Only modify the fields the user's instructions target; keep everything else identical.
+OUTPUT — strict JSON, exactly two keys:
+{
+  "patch": { ... only the fields you are changing ... },
+  "changes_applied": [ "short human-readable change description", ... ]
+}
 
-RESTORE / PUT-BACK requests (e.g. "put back my certifications", "restore the jobs you removed"):
-- Extract the exact details from the ORIGINAL CV TEXT and populate the field.
-- Never invent facts the user originally stated (employers, dates, education, etc.).
-- If the original text also lacks the requested content, leave the field empty and note it in changes_applied.
+For arrays (skills, experience, education, certifications, languages), put the FULL updated array in patch.
+For string fields (full_name, email, phone, location, linkedin, summary), put the new string.
+OMIT every field you did not change.
 
-ADD / SUGGEST requests (e.g. "add the best certifications for this role", "suggest skills for a DevOps engineer", "add industry-standard certifications"):
-- It IS ALLOWED to generate new, industry-standard suggestions relevant to the CV's
-  role, seniority, and skills.
-- For certifications, include ONLY real, recognized certifications (AWS Certified X,
-  Microsoft Certified Y, CompTIA Z, PMP, CISSP, Google Professional, Scrum, etc.).
-  Include the full official name. Do NOT invent fake certifications.
-- For skills, pick widely recognized industry-standard skills that align with the role.
-- Keep the list focused: 4–7 items max unless the user asked for more.
-- NEVER fabricate work experience, job titles, employers, dates, or education —
-  those must come from the user's original CV text.
+EXAMPLES — read carefully, match the style:
 
-Formatting:
-- If the user asks to change dates, update them exactly as requested.
-- If the user asks to add skills, append them to the existing skills array (dedupe).
-- If the user asks to change the summary, rewrite only the summary.
-- Populate \`changes_applied\` with short human-readable descriptions of what was changed.
-- Return valid JSON only. No markdown, no explanation.`,
+User: "https://www.linkedin.com/in/johndoe/"
+User: "https://www.linkedin.com/in/johndoe/  this is my linkedin link change it"
+User: "set linkedin to https://www.linkedin.com/in/johndoe/"
+→ {"patch": {"linkedin": "https://www.linkedin.com/in/johndoe/"}, "changes_applied": ["Updated LinkedIn URL"]}
+
+User: "my email is jane@example.com"
+→ {"patch": {"email": "jane@example.com"}, "changes_applied": ["Updated email"]}
+
+User: "change my phone to +355 691234567"
+→ {"patch": {"phone": "+355 691234567"}, "changes_applied": ["Updated phone"]}
+
+User: "change my name to Jane Doe"
+→ {"patch": {"full_name": "Jane Doe"}, "changes_applied": ["Updated name"]}
+
+User: "add a 2-sentence summary"
+→ {"patch": {"summary": "..."}, "changes_applied": ["Generated summary"]}
+
+User: "add AWS and Docker to skills"
+→ {"patch": {"skills": [...full new skills array including AWS and Docker...]}, "changes_applied": ["Added AWS, Docker"]}
+
+RULES:
+- A bare URL, email, or phone number IS a valid instruction — infer the target field from the URL host or value shape and update it. Do NOT ask for clarification.
+- Apply ONLY what the user asked. Never touch unrelated fields.
+- ADD/SUGGEST for skills/certifications: real industry-standard items only (AWS Certified X, PMP, CISSP, Scrum, etc.). 4–7 items unless asked otherwise.
+- RESTORE/PUT-BACK: extract exact details from ORIGINAL CV TEXT.
+- NEVER fabricate work experience, employers, dates, or education.
+
+Return valid JSON only. No markdown, no prose.`,
     `CURRENT CV (JSON):
 ${JSON.stringify(finalCV, null, 2)}
 
-ORIGINAL CV TEXT (source of truth for anything missing from the current CV):
-${originalRawText ? originalRawText.slice(0, 8000) : '(not available)'}
+ORIGINAL CV TEXT (consult only for restore requests):
+${originalRawText ? originalRawText.slice(0, 4000) : '(not available)'}
 
-User instructions:
-${instructions}
-
-Apply the changes and return the COMPLETE updated CV in this exact JSON structure:
-{
-  "final_cv": {
-    "full_name": "",
-    "email": "",
-    "phone": "",
-    "location": "",
-    "linkedin": "",
-    "summary": "",
-    "experience": [
-      {
-        "title": "",
-        "company": "",
-        "duration": "",
-        "bullets": []
-      }
-    ],
-    "skills": [],
-    "education": [
-      {
-        "degree": "",
-        "institution": "",
-        "year": "",
-        "city": "",
-        "country": "",
-        "url": ""
-      }
-    ],
-    "certifications": [
-      { "name": "", "issuer": "", "year": "", "url": "" }
-    ],
-    "languages": [
-      { "name": "", "level": "" }
-    ]
-  },
-  "changes_applied": []
-}`,
+USER INSTRUCTIONS:
+${instructions}`,
     'Refine CV',
     { ...meta, feature: 'cv_refine' }
   );
 
-  return refined;
+  // Accept both the new patch shape and the legacy full-CV shape. Merging on
+  // top of the original CV means any field the model forgets to echo back
+  // survives untouched — drift-proof.
+  const rawPatch = refined && (refined.patch || refined.final_cv) || {};
+  const updatedFinalCV = { ...finalCV, ...rawPatch };
+  const changes = (refined && Array.isArray(refined.changes_applied))
+    ? refined.changes_applied
+    : [];
+
+  return { final_cv: updatedFinalCV, changes_applied: changes };
 };
 
 module.exports = { analyzeCVWithJD, refineCVWithInstructions };
