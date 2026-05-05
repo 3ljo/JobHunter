@@ -67,7 +67,7 @@ export default function CreateCVPage() {
             </p>
           </div>
 
-          <div className="relative mx-auto max-w-4xl px-0 sm:px-0">
+          <div className="relative mx-auto max-w-7xl px-0 sm:px-0">
             {cvOverLimit
               ? <LimitReachedCard feature="cv" />
               : <CreateCVForm onSubmittingChange={setSubmitting} />}

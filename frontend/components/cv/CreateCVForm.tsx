@@ -15,6 +15,7 @@ import TemplatePicker, { TemplateThumbnail } from './TemplatePicker';
 import PhotoUpload from './PhotoUpload';
 import CVPreview from './CVPreview';
 import QuickEditBox from './QuickEditBox';
+import CreateCVSuggestions from './CreateCVSuggestions';
 import { TEMPLATES, type TemplateId } from './templates';
 
 const FORMAT_OPTIONS: Array<{ key: CVExportFormat; label: string; ext: string; Icon: typeof FileText }> = [
@@ -102,6 +103,11 @@ export default function CreateCVForm({ onSubmittingChange }: CreateCVFormProps =
   const [downloadDialogOpen, setDownloadDialogOpen] = useState(false);
   const [dlFilename, setDlFilename] = useState('cv_optimized');
   const [dlFormat, setDlFormat] = useState<CVExportFormat>('pdf');
+
+  /* ─── Suggestion → AI editor prefill bridge ─── */
+  const [editPrefill, setEditPrefill] = useState<{ text: string; key: number } | null>(null);
+  const handleApplySuggestion = (prompt: string) =>
+    setEditPrefill((p) => ({ text: prompt, key: (p?.key ?? 0) + 1 }));
 
   /* ─── Experience handlers ─── */
   const addExperience = () => setExperience((xs) => [...xs, emptyExperience()]);
@@ -254,7 +260,7 @@ export default function CreateCVForm({ onSubmittingChange }: CreateCVFormProps =
   /* ═════════════════════════════════════════════════════════════════════ */
   if (phase === 'preview' && generatedCV && cvRecordId) {
     return (
-      <div className="mx-auto max-w-5xl">
+      <div className="mx-auto max-w-7xl">
         {/* Back button */}
         <button
           type="button"
@@ -264,136 +270,148 @@ export default function CreateCVForm({ onSubmittingChange }: CreateCVFormProps =
           <ArrowLeft className="h-3.5 w-3.5" /> Back to edit
         </button>
 
-        {/* Preview */}
-        <div className="rounded-2xl p-4 sm:p-5" style={glass}>
-          <div className="flex items-center gap-2 mb-3">
-            <Sparkles className="h-4 w-4" style={{ color: '#a78bfa' }} />
-            <p className="text-xs font-bold uppercase tracking-widest text-white/50">Preview</p>
-          </div>
-          <CVPreview cv={generatedCV} template={template} photo={TEMPLATES[template].supportsPhoto ? photo : null} />
-        </div>
-
-        {/* Template picker — collapsible to save screen room */}
-        <div className="rounded-2xl p-4 sm:p-5 mt-4" style={glass}>
-          <button
-            type="button"
-            onClick={() => setTemplatesExpanded((v) => !v)}
-            className="w-full flex items-center justify-between gap-3 text-left"
-            aria-expanded={templatesExpanded}
-          >
-            <div className="flex items-center gap-2 min-w-0">
-              <Palette className="h-4 w-4 shrink-0" style={{ color: '#a78bfa' }} />
-              <p className="text-xs font-bold uppercase tracking-widest text-white/50 truncate">
-                Template — {TEMPLATES[template].name}
-              </p>
-            </div>
-            {templatesExpanded
-              ? <ChevronUp className="h-4 w-4 shrink-0 text-white/55" />
-              : <ChevronDown className="h-4 w-4 shrink-0 text-white/55" />}
-          </button>
-
-          {templatesExpanded ? (
-            <div className="mt-4">
-              <TemplatePicker
-                value={template}
-                onChange={setTemplate}
-                isPro={isPro}
-                onUpgrade={() => router.push('/pricing')}
-                exclude={['original']}
-              />
-            </div>
-          ) : (
-            /* Collapsed state — stacks on mobile, horizontal strip on md+ */
-            <div className="mt-3 grid grid-cols-1 md:grid-cols-4 gap-2.5">
-              <div
-                className="relative rounded-lg p-2 sm:p-2.5 max-w-[220px] md:max-w-none"
-                style={{
-                  background: 'rgba(118,77,240,0.14)',
-                  border: '1px solid rgba(118,77,240,0.55)',
-                  boxShadow: '0 0 0 3px rgba(118,77,240,0.10)',
-                }}
-              >
-                <div className="relative">
-                  <TemplateThumbnail id={template} />
-                  <span
-                    className="absolute top-1 right-1 flex h-4 w-4 items-center justify-center rounded-full"
-                    style={{ background: '#764df0' }}
-                  >
-                    <Check className="h-2.5 w-2.5 text-white" />
-                  </span>
-                </div>
-                <div className="mt-2 min-w-0">
-                  <p className="text-[11px] sm:text-[12px] font-semibold text-white truncate">
-                    {TEMPLATES[template].name}
-                  </p>
-                  <div className="flex items-center gap-1.5 mt-0.5">
-                    <span className="text-[9px] font-bold" style={{ color: '#34d399' }}>
-                      ATS {TEMPLATES[template].atsScore}%
-                    </span>
-                    <span className="text-[9px] text-white/35 truncate">· {TEMPLATES[template].region}</span>
-                  </div>
-                </div>
-              </div>
-              {/* "Change" CTA fills the rest of the strip on desktop */}
+        {/* Two-column grid — left: templates above preview · right: AI editor + suggestions */}
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_400px] gap-4 sm:gap-5 lg:gap-6">
+          {/* ── LEFT COLUMN ──────────────────────────────────────────── */}
+          <div className="min-w-0 space-y-3 sm:space-y-4">
+            {/* Templates UP */}
+            <div className="rounded-2xl overflow-hidden p-3 sm:p-4" style={glass}>
               <button
                 type="button"
-                onClick={() => setTemplatesExpanded(true)}
-                className="md:col-span-3 rounded-lg flex items-center justify-center gap-2 text-xs font-bold text-white/70 hover:text-white"
-                style={{
-                  background: 'rgba(255,255,255,0.03)',
-                  border: '1px dashed rgba(255,255,255,0.12)',
-                  minHeight: 56,
-                }}
+                onClick={() => setTemplatesExpanded((v) => !v)}
+                className="w-full flex items-center justify-between gap-2 text-left"
+                aria-expanded={templatesExpanded}
               >
-                <ChevronDown className="h-3.5 w-3.5" />
-                Show all {Object.values(TEMPLATES).filter((t) => t.id !== 'original').length} templates
+                <div className="flex items-center gap-2 min-w-0">
+                  <Palette className="h-3.5 w-3.5 shrink-0" style={{ color: '#a78bfa' }} />
+                  <p className="text-[10px] sm:text-[11px] font-bold uppercase tracking-widest text-white/55 truncate">
+                    Template — {TEMPLATES[template].name}
+                  </p>
+                  <span
+                    className="text-[9px] font-bold px-1.5 py-0.5 rounded shrink-0"
+                    style={{ background: 'rgba(52,211,153,0.12)', color: '#34d399', border: '1px solid rgba(52,211,153,0.22)' }}
+                  >
+                    ATS-OPTIMIZED
+                  </span>
+                </div>
+                {templatesExpanded
+                  ? <ChevronUp className="h-4 w-4 shrink-0 text-white/55" />
+                  : <ChevronDown className="h-4 w-4 shrink-0 text-white/55" />}
               </button>
+
+              {templatesExpanded ? (
+                <div className="mt-3">
+                  <TemplatePicker
+                    value={template}
+                    onChange={setTemplate}
+                    isPro={isPro}
+                    onUpgrade={() => router.push('/pricing')}
+                    exclude={['original']}
+                  />
+                </div>
+              ) : (
+                /* Collapsed — selected card + show-all CTA */
+                <div className="mt-3 grid grid-cols-1 md:grid-cols-4 gap-2.5">
+                  <div
+                    className="relative rounded-lg p-2 sm:p-2.5 max-w-[220px] md:max-w-none"
+                    style={{
+                      background: 'rgba(118,77,240,0.14)',
+                      border: '1px solid rgba(118,77,240,0.55)',
+                      boxShadow: '0 0 0 3px rgba(118,77,240,0.10)',
+                    }}
+                  >
+                    <div className="relative">
+                      <TemplateThumbnail id={template} />
+                      <span
+                        className="absolute top-1 right-1 flex h-4 w-4 items-center justify-center rounded-full"
+                        style={{ background: '#764df0' }}
+                      >
+                        <Check className="h-2.5 w-2.5 text-white" />
+                      </span>
+                    </div>
+                    <div className="mt-2 min-w-0">
+                      <p className="text-[11px] sm:text-[12px] font-semibold text-white truncate">
+                        {TEMPLATES[template].name}
+                      </p>
+                      <div className="flex items-center gap-1.5 mt-0.5">
+                        <span className="text-[9px] font-bold" style={{ color: '#34d399' }}>
+                          ATS {TEMPLATES[template].atsScore}%
+                        </span>
+                        <span className="text-[9px] text-white/35 truncate">· {TEMPLATES[template].region}</span>
+                      </div>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setTemplatesExpanded(true)}
+                    className="md:col-span-3 rounded-lg flex items-center justify-center gap-2 text-xs font-bold text-white/70 hover:text-white"
+                    style={{
+                      background: 'rgba(255,255,255,0.03)',
+                      border: '1px dashed rgba(255,255,255,0.12)',
+                      minHeight: 56,
+                    }}
+                  >
+                    <ChevronDown className="h-3.5 w-3.5" />
+                    Show all {Object.values(TEMPLATES).filter((t) => t.id !== 'original').length} templates
+                  </button>
+                </div>
+              )}
+
+              {TEMPLATES[template].supportsPhoto && (
+                <div className="mt-3 pt-3 border-t" style={{ borderColor: 'rgba(255,255,255,0.06)' }}>
+                  <PhotoUpload value={photo} onChange={setPhoto} />
+                </div>
+              )}
             </div>
-          )}
 
-          {TEMPLATES[template].supportsPhoto && (
-            <div className="mt-4">
-              <p className="text-[10px] font-bold uppercase tracking-widest text-white/40 mb-2">
-                Photo (optional — {TEMPLATES[template].name})
-              </p>
-              <PhotoUpload value={photo} onChange={setPhoto} />
+            {/* Preview DOWN */}
+            <div className="rounded-2xl overflow-hidden" style={glass}>
+              <div style={{ height: '2px', background: 'linear-gradient(90deg,transparent,rgba(118,77,240,0.9),transparent)' }} />
+              <div className="flex items-center justify-between px-3 sm:px-4 py-2 text-[10px] font-bold uppercase tracking-widest text-white/35">
+                <span className="flex items-center gap-1.5">
+                  <Sparkles className="h-3 w-3" style={{ color: '#a78bfa' }} />
+                  Preview
+                </span>
+                <span className="hidden sm:inline">{TEMPLATES[template].name}</span>
+              </div>
+              <CVPreview cv={generatedCV} template={template} photo={TEMPLATES[template].supportsPhoto ? photo : null} />
             </div>
-          )}
+
+            {/* Download — full width under preview, where the user expects it */}
+            <button
+              type="button"
+              onClick={openDownloadDialog}
+              disabled={downloading}
+              className="w-full flex items-center justify-center gap-2 rounded-xl py-3.5 text-sm font-bold transition-all disabled:opacity-40"
+              style={{
+                background: 'linear-gradient(135deg,#764DF0,#5b21b6)',
+                color: 'white',
+                boxShadow: !downloading ? '0 8px 24px rgba(118,77,240,0.35)' : 'none',
+              }}
+            >
+              {downloading ? (
+                <>
+                  <span className="lds-roller-sm"><span /><span /><span /><span /><span /><span /><span /><span /></span>
+                  Preparing file…
+                </>
+              ) : (
+                <>
+                  <Download className="h-4 w-4" />
+                  Download CV
+                </>
+              )}
+            </button>
+            <p className="text-[11px] text-white/35 text-center">
+              Your CV is saved to History — you can come back and re-download in any template.
+            </p>
+          </div>
+
+          {/* ── RIGHT COLUMN ─────────────────────────────────────────── */}
+          <div className="space-y-4 sm:space-y-5 min-w-0">
+            <CreateCVSuggestions cv={generatedCV} onApply={handleApplySuggestion} />
+            <QuickEditBox cvRecordId={cvRecordId} onRefine={handleRefine} prefill={editPrefill} />
+          </div>
         </div>
-
-        {/* AI edits */}
-        <div className="mt-4">
-          <QuickEditBox cvRecordId={cvRecordId} onRefine={handleRefine} />
-        </div>
-
-        {/* Download */}
-        <button
-          type="button"
-          onClick={openDownloadDialog}
-          disabled={downloading}
-          className="mt-5 w-full flex items-center justify-center gap-2 rounded-xl py-3.5 text-sm font-bold transition-all disabled:opacity-40"
-          style={{
-            background: 'linear-gradient(135deg,#764DF0,#5b21b6)',
-            color: 'white',
-            boxShadow: !downloading ? '0 8px 24px rgba(118,77,240,0.35)' : 'none',
-          }}
-        >
-          {downloading ? (
-            <>
-              <span className="lds-roller-sm"><span /><span /><span /><span /><span /><span /><span /><span /></span>
-              Preparing file…
-            </>
-          ) : (
-            <>
-              <Download className="h-4 w-4" />
-              Download CV
-            </>
-          )}
-        </button>
-
-        <p className="text-[11px] text-white/35 mt-3 text-center">
-          Your CV is already saved to History — you can come back and re-download it later in any template.
-        </p>
 
         {/* Download options modal — pick filename + format (PDF / Word / Text). */}
         {downloadDialogOpen && (

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { refineCV } from '@/lib/api';
 import toast from 'react-hot-toast';
 import { Send } from 'lucide-react';
@@ -8,6 +8,13 @@ import { Send } from 'lucide-react';
 interface QuickEditBoxProps {
   cvRecordId: string | null;
   onRefine: (updatedFinalCV: any) => void;
+  /**
+   * Imperative prefill — bump `key` to push a new prompt into the textarea.
+   * Used by CreateCVSuggestions on the create-cv page so "Ask AI to fix"
+   * tips can land directly in the input. The wrapping object is a sentinel
+   * so the same prompt fired twice still re-prefills.
+   */
+  prefill?: { text: string; key: number } | null;
 }
 
 const SUGGESTIONS = [
@@ -19,9 +26,15 @@ const SUGGESTIONS = [
   'Make tone sound more senior',
 ];
 
-export default function QuickEditBox({ cvRecordId, onRefine }: QuickEditBoxProps) {
+export default function QuickEditBox({ cvRecordId, onRefine, prefill }: QuickEditBoxProps) {
   const [text, setText] = useState('');
   const [refining, setRefining] = useState(false);
+
+  // Push external prefills into the input. Watching the bumpable key — not
+  // the text — means the same prompt twice still triggers a re-fill.
+  useEffect(() => {
+    if (prefill && prefill.text) setText(prefill.text);
+  }, [prefill?.key]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleRefine = async () => {
     const trimmed = text.trim();
