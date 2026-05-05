@@ -50,6 +50,7 @@ const jobHunterRoutes = require('./routes/jobHunter');
 const coverLetterRoutes = require('./routes/coverLetter');
 const interviewRoutes = require('./routes/interview');
 const adminRoutes = require('./routes/admin');
+const chatbotRoutes = require('./routes/chatbot');
 
 const subscriptionRoutes = require('./routes/subscription');
 const promoRoutes = require('./routes/promo');
@@ -142,6 +143,7 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/subscription', subscriptionRoutes);
 app.use('/api/promo', promoRoutes);
 app.use('/api/gift', giftRoutes);
+app.use('/api/chatbot', chatbotRoutes);
 
 // Global error handler
 app.use((err, req, res, next) => {
