@@ -685,98 +685,6 @@ function CheckoutForm() {
             </p>
           </div>
 
-          {/* USDT payment details — rendered after the user clicks Buy
-              Now with USDT selected. The address + amount come from
-              NOWPayments (unique per order), and we poll status every
-              5s so the page auto-redirects to /checkout/success the
-              moment the on-chain payment confirms. */}
-          {cryptoPayment && (
-            <div
-              className="mt-4 rounded-xl p-5"
-              style={{ background: 'rgba(38,161,123,0.08)', border: '1px solid rgba(38,161,123,0.25)' }}
-            >
-              <div className="flex items-center justify-between mb-4">
-                <p className="text-sm font-semibold" style={{ color: '#26a17b' }}>
-                  Send USDT to complete your order
-                </p>
-                <button
-                  onClick={handleCancelCrypto}
-                  className="text-white/30 hover:text-white/60 transition-colors"
-                  title="Cancel"
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              </div>
-
-              {/* QR */}
-              <div className="flex justify-center mb-4">
-                <div className="rounded-lg p-3" style={{ background: '#fff' }}>
-                  <QRCodeSVG value={cryptoPayment.pay_address} size={160} level="M" />
-                </div>
-              </div>
-
-              <div className="mb-3">
-                <label className="text-[10px] font-bold uppercase tracking-widest text-white/40 block mb-1">Amount to send</label>
-                <p className="text-xl font-black text-white">
-                  {cryptoPayment.pay_amount} <span className="text-sm font-normal text-white/40">USDT</span>
-                </p>
-                <p className="text-[11px] text-white/35 mt-0.5">
-                  ≈ ${cryptoPayment.price_amount} {cryptoPayment.price_currency.toUpperCase()}
-                </p>
-              </div>
-
-              <div className="mb-3">
-                <label className="text-[10px] font-bold uppercase tracking-widest text-white/40 block mb-1">Network</label>
-                <p className="text-sm text-white/70 font-semibold">USDT TRC-20 (Tron)</p>
-              </div>
-
-              <div className="mb-3">
-                <label className="text-[10px] font-bold uppercase tracking-widest text-white/40 block mb-1">Wallet Address</label>
-                <div className="flex items-center gap-2">
-                  <div
-                    className="flex-1 h-10 flex items-center rounded-lg px-3 text-xs text-white/70 font-mono truncate"
-                    style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)' }}
-                  >
-                    {cryptoPayment.pay_address}
-                  </div>
-                  <button
-                    onClick={handleCopyAddress}
-                    className="h-10 px-3 rounded-lg text-xs font-semibold transition-all shrink-0"
-                    style={{
-                      background: cryptoCopied ? 'rgba(38,161,123,0.2)' : 'rgba(255,255,255,0.06)',
-                      color: cryptoCopied ? '#26a17b' : 'rgba(255,255,255,0.5)',
-                      border: '1px solid ' + (cryptoCopied ? 'rgba(38,161,123,0.3)' : 'rgba(255,255,255,0.1)'),
-                    }}
-                  >
-                    {cryptoCopied ? 'Copied!' : 'Copy'}
-                  </button>
-                </div>
-              </div>
-
-              <div className="border-white-bottom-op-2 my-3" />
-
-              {/* Live status */}
-              <div className="flex items-center gap-2 mb-2">
-                {(cryptoStatus === 'waiting' || cryptoStatus === 'confirming') && (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" style={{ color: '#26a17b' }} />
-                )}
-                <p className="text-xs font-semibold" style={{ color: '#26a17b' }}>
-                  {cryptoStatus === 'waiting' && 'Waiting for your payment…'}
-                  {cryptoStatus === 'confirming' && 'Payment detected — confirming on-chain…'}
-                  {cryptoStatus === 'partially_paid' && 'Partial payment detected — please send the remainder.'}
-                  {cryptoStatus === 'finished' && 'Payment received! Activating your plan…'}
-                  {cryptoStatus === 'confirmed' && 'Payment confirmed! Activating your plan…'}
-                  {cryptoStatus === 'failed' && 'Payment failed. Please try again.'}
-                  {cryptoStatus === 'expired' && 'Payment window expired. Please retry.'}
-                  {cryptoStatus === 'refunded' && 'Payment was refunded.'}
-                </p>
-              </div>
-
-              <p className="text-[11px] text-white/35 leading-relaxed" style={{ fontWeight: 400 }}>
-                Send exactly <span className="text-white/60 font-semibold">{cryptoPayment.pay_amount} USDT</span> on the <span className="text-white/60 font-semibold">TRC-20 (Tron)</span> network. Your plan activates automatically the moment the payment confirms.
-              </p>
-            </div>
-          )}
 
           {/* Legacy "payment system being set up" gate removed — real backend
               errors are now surfaced as toasts in handleBuyNow above. */}
@@ -797,6 +705,209 @@ function CheckoutForm() {
               Secure payment. Cancel anytime.
             </p>
           </div>
+        </div>
+      </div>
+
+      {/* ───── USDT payment modal ─────
+          Centered overlay rendered after the user clicks Buy Now with
+          USDT selected. The address + amount + QR come from NOWPayments
+          (unique per order). We poll status every 5s so the page
+          auto-closes and redirects to /checkout/success the moment the
+          on-chain payment confirms. */}
+      {cryptoPayment && (
+        <CryptoPaymentModal
+          payment={cryptoPayment}
+          status={cryptoStatus}
+          copied={cryptoCopied}
+          onCopy={handleCopyAddress}
+          onClose={handleCancelCrypto}
+        />
+      )}
+    </div>
+  );
+}
+
+// ── Crypto payment modal ────────────────────────────────────────────────
+// Centered, backdrop-blurred dialog with QR + address + live status.
+// Closes on Escape or backdrop click. Status pill colour mirrors the
+// state machine: green for waiting/finished, amber for partial, red for
+// failed/expired.
+
+function CryptoPaymentModal({
+  payment,
+  status,
+  copied,
+  onCopy,
+  onClose,
+}: {
+  payment: CryptoPayment;
+  status: string;
+  copied: boolean;
+  onCopy: () => void;
+  onClose: () => void;
+}) {
+  // Esc-to-close.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose]);
+
+  const isWaiting = status === 'waiting' || status === 'confirming';
+  const isDone = status === 'finished' || status === 'confirmed';
+  const isError = status === 'failed' || status === 'expired' || status === 'refunded';
+  const isPartial = status === 'partially_paid';
+
+  const statusColor = isError ? '#f87171' : isPartial ? '#fbbf24' : '#26a17b';
+  const statusBg = isError ? 'rgba(248,113,113,0.12)' : isPartial ? 'rgba(251,191,36,0.12)' : 'rgba(38,161,123,0.12)';
+
+  const statusText =
+    status === 'waiting' ? 'Waiting for your payment' :
+    status === 'confirming' ? 'Payment detected — confirming on-chain' :
+    status === 'partially_paid' ? 'Partial payment received — please send the remainder' :
+    status === 'finished' ? 'Payment received! Activating your plan…' :
+    status === 'confirmed' ? 'Payment confirmed! Activating your plan…' :
+    status === 'failed' ? 'Payment failed. Please try again' :
+    status === 'expired' ? 'Payment window expired. Please retry' :
+    status === 'refunded' ? 'Payment was refunded' :
+    'Processing…';
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-in fade-in duration-200"
+      style={{
+        background: 'rgba(8,11,32,0.85)',
+        backdropFilter: 'blur(12px)',
+        WebkitBackdropFilter: 'blur(12px)',
+      }}
+      onClick={onClose}
+    >
+      <div
+        className="relative w-full max-w-[460px] rounded-2xl overflow-hidden animate-in zoom-in-95 duration-200"
+        style={{
+          background: 'linear-gradient(180deg, #131634 0%, #0f1230 100%)',
+          border: '1px solid rgba(255,255,255,0.08)',
+          boxShadow: '0 24px 80px -20px rgba(0,0,0,0.7), 0 0 0 1px rgba(38,161,123,0.15)',
+        }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Close */}
+        <button
+          onClick={onClose}
+          className="absolute top-4 right-4 z-10 h-8 w-8 rounded-full flex items-center justify-center transition-all"
+          style={{ background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.5)' }}
+          aria-label="Close"
+        >
+          <X className="h-4 w-4" />
+        </button>
+
+        {/* Header */}
+        <div className="px-6 pt-6 pb-4">
+          <div className="flex items-center gap-2 mb-1">
+            <span
+              className="inline-flex items-center justify-center h-7 w-7 rounded-full text-[11px] font-black"
+              style={{ background: '#26a17b', color: '#fff' }}
+            >
+              ₮
+            </span>
+            <h3 className="text-white text-lg font-bold">Pay with USDT</h3>
+          </div>
+          <p className="text-white/45 text-xs">
+            Send exactly the amount below on the TRC-20 network.
+          </p>
+        </div>
+
+        {/* QR */}
+        <div className="px-6">
+          <div className="flex justify-center">
+            <div
+              className="rounded-xl p-4"
+              style={{ background: '#fff', boxShadow: '0 8px 24px -8px rgba(0,0,0,0.5)' }}
+            >
+              <QRCodeSVG value={payment.pay_address} size={200} level="M" />
+            </div>
+          </div>
+        </div>
+
+        {/* Amount */}
+        <div className="px-6 pt-5">
+          <div
+            className="rounded-xl p-4 flex items-center justify-between"
+            style={{ background: 'rgba(38,161,123,0.06)', border: '1px solid rgba(38,161,123,0.18)' }}
+          >
+            <div>
+              <label className="text-[10px] font-bold uppercase tracking-widest text-white/40 block mb-1">Amount</label>
+              <p className="text-2xl font-black text-white leading-none">
+                {payment.pay_amount}
+                <span className="text-sm font-semibold ml-1.5" style={{ color: '#26a17b' }}>USDT</span>
+              </p>
+              <p className="text-[11px] text-white/35 mt-1">
+                ≈ ${payment.price_amount} {payment.price_currency.toUpperCase()}
+              </p>
+            </div>
+            <div className="text-right">
+              <label className="text-[10px] font-bold uppercase tracking-widest text-white/40 block mb-1">Network</label>
+              <p className="text-sm text-white font-semibold">TRC-20</p>
+              <p className="text-[11px] text-white/35 mt-0.5">Tron</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Address */}
+        <div className="px-6 pt-3">
+          <label className="text-[10px] font-bold uppercase tracking-widest text-white/40 block mb-1.5">Wallet Address</label>
+          <div className="flex items-center gap-2">
+            <div
+              className="flex-1 h-11 flex items-center rounded-lg px-3 text-xs text-white/75 font-mono truncate"
+              style={{ background: 'rgba(0,0,0,0.25)', border: '1px solid rgba(255,255,255,0.08)' }}
+            >
+              {payment.pay_address}
+            </div>
+            <button
+              onClick={onCopy}
+              className="h-11 px-4 rounded-lg text-xs font-bold uppercase tracking-wider transition-all shrink-0"
+              style={{
+                background: copied ? 'rgba(38,161,123,0.2)' : '#26a17b',
+                color: copied ? '#26a17b' : '#fff',
+                border: copied ? '1px solid rgba(38,161,123,0.4)' : '1px solid #26a17b',
+              }}
+            >
+              {copied ? '✓ Copied' : 'Copy'}
+            </button>
+          </div>
+        </div>
+
+        {/* Status pill */}
+        <div className="px-6 pt-5 pb-6">
+          <div
+            className="rounded-xl px-4 py-3 flex items-center gap-3"
+            style={{ background: statusBg, border: `1px solid ${statusColor}33` }}
+          >
+            {isWaiting && (
+              <Loader2 className="h-4 w-4 animate-spin shrink-0" style={{ color: statusColor }} />
+            )}
+            {isDone && (
+              <Check className="h-4 w-4 shrink-0" style={{ color: statusColor }} />
+            )}
+            {(isError || isPartial) && (
+              <X className="h-4 w-4 shrink-0" style={{ color: statusColor }} />
+            )}
+            <p className="text-sm font-semibold" style={{ color: statusColor }}>
+              {statusText}
+            </p>
+          </div>
+        </div>
+
+        {/* Footer instructions */}
+        <div
+          className="px-6 py-4"
+          style={{ borderTop: '1px solid rgba(255,255,255,0.06)', background: 'rgba(0,0,0,0.15)' }}
+        >
+          <p className="text-[11px] text-white/40 leading-relaxed">
+            Open your wallet (Binance, Trust Wallet, MetaMask…), pick <span className="text-white/65 font-semibold">USDT TRC-20</span>, scan the QR or paste the address, and send <span className="text-white/65 font-semibold">{payment.pay_amount} USDT</span>. Your plan activates automatically the moment the payment confirms.
+          </p>
         </div>
       </div>
     </div>
