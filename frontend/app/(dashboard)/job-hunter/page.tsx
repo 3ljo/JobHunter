@@ -342,42 +342,84 @@ export default function JobHunterPage() {
   }
 
   // ── First-time state — never run a search ───────────────────────────
+  // Full-bleed hero, matching the create-cv page's aivent-background look
+  // so the empty state actually has visual presence rather than floating
+  // on a flat aurora.
   if (!match) {
     return (
-      <div className="space-y-6">
-        <Header />
-        <div
-          className="rounded-2xl p-8 sm:p-12 text-center"
+      <div
+        style={{
+          width: '100vw',
+          maxWidth: '100vw',
+          marginLeft: 'calc(-50vw + 50%)',
+          marginTop: '-32px',
+          marginBottom: '-32px',
+          background: '#0d1130',
+          position: 'relative',
+          zIndex: 2,
+          minHeight: 'calc(100vh - 56px)',
+          overflowX: 'hidden',
+        }}
+      >
+        <section
+          className="relative overflow-hidden pt-12 sm:pt-20 pb-20 sm:pb-28"
           style={{
-            background: 'rgba(255,255,255,0.02)',
-            border: '1px solid rgba(255,255,255,0.06)',
+            backgroundImage: 'url(/aivent/background/2.webp)',
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+            backgroundAttachment: 'fixed',
           }}
         >
+          <div className="absolute inset-0" style={{ background: 'rgba(8,11,35,0.82)', zIndex: 1 }} />
           <div
-            className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl"
-            style={{ background: 'rgba(118,77,240,0.12)', border: '1px solid rgba(118,77,240,0.25)' }}
-          >
-            <Briefcase className="h-6 w-6 text-violet-400" />
-          </div>
-          <h3 className="text-lg font-bold text-foreground mb-1">Find your next job</h3>
-          <p className="text-sm text-muted-foreground/70 mb-6 max-w-md mx-auto">
-            Search across Remotive, Arbeitnow, Adzuna and Jooble in one go.
-            Try <span className="text-foreground/85">&quot;Front End Developer&quot;</span> in{' '}
-            <span className="text-foreground/85">Germany</span>.
-          </p>
-          <SearchForm
-            queryInput={queryInput}
-            onQueryInput={setQueryInput}
-            countryInput={countryInput}
-            onCountryInput={setCountryInput}
-            onSubmit={handleSearch}
-            searching={searching}
-            big
+            className="absolute bottom-0 left-0 right-0"
+            style={{ height: '50%', background: 'linear-gradient(0deg,#0d1130 0%,transparent 100%)', zIndex: 1 }}
           />
-          {error && (
-            <p className="text-xs text-red-400 mt-4">{error}</p>
-          )}
-        </div>
+
+          <div className="relative mx-auto max-w-3xl px-4 sm:px-6" style={{ zIndex: 2 }}>
+            <div className="text-center mb-8 sm:mb-10">
+              <span className="aivent-subtitle s2">
+                <Briefcase className="inline h-3.5 w-3.5 mr-1" style={{ color: '#a78bfa' }} />
+                Job Hunter
+              </span>
+              <h1
+                className="text-white leading-[1.1] mt-2"
+                style={{ fontSize: 'clamp(28px,6vw,48px)', fontWeight: 800, letterSpacing: '-0.02em' }}
+              >
+                Find your next job
+              </h1>
+              <p className="mt-3 text-sm sm:text-base text-white/55 max-w-xl mx-auto">
+                Search across Remotive, Arbeitnow, Adzuna, Jooble and more in one go.
+                Try <span className="text-white/85">&quot;Front End Developer&quot;</span> in{' '}
+                <span className="text-white/85">Germany</span>.
+              </p>
+            </div>
+
+            <div
+              className="rounded-2xl p-5 sm:p-6"
+              style={{
+                background: 'rgba(13,17,48,0.55)',
+                border: '1px solid rgba(255,255,255,0.08)',
+                boxShadow: '0 16px 48px rgba(0,0,0,0.35)',
+                backdropFilter: 'blur(14px)',
+                WebkitBackdropFilter: 'blur(14px)',
+              }}
+            >
+              <SearchForm
+                queryInput={queryInput}
+                onQueryInput={setQueryInput}
+                countryInput={countryInput}
+                onCountryInput={setCountryInput}
+                onSubmit={handleSearch}
+                searching={searching}
+                big
+              />
+              {error && (
+                <p className="text-xs text-red-400 mt-4 text-center">{error}</p>
+              )}
+            </div>
+          </div>
+        </section>
       </div>
     );
   }
