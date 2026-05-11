@@ -30,42 +30,72 @@ const callProvider = async (systemPrompt, userMessage, stageName, meta = {}) => 
 const MIN_SKILLS = 10;
 const MAX_SKILLS = 22;
 
+// Split a skill name like "Cloud Platforms (Azure)" into candidate phrases
+// ["Cloud Platforms", "Azure"]. Parenthesized aliases often hold the specific
+// technology that lives in bullets ("Implemented Azure cloud solutions...")
+// while the parent phrase is generic. Matching ANY candidate counts.
+const candidateAliases = (skillName) => {
+  const out = [];
+  const trimmed = String(skillName || '').trim();
+  if (!trimmed) return out;
+  out.push(trimmed);
+  const parenMatches = trimmed.match(/\(([^)]+)\)/g) || [];
+  for (const p of parenMatches) {
+    const inner = p.slice(1, -1).trim();
+    if (inner) out.push(inner);
+  }
+  const stripped = trimmed.replace(/\s*\([^)]*\)\s*/g, ' ').trim();
+  if (stripped && stripped !== trimmed) out.push(stripped);
+  // Slash-separated combos like "GitHub/Git" → ["GitHub", "Git"]
+  if (trimmed.includes('/')) {
+    for (const piece of trimmed.split('/').map((s) => s.trim()).filter(Boolean)) {
+      out.push(piece);
+    }
+  }
+  return Array.from(new Set(out));
+};
+
 // Evidence-binding enforcement (LAW 2 — structural, not prompt-trust).
 //
 // Skills sourced from the parsed CV are auto-trusted (they're facts the user
-// put on their own resume). Any skill the rewrite ADDED must carry an
-// `evidence_anchor` that is a real substring of the rewritten CV body — a
-// bullet, cert name, education degree/institution, or the summary. If the
-// anchor isn't real, the skill is dropped. Prompt rules drift; this doesn't.
+// put on their own resume). Any skill the rewrite ADDED must appear as a
+// substring inside ONE specific experience bullet, cert name, or education
+// entry — NOT scattered across the CV via token-presence. The summary is
+// EXCLUDED from evidence: it's downstream of skills selection and prone to
+// keyword stuffing, so trusting it would let stuffed terms self-validate.
 //
 // Returns:
 //   boundSkills:       string[] — flat skill names, safe for renderers
 //   droppedSkills:     [{ skill, reason }] — surfaced in audit panel
 //   evidenceBindings:  [{ skill, evidence }] — full mapping for UI
 const enforceEvidenceBinding = (skillsRaw, sourceSkills, experience, summary, certifications, education) => {
-  // Build the haystack — everything that counts as evidence in the rewritten CV.
-  // Lowercased for case-insensitive substring checks.
-  const haystackParts = [];
-  if (typeof summary === 'string') haystackParts.push(summary);
+  // Build per-entry strings — each bullet / cert / education entry stays
+  // separate. A skill needs to match ONE entry (not be scattered across the
+  // joined haystack). This catches "Application support" when nothing in the
+  // CV actually describes application support work.
+  const entries = [];
   for (const exp of experience || []) {
-    if (exp?.title) haystackParts.push(String(exp.title));
-    if (exp?.company) haystackParts.push(String(exp.company));
+    const title = exp?.title ? String(exp.title) : '';
+    const company = exp?.company ? String(exp.company) : '';
+    const titleCompany = [title, company].filter(Boolean).join(' @ ');
+    if (titleCompany) entries.push({ kind: 'role', text: titleCompany });
     for (const b of Array.isArray(exp?.bullets) ? exp.bullets : []) {
-      if (b) haystackParts.push(String(b));
+      if (b) entries.push({ kind: 'bullet', text: String(b), role: titleCompany });
     }
   }
   for (const c of certifications || []) {
-    if (typeof c === 'string') haystackParts.push(c);
-    else if (c?.name) haystackParts.push(String(c.name));
+    const text = typeof c === 'string' ? c : (c?.name || '');
+    if (text) entries.push({ kind: 'cert', text: String(text) });
   }
   for (const e of education || []) {
-    if (typeof e === 'string') haystackParts.push(e);
-    else {
-      if (e?.degree) haystackParts.push(String(e.degree));
-      if (e?.institution) haystackParts.push(String(e.institution));
+    if (typeof e === 'string') {
+      if (e) entries.push({ kind: 'education', text: e });
+    } else {
+      const parts = [e?.degree, e?.institution].filter(Boolean).map(String);
+      if (parts.length) entries.push({ kind: 'education', text: parts.join(' — ') });
     }
   }
-  const haystack = haystackParts.join(' \n ').toLowerCase();
+  const entriesLc = entries.map((x) => ({ ...x, lc: x.text.toLowerCase() }));
 
   // Case- and whitespace-insensitive set of source-CV skills.
   const sourceSet = new Set(
@@ -89,36 +119,164 @@ const enforceEvidenceBinding = (skillsRaw, sourceSkills, experience, summary, ce
     if (seen.has(key)) continue;
     seen.add(key);
 
-    // Source-CV skills are auto-trusted (the user put them there themselves).
+    // Source-CV skills are auto-trusted — the user put them there themselves.
     if (sourceSet.has(key)) {
       boundSkills.push(name);
       evidenceBindings.push({ skill: name, evidence: 'source_cv' });
       continue;
     }
 
-    // Newly added skills need a real anchor. Accept either:
-    //   - the model's quoted anchor string appears in the CV body, OR
-    //   - the skill name itself appears in the CV body (semantic safety net
-    //     for cases where the model's anchor was paraphrased).
-    const anchorLc = String(anchor || '').trim().toLowerCase();
-    const nameAppears = haystack.includes(key);
-    const anchorAppears = anchorLc && anchorLc !== 'source_cv' && haystack.includes(anchorLc);
+    // Newly added skills must match (as a phrase substring) at least one
+    // specific entry. We try the skill itself, every parenthesized alias,
+    // and finally the model's quoted anchor — each against each entry.
+    const candidates = candidateAliases(name).map((c) => c.toLowerCase());
+    let matchedEntry = null;
+    let matchedCandidate = null;
+    for (const candidate of candidates) {
+      if (candidate.length < 2) continue;
+      matchedEntry = entriesLc.find((e) => e.lc.includes(candidate));
+      if (matchedEntry) {
+        matchedCandidate = candidate;
+        break;
+      }
+    }
+    if (!matchedEntry) {
+      const anchorLc = String(anchor || '').trim().toLowerCase();
+      if (anchorLc && anchorLc !== 'source_cv') {
+        matchedEntry = entriesLc.find((e) => e.lc.includes(anchorLc));
+        if (matchedEntry) matchedCandidate = anchorLc;
+      }
+    }
 
-    if (nameAppears || anchorAppears) {
+    if (matchedEntry) {
       boundSkills.push(name);
       evidenceBindings.push({
         skill: name,
-        evidence: anchorAppears ? anchor : `mentioned in rewritten CV: "${name}"`,
+        evidence: `${matchedEntry.kind}: "${matchedEntry.text}"`,
+        matched_on: matchedCandidate,
       });
     } else {
       droppedSkills.push({
         skill: name,
-        reason: 'No evidence anchor in rewritten CV (LAW 2 — Evidence Binding)',
+        reason: 'No bullet/cert/education entry demonstrates this skill (LAW 2 — Evidence Binding)',
       });
     }
   }
 
   return { boundSkills, droppedSkills, evidenceBindings };
+};
+
+// Summary coherence check (LAW 4). The most common failure mode in v2's
+// real-world output: a Mad-Libs sentence that yokes the user's actual
+// frontend/backend domain onto the target enterprise-IT/HR domain via a
+// preposition ("with", "using", "via"). The exact specimen from the v2 spec:
+//
+//   "Adept at supporting enterprise IT applications with Angular state
+//    management via NgRx"
+//
+// Detection: a sentence that mentions BOTH an enterprise-domain term AND a
+// frontend/dev-tooling term is incoherent for an enterprise-IT target.
+// Strip the offending sentence and flag it for the audit panel.
+const ENTERPRISE_DOMAIN_TERMS = /\b(enterprise\s+IT|IT\s+support|application\s+support|service\s*now|servicenow|SAP(?:\s+HCM)?|ITSM|ticketing|incident\s+management|workday|HRIS|HRMS|personnel\s+administration|payroll|helpdesk|help\s+desk)\b/i;
+const FRONTEND_DEV_TERMS = /\b(NgRx|Redux|RxJS|Vuex|Pinia|MobX|angular\s+state\s+management|angular\s+routing|react\s+hooks|vue\s+composables|webpack|vite|sass|tailwind|jQuery)\b/i;
+
+const detectIncoherentSummarySentence = (summary, jdFingerprint) => {
+  if (typeof summary !== 'string' || !summary.trim()) return null;
+  const targetTitle = String(jdFingerprint?.target_job_title || '').toLowerCase();
+  const targetIsEnterprise = ENTERPRISE_DOMAIN_TERMS.test(targetTitle)
+    || ENTERPRISE_DOMAIN_TERMS.test(JSON.stringify(jdFingerprint?.required_hard_skills || []))
+    || ENTERPRISE_DOMAIN_TERMS.test(JSON.stringify(jdFingerprint?.preferred_hard_skills || []));
+
+  const sentences = summary.split(/(?<=[.!?])\s+/);
+  for (let i = 0; i < sentences.length; i++) {
+    const s = sentences[i];
+    const hasEnterprise = ENTERPRISE_DOMAIN_TERMS.test(s);
+    const hasFrontend = FRONTEND_DEV_TERMS.test(s);
+    // Pattern 1: enterprise + frontend in the same sentence is incoherent
+    // regardless of target — the user is bridging two unrelated domains.
+    if (hasEnterprise && hasFrontend) {
+      return { index: i, sentence: s, reason: 'enterprise domain + frontend tech in same sentence (Mad-Libs)' };
+    }
+    // Pattern 2: target role is enterprise and sentence opens with stative-verb
+    // bridge into frontend tech — "Skilled at/in/with [enterprise] ... [frontend]".
+    if (targetIsEnterprise && hasFrontend && /\b(skilled|adept|proficient|experienced|expert|capable)\s+(?:at|in|with)\b/i.test(s)) {
+      return { index: i, sentence: s, reason: 'stative-verb bridge into frontend tech for enterprise target' };
+    }
+  }
+  return null;
+};
+
+const sanitizeSummary = (summary, jdFingerprint) => {
+  const incoherent = detectIncoherentSummarySentence(summary, jdFingerprint);
+  if (!incoherent) return { summary, flagged: null };
+  const sentences = summary.split(/(?<=[.!?])\s+/);
+  sentences.splice(incoherent.index, 1);
+  const cleaned = sentences.join(' ').trim();
+  return {
+    summary: cleaned,
+    flagged: {
+      removed_sentence: incoherent.sentence,
+      reason: incoherent.reason,
+    },
+  };
+};
+
+// Banned-fluff detector. v2 explicitly rejects these phrases; they kept
+// surviving the rewrite because the model treated them as professional
+// language. Catch them in post-process and flag.
+const BANNED_FLUFF_PATTERNS = [
+  { rx: /quickly adapted to (new|various|emerging|different)\s+technolog/i, label: 'quickly adapted to new technologies' },
+  { rx: /demonstrating (flexibility|adaptability|versatility|problem.?solving)/i, label: 'demonstrating [soft-skill]' },
+  { rx: /strong (communication|analytical|interpersonal|problem.?solving|leadership)\s+skills/i, label: 'strong [soft-skill] skills' },
+  { rx: /passionate\s+(about|professional)/i, label: 'passionate about/professional' },
+  { rx: /\bresults.?driven\b/i, label: 'results-driven' },
+  { rx: /\bteam\s+player\b/i, label: 'team player' },
+  { rx: /\bproven\s+track\s+record\b/i, label: 'proven track record' },
+  { rx: /\bdetail.?oriented\b/i, label: 'detail-oriented' },
+  { rx: /\bhighly\s+motivated\b/i, label: 'highly motivated' },
+  { rx: /\bself.?starter\b/i, label: 'self-starter' },
+  { rx: /\bgo.?getter\b/i, label: 'go-getter' },
+  { rx: /\bthinking\s+outside\s+the\s+box\b/i, label: 'thinking outside the box' },
+  { rx: /\bsynergiz(e|ing)\b/i, label: 'synergize' },
+];
+
+const findBannedFluff = (text) => {
+  if (typeof text !== 'string' || !text) return [];
+  const hits = [];
+  for (const { rx, label } of BANNED_FLUFF_PATTERNS) {
+    const m = text.match(rx);
+    if (m) hits.push({ label, matched_text: m[0] });
+  }
+  return hits;
+};
+
+// Walk the final CV (summary + experience bullets) collecting fluff hits.
+// Each hit lands in verify_flags so the audit panel can surface them and
+// the user can decide whether to manually rewrite.
+const collectFluffFlags = (finalCV) => {
+  const flags = [];
+  const summaryHits = findBannedFluff(finalCV?.summary || '');
+  for (const h of summaryHits) {
+    flags.push({
+      location: 'summary',
+      content: h.matched_text,
+      flag: `[VERIFY: banned fluff "${h.label}" — replace with a specific accomplishment]`,
+    });
+  }
+  for (const exp of Array.isArray(finalCV?.experience) ? finalCV.experience : []) {
+    const where = [exp?.title, exp?.company].filter(Boolean).join(' @ ') || 'experience';
+    for (const b of Array.isArray(exp?.bullets) ? exp.bullets : []) {
+      const hits = findBannedFluff(b);
+      for (const h of hits) {
+        flags.push({
+          location: where,
+          content: h.matched_text,
+          flag: `[VERIFY: banned fluff "${h.label}" — replace with a specific accomplishment]`,
+        });
+      }
+    }
+  }
+  return flags;
 };
 
 // Stage 1a — Parse the CV + extract JD fingerprint. Small, fast call.
@@ -346,10 +504,28 @@ LAW 6 — HONEST GAP DECLARATION. If the JD requires a skill the source CV does 
 
 LAW 7 — NUMBER HONESTY. Never invent metrics. Keep existing numbers; if a bullet wants quantification but none exists, use scope language ("across multiple client projects", "for a 10-person team") — never a fake percentage.
 
-BRIDGE MAPPING (apply per JD keyword):
-- MATCH → user clearly has this → surface prominently with the JD's exact vocabulary.
-- ADJACENT → user has a closely related skill that honestly transfers → reframe an existing bullet to make the transfer explicit.
-- GAP → user does NOT have this and nothing bridges → leave it out. Do not stuff.
+BRIDGE MAPPING (apply per JD keyword, drives BOTH skills AND bullet reframes):
+- MATCH → user clearly has this → surface prominently with the JD's exact vocabulary in the relevant bullet AND in Skills.
+- ADJACENT → user has a closely related skill that honestly transfers → REWRITE the existing bullet so the transfer is explicit, using JD vocabulary for the underlying work. The factual core stays; the framing shifts.
+- GAP → user does NOT have this and nothing bridges → leave it out. Do not stuff Skills, do not contort a bullet to fake it.
+
+BULLET REFRAMING IS MANDATORY, NOT OPTIONAL.
+Every bullet should be rewritten through the bridge-mapping lens. "Preserve the dates and the factual core" does NOT mean "leave the bullet text alone." It means: keep the underlying work true, but rewrite the verb, sentence structure, and vocabulary to surface the JD-relevant skill the work demonstrates.
+
+REFRAME EXAMPLE (study this — it's the pattern, not a script):
+- Source bullet: "Built web scraping pipelines that collected pricing data from 100+ competitor sites."
+- Target role: SAP HCM analyst / enterprise IT support.
+- BAD reframe (paste-in, no real bridge): "Built web scraping pipelines and supported enterprise IT applications."
+- GOOD ADJACENT reframe: "Monitored data quality across 100+ integrated external data sources, identifying and resolving discrepancies in daily ingest pipelines."
+- Why it works: the factual core (100+ sources, daily ingest, scraping work) is preserved; the vocabulary shifts to data-quality monitoring and source integration — both honest descriptions of the actual work AND relevant to enterprise HRIS/data work.
+
+EXPLICITLY BANNED FLUFF (auto-reject — never use any of these phrasings):
+- "Quickly adapted to new/various/emerging technologies, demonstrating flexibility"
+- "Strong communication / analytical / problem-solving skills"
+- "Passionate professional", "results-driven", "team player", "proven track record"
+- "Detail-oriented", "highly motivated", "self-starter", "go-getter"
+- "Thinking outside the box", "synergize", "leveraged" as the leading verb
+- Any sentence that says "demonstrating [soft skill] throughout the [role]"
 
 CORE CRAFT PRINCIPLES (apply within the laws):
 1. SPECIFIC OVER GENERIC. "Improved performance" is banned. "Reduced p95 latency from 1.2s → 340ms across 3M daily requests" is the standard — but only with real numbers from the source.
@@ -401,7 +577,7 @@ STRICT STRUCTURAL CONSTRAINTS:
   `Original CV text (source of voice and FACTS — never deviate from facts):
 ${cvText}
 
-Parsed CV experience (rewrite the bullets, keep title/company/duration verbatim):
+Parsed CV experience. PRESERVE title/company/duration verbatim. REWRITE every bullet through the bridge-mapping lens (MATCH/ADJACENT/GAP). Returning bullets unchanged is a failure — the whole point of this stage is to reframe the user's real work in the target role's vocabulary. The factual core stays; the verb, structure, and vocabulary shift:
 ${JSON.stringify(experienceForRewrite)}
 
 Existing skills (keep all + add missing JD hard skills using JD's EXACT phrasing):
@@ -489,21 +665,22 @@ const analyzeCVWithJD = async (cvText, jobDescription, meta = {}, onProgress = (
     const experienceForRewrite = parsedData.cv_parsed.experience || [];
     const merged = await runRewriteStage(cvText, parsedData, experienceForRewrite, m);
 
-    // Build the full final_cv by merging the rewrite patch onto the parsed CV.
-    // The rewrite stage only returns summary/experience/skills_with_evidence
-    // (the parts it rewrites) — education, certifications, languages, and
-    // contact info are carried over verbatim from parse to save output tokens.
-    //
-    // Skills go through an evidence-binding pass first: any new skill the
-    // rewrite added MUST be traceable to a real string in the rewritten CV
-    // body (a bullet, cert, education, or the summary). Skills that fail
-    // the check are dropped. Carried-over source-CV skills are auto-trusted.
+    // ── Post-process pass ────────────────────────────────────────────────
+    // The LLM is not trusted to obey LAW 2/4 on its own. We enforce
+    // structurally:
+    //   1. Sanitize summary — strip Mad-Libs sentences that yoke unrelated
+    //      domains together via stative-verb bridges.
+    //   2. Evidence-bind skills — drop any new skill whose phrase doesn't
+    //      appear inside one specific bullet/cert/education entry.
+    //   3. Collect banned-fluff hits across summary + bullets and surface
+    //      them in verify_flags for the audit panel.
     const rewrittenExperience = Array.isArray(merged.experience) && merged.experience.length
       ? merged.experience
       : experienceForRewrite;
-    const rewrittenSummary = typeof merged.summary === 'string' && merged.summary.trim()
+    const rawSummary = typeof merged.summary === 'string' && merged.summary.trim()
       ? merged.summary
-      : parsedData.cv_parsed.summary;
+      : (parsedData.cv_parsed.summary || '');
+    const { summary: rewrittenSummary, flagged: summaryFlagged } = sanitizeSummary(rawSummary, parsedData.jd_fingerprint);
 
     const sourceSkills = parsedData.cv_parsed.skills || [];
     const skillsRaw = Array.isArray(merged.skills_with_evidence) && merged.skills_with_evidence.length
@@ -525,11 +702,29 @@ const analyzeCVWithJD = async (cvText, jobDescription, meta = {}, onProgress = (
       skills: boundSkills,
     };
 
+    const fluffFlags = collectFluffFlags(final_cv);
+
     safeProgress({ type: 'rewrite', final_cv });
-    return { merged, final_cv, droppedSkills, evidenceBindings };
+    return { merged, final_cv, droppedSkills, evidenceBindings, summaryFlagged, fluffFlags };
   })();
 
-  const [auditData, { merged: mergedData, final_cv, droppedSkills, evidenceBindings }] = await Promise.all([auditPromise, rewritePromise]);
+  const [auditData, { merged: mergedData, final_cv, droppedSkills, evidenceBindings, summaryFlagged, fluffFlags }] =
+    await Promise.all([auditPromise, rewritePromise]);
+
+  // Merge post-process flags into the audit's verify_flags so the UI has
+  // a single panel to render. We don't overwrite the model's flags —
+  // server-side findings are appended.
+  const auditWithFlags = auditData ? { ...auditData } : {};
+  const verifyFlags = Array.isArray(auditWithFlags.verify_flags) ? [...auditWithFlags.verify_flags] : [];
+  if (summaryFlagged) {
+    verifyFlags.push({
+      location: 'summary',
+      content: summaryFlagged.removed_sentence,
+      flag: `[VERIFY: incoherent sentence removed — ${summaryFlagged.reason}]`,
+    });
+  }
+  for (const f of fluffFlags) verifyFlags.push(f);
+  auditWithFlags.verify_flags = verifyFlags;
 
   // Map the merged output back to the existing rewrite/final shape so
   // downstream consumers (frontend, PDF, refine, history) keep working.
@@ -541,6 +736,8 @@ const analyzeCVWithJD = async (cvText, jobDescription, meta = {}, onProgress = (
     keywords_still_missing: mergedData.keywords_still_missing || [],
     evidence_bindings: evidenceBindings,
     skills_dropped_no_evidence: droppedSkills,
+    summary_sanitization: summaryFlagged,
+    fluff_flags: fluffFlags,
   };
   const finalData = {
     final_cv,
@@ -551,10 +748,10 @@ const analyzeCVWithJD = async (cvText, jobDescription, meta = {}, onProgress = (
 
   return {
     parsed: parsedData,
-    audit: auditData,
+    audit: auditWithFlags,
     rewrite: rewriteData,
     final: finalData,
-    scores: buildScores(auditData),
+    scores: buildScores(auditWithFlags),
   };
 };
 
