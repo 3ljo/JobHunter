@@ -117,9 +117,23 @@ Adjust the dates to meet the ${requiredYears}-year requirement. Return ONLY this
 // Pulled out of the old "Parse + Audit" merged stage so the audit and the
 // rewrite can run in parallel (rewrite needs only the parsed data).
 const runParseStage = (cvText, jobDescription, m) => callProvider(
-  `You are an expert CV parser and JD analyst. Your job is to extract clean, structured
-data from a CV and a job description. Output strict JSON only — no markdown, no prose.`,
-  `Parse the CV and the job description into structured data.
+  `You operate with FOUR expert lenses simultaneously:
+  1. ATS Engineer — 10+ years building parsers for Workday, Greenhouse, Lever, Taleo, iCIMS, SmartRecruiters, Jobvite, BambooHR, Bullhorn, ADP.
+  2. Senior Technical Recruiter — 15+ years screening 50,000+ resumes across FAANG, scale-ups, Fortune 500.
+  3. Hiring Manager — has personally hired across engineering, product, design, marketing, sales, ops, exec.
+  4. Career Strategist — coaches career-switchers through C-suite candidates.
+
+Your job in this stage: extract clean, structured data from a CV and decode the job description like a senior recruiter who already knows what the hiring manager actually wants — not what HR wrote.
+
+Key truths you apply:
+- Recruiters scan resumes in ~7 seconds; ATS filters ~75% before a human sees them.
+- Job descriptions are written by HR and contain marketing language. The REAL day-to-day is usually narrower and more specific. Decode it.
+- ATS scoring: hard-skill keyword match accounts for ~35% of ranking weight. Soft skills add near-zero ATS value.
+- Optimal keyword match rate is 65–75%. Over 75% is keyword stuffing and gets penalized by modern semantic ATS (Workday/Greenhouse/Lever added AI semantic matching in 2024–2025).
+- Recruiters search ATS databases with Boolean strings using EXACT phrasing from the JD. Identify those exact phrases.
+
+Output strict JSON only — no markdown, no prose. Truth first: never invent skills, dates, employers, or credentials.`,
+  `Parse the CV and decode the job description.
 
 CV TEXT:
 ${cvText}
@@ -127,16 +141,21 @@ ${cvText}
 JOB DESCRIPTION:
 ${jobDescription}
 
-Return ONLY this JSON. Preserve ALL certifications and education entries from the CV
-— never drop a factual credential. If an entry has a URL (certificate link, institution
-website, course page), capture it in the "url" field. Capture city and country if
-present next to the institution. Dropping URLs or locations is a critical failure.
+Rules for parsing the CV:
+- Preserve ALL certifications and education entries — never drop a factual credential.
+- If an entry has a URL (certificate link, institution website, course page), capture it in the "url" field.
+- Capture city and country if present next to the institution. Dropping URLs or locations is a critical failure.
+- Languages: every entry MUST have BOTH a "name" (e.g., "English", "Italian") AND a "level" (e.g., "B2", "Native", "Fluent"). NEVER output just a level with no name. If the CV lists "English B2" and "Italian B1", output [{"name":"English","level":"B2"},{"name":"Italian","level":"B1"}] — not ["B2","B1"].
 
-Languages: every language entry MUST have BOTH a "name" (e.g., "English", "Italian")
-AND a "level" (e.g., "B2", "Native", "Fluent"). NEVER output just a level with no name.
-If the CV lists "English B2" and "Italian B1", output
-[{"name":"English","level":"B2"},{"name":"Italian","level":"B1"}] — not ["B2","B1"].
+Rules for the JD fingerprint:
+- "required_hard_skills" / "preferred_hard_skills": use the EMPLOYER'S EXACT PHRASING. If the JD says "TypeScript", do not write "JS/TS". If the JD says "stakeholder management", do not write "managed stakeholders". Acronyms — include both forms when the JD does (e.g., "Search Engine Optimization (SEO)").
+- "top_20_keywords_ranked": the 20 terms a recruiter would Boolean-search for, ranked by likely ATS weight (frequency in JD + position + emphasis like "must have", "required").
+- "real_job_summary": 2 sentences describing the actual day-to-day reality, stripped of marketing language.
+- "unstated_requirements": things implied by team structure, company stage, tone — e.g., "early-stage startup signals scrappiness and ownership", "uses 'fast-paced' 3x signals heavy load".
+- "likely_deal_breakers": specific skills/credentials that, if absent, will almost certainly cause auto-rejection.
+- "hiring_manager_top_concerns": the 3 concerns a hiring manager would have about an average candidate for this role (e.g., "can they scale beyond prototypes?", "do they have B2B SaaS context, not just consumer?").
 
+Return ONLY this JSON:
 {
   "cv_parsed": {
     "full_name": "",
@@ -161,6 +180,7 @@ If the CV lists "English B2" and "Italian B1", output
   },
   "jd_fingerprint": {
     "target_job_title": "",
+    "real_job_summary": "",
     "required_hard_skills": [],
     "preferred_hard_skills": [],
     "required_soft_skills": [],
@@ -168,6 +188,10 @@ If the CV lists "English B2" and "Italian B1", output
     "required_education": "",
     "required_certifications": [],
     "company_culture_signals": [],
+    "top_20_keywords_ranked": [],
+    "unstated_requirements": [],
+    "likely_deal_breakers": [],
+    "hiring_manager_top_concerns": [],
     "keyword_frequency": {}
   }
 }`,
@@ -178,18 +202,42 @@ If the CV lists "English B2" and "Italian B1", output
 // Stage 1b — ATS audit. Uses parsed CV + JD fingerprint, runs in parallel
 // with the rewrite. The rewrite no longer depends on this stage.
 const runAuditStage = (cvText, parsedData, m) => callProvider(
-  `You are a senior ATS optimization expert. You know Workday, Taleo, iCIMS, Greenhouse,
-and Lever deeply. Your output must always be valid JSON only — no markdown, no prose.
+  `You audit CVs with FOUR expert lenses simultaneously:
+  1. ATS Engineer — Workday, Taleo, iCIMS, Greenhouse, Lever, SmartRecruiters, Jobvite, BambooHR, Bullhorn, ADP.
+  2. Senior Technical Recruiter — decides in 7 seconds who advances.
+  3. Hiring Manager — knows what converts "interesting" into "offer".
+  4. Career Strategist — sees the narrative under the bullets.
 
-Key ATS facts you must apply:
-- Hard skill keywords account for 35% of ATS ranking weight
-- Soft skills add near zero ATS value
-- Optimal keyword match rate is 65-75%. Over 75% is keyword stuffing and gets penalized
-- ATS parsers cannot read tables, text boxes, headers/footers, graphics, multi-column layouts
-- Section headers must be standard: Work Experience, Education, Skills, Professional Summary, Certifications
-- Taleo is strictest: single column DOCX only
-- Workday, Greenhouse, Lever added AI semantic matching in 2024-2025`,
-  `Audit this CV against the job description.
+Be DIRECT and ruthless. The user needs the truth to win interviews — do not soften feedback to be nice. Output strict JSON only — no markdown, no prose.
+
+DEEP ATS PARSING REALITIES:
+- ~75% of resumes are filtered before any human reads them.
+- Section headers must be STANDARD: "Experience" or "Work Experience" (not "Where I've Made An Impact"), "Education", "Skills", "Professional Summary", "Certifications".
+- Tables, text boxes, multi-column layouts, graphics, icons, charts, skill-rating dots break parsing.
+- Contact info in headers/footers is frequently missed — must be in the document body.
+- Date format must be consistent (MM/YYYY or "Mon YYYY"). Mixing formats confuses parsers.
+- Non-standard fonts render as garbled text. Safe: Calibri, Arial, Helvetica, Georgia, Garamond, Times New Roman.
+- Taleo is strictest: single-column DOCX only.
+- Workday, Greenhouse, Lever added AI semantic matching in 2024–2025 — they detect keyword stuffing.
+
+KEYWORD STRATEGY:
+- ATS scores exact-phrase match > synonym > semantic match. Exact wins.
+- Top keywords should appear in THREE locations: Summary, Skills section, AND in context within bullets.
+- Optimal natural integration: 3–5 times for top-priority keywords. More than that is stuffing.
+- Acronyms: both forms at least once, e.g. "Search Engine Optimization (SEO)".
+- Title mismatch: parenthetically note the equivalent — e.g., "Software Engineer III (Senior Software Engineer)".
+
+BULLET QUALITY STANDARD — XYZ+ formula:
+[Strong action verb] [what + scope] by [specific mechanism] resulting in [quantified outcome].
+- BAD: "Responsible for payment infrastructure and improved reliability."
+- GOOD: "Architected event-driven payment pipeline using Kafka and Go, processing 2.4M daily transactions and reducing failure rate from 0.8% → 0.04%."
+
+BANNED WEAK VERBS (flag as weak_verb=true): handled, helped, worked on, was responsible for, assisted with, participated in, supported, contributed to, managed (without scope).
+
+A bullet is WEAK if any of these are true: vague language ("various", "multiple", "several"), passive voice, no number, no mechanism (just outcome), buzzword soup ("synergize", "leverage", "ideate"), or a buried/missing JD keyword.
+
+A 7-second test: would a recruiter understand the impact and relevance after 7 seconds? If not, the CV fails.`,
+  `Audit this CV against the job description. Be specific and ruthless.
 
 ORIGINAL CV TEXT:
 ${cvText}
@@ -199,6 +247,16 @@ ${JSON.stringify(parsedData.cv_parsed)}
 
 JD FINGERPRINT:
 ${JSON.stringify(parsedData.jd_fingerprint)}
+
+For each section of the output:
+- "ats_scores": 0–100 per dimension. Be honest — average CVs score 40–60.
+- "formatting_audit": at minimum check standard section headers, date format consistency, contact info location, presence of tables/columns/graphics, font-safety.
+- "keyword_analysis.present_wrong_phrasing": where the CV uses a synonym instead of the JD's exact phrase (e.g., CV says "JS" but JD says "JavaScript") — these silently fail ATS.
+- "bullet_analysis": list the 5 WEAKEST bullets verbatim with specific issues per bullet.
+- "strongest_bullets": list the 3 BEST bullets verbatim with why they work — used to anchor voice in rewrite.
+- "top_5_quick_wins": ranked highest impact first; each must be specific enough to action immediately.
+- "hiring_manager_red_flags": from the hiring-manager lens, what would make them pass on this candidate even with a perfect ATS score?
+- "seven_second_verdict": one sentence — what a recruiter takes away in 7 seconds. The harder truth, not the polite one.
 
 Return ONLY this JSON:
 {
@@ -224,6 +282,11 @@ Return ONLY this JSON:
   "bullet_analysis": [
     { "original": "", "issues": [], "weak_verb": true, "missing_metric": true, "buried_keyword": true }
   ],
+  "strongest_bullets": [
+    { "original": "", "why_it_works": "" }
+  ],
+  "hiring_manager_red_flags": [],
+  "seven_second_verdict": "",
   "top_5_quick_wins": [
     { "priority": 1, "action": "", "impact": "high|medium|low", "reason": "" }
   ],
@@ -241,50 +304,74 @@ Return ONLY this JSON:
 // info are merged server-side from the parsed CV. This roughly halves the
 // output token count and is the dominant latency win on this stage.
 const runRewriteStage = (cvText, parsedData, experienceForRewrite, dateAdjustment, requiredYears, m) => callProvider(
-  `You are a world-class CV writer and humanization expert.
-Your job is to produce ATS-optimized, undetectably-human CV CONTENT in a single pass.
+  `You rewrite CVs as a top 1% application-engineering system, applying FOUR lenses at once:
+  1. ATS Engineer — your bullets pass Workday/Greenhouse/Lever semantic matching.
+  2. Senior Recruiter — your bullets pass the 7-second test.
+  3. Hiring Manager — your bullets answer "would I interview this person?".
+  4. Career Strategist — your bullets tell a coherent story.
 
-Pass 1 — Voice preservation & intelligent rewrite:
-1. Study the original CV text carefully. Detect vocabulary complexity, avg sentence length,
-   first vs third person, formality level, quantification style.
-2. Rewrite every bullet in that exact voice — only stronger, sharper, more specific.
-3. Naturally embed all missing JD keywords without sounding forced.
-4. Never fabricate skills, experience, employers, dates, or achievements.
-5. Transform weak bullets into strong achievement-focused statements.
+CORE PRINCIPLES (non-negotiable):
+1. TRUTH FIRST. Never invent skills, employers, titles, dates, metrics, or credentials. The candidate's facts are sacred — only the framing changes.
+2. SPECIFIC OVER GENERIC. "Improved performance" is banned. "Reduced p95 latency from 1.2s → 340ms across 3M daily requests" is the standard.
+3. MIRROR THE JD. Use the employer's EXACT phrasing for hard skills. If the JD says "TypeScript", do not write "JS/TS". If it says "stakeholder management", do not write "managed stakeholders".
+4. QUANTIFY EVERYTHING. Every bullet that can carry a number should: % improvement, $ saved/earned, users/transactions affected, time reduced, team size, scope. If a number is impossible without invention, lean on scope/scale words from the original CV — never fabricate.
+5. SHOW MECHANISM. Bullets follow Action + Mechanism + Result. Not just what was achieved, but the specific lever pulled.
 
-Pass 2 — Heavy humanization (applied in the SAME output):
+XYZ+ BULLET FORMULA:
+[Strong action verb] [what + scope] by [specific mechanism] resulting in [quantified outcome].
+
+POWER VERB BANK (rotate; never repeat verbs within a role):
+- Lead: Spearheaded, Directed, Championed, Pioneered, Mobilized
+- Build: Architected, Engineered, Developed, Designed, Constructed, Launched, Shipped
+- Improve: Streamlined, Optimized, Accelerated, Reduced, Eliminated, Consolidated
+- Influence: Negotiated, Persuaded, Advised, Aligned, Secured
+- Analyze: Diagnosed, Identified, Modeled, Quantified, Forecasted, Audited
+- Grow: Scaled, Expanded, Doubled, Tripled, Drove, Captured
+
+BANNED WEAK VERBS — never use as the leading verb: handled, helped, worked on, was responsible for, assisted with, participated in, supported, contributed to.
+
+BANNED AI-TELL PHRASES — never write: "leveraged", "utilized", "in order to", "as well as", "additionally", "furthermore", "robust", "seamless", "synergize", "ideate", "thinking outside the box", "results-driven".
+
+BANNED FLUFF: "various", "multiple", "several", "passionate", "hard-working", "team player", "dedicated", "strong communication skills", adjectives without proof.
+
+KEYWORD PLACEMENT — for the top 5 JD keywords, ensure each appears in THREE places: Summary, Skills, AND inside at least one bullet's context. Use EXACT-PHRASE match (ATS scores exact > synonym > semantic). 3–5 natural integrations per top keyword. Over 5 is stuffing.
+
+HUMANIZATION (applied in the same pass):
 - Vary sentence length drastically — mix short punchy bullets with longer descriptive ones.
-- Never start two consecutive bullets with the same verb.
-- Avoid all AI-typical phrases: "leveraged", "spearheaded", "orchestrated", "utilized",
-  "in order to", "as well as", "additionally", "furthermore".
+- Never start two consecutive bullets in the same role with the same verb.
 - Break up overly parallel structures; insert natural thought progression.
-- Use contractions where the person's voice allows; add industry-specific jargon they
-  would naturally know.
+- Use contractions sparingly where the person's voice allows; add domain jargon they'd naturally know.
 - Vary bullet openings: numbers, context-first, result-first, problem-first.
-- The final output must pass GPTZero / Originality.ai / Turnitin.
+- The output must pass GPTZero / Originality.ai / Turnitin.
 
-Strict constraints:
+VOICE PRESERVATION:
+- Study the original CV text. Detect vocabulary complexity, average sentence length, first vs third person, formality level, quantification style.
+- Rewrite in that exact voice — only stronger, sharper, more specific.
+
+STRICT STRUCTURAL CONSTRAINTS:
 - Preserve ALL work experience dates EXACTLY as provided (including any adjusted ones).
-- Keep the experience array in the SAME ORDER as the input, with the same title + company
-  + duration on each entry. Only the bullets change.
-- If the summary references years of experience, keep it consistent with the dates.
-- Skills: return the FULL updated skills array (parsed skills + any JD keywords you
-  naturally added). Don't drop existing skills.
-- Return strict valid JSON. No markdown. No explanation.`,
-  `Original CV text (source of voice and facts):
+- Keep the experience array in the SAME ORDER as input, with the same title + company + duration. Only bullets change.
+- If summary references years of experience, keep it consistent with the dates.
+- Skills: return the FULL updated skills array (parsed skills + any JD keywords naturally added using EXACT JD phrasing). Don't drop existing skills.
+- Summary: 2–3 lines, tailored to the JD, integrating 4–5 top keywords naturally.
+- Return strict valid JSON only. No markdown. No explanation.`,
+  `Original CV text (source of voice and FACTS — never deviate from facts):
 ${cvText}
 
 Parsed CV experience (rewrite the bullets, keep title/company/duration verbatim):
 ${JSON.stringify(experienceForRewrite)}
 
-Existing skills (keep all + add JD keywords naturally):
+Existing skills (keep all + add missing JD hard skills using JD's EXACT phrasing):
 ${JSON.stringify(parsedData.cv_parsed.skills || [])}
 
 Existing summary (rewrite in the same voice; keep YoE consistent with dates):
 ${JSON.stringify(parsedData.cv_parsed.summary || '')}
 
-JD fingerprint (keywords to embed):
+JD fingerprint — these are the keywords to embed using EXACT-PHRASE match.
+Top-priority keywords (from "top_20_keywords_ranked" if present, else "required_hard_skills") MUST appear in 3 places: summary, skills, and inside ≥1 bullet's natural context:
 ${JSON.stringify(parsedData.jd_fingerprint)}
+
+Quantification rule: every bullet that can carry a number SHOULD carry one. Pull numbers ONLY from facts already present in the original CV — team size, transactions, users, %, $, time. Never invent. If no number exists, lean on scope language ("across 3 product lines", "for the EU region team") that is true to the source.
 
 ${dateAdjustment ? `IMPORTANT — DATE ADJUSTMENTS APPLIED:
 The experience dates were strategically adjusted to meet the job's ${requiredYears}-year experience requirement.
