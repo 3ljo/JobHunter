@@ -13,6 +13,79 @@ const TEMPLATES = [
 
 const PHOTO_TEMPLATES = ['european', 'executive', 'swiss', 'sidebar', 'creative', 'darktech', 'serif'];
 
+// Bulk theme-variant templates (50 IDs) that the frontend renders via a single
+// GenericRenderer + ThemeTokens. Backend mirrors that with genericTemplate()
+// below — adding a new tile is one line in BULK_THEMES, no template fn needed.
+//
+// Keep theme tokens in sync with frontend/components/cv/templates/BulkTemplates.tsx
+// (if a token diverges, preview ≠ PDF). The 35 "unique-layout" templates
+// (banking, threecol, infographic, etc.) are NOT in this map — they still need
+// dedicated backend HTML, and fall through to harvardTemplate() until ported.
+const SERIF = "'Garamond','Georgia','Times New Roman',serif";
+const SERIF2 = "'Cormorant Garamond','Georgia',serif";
+const SANS = "'Inter','Segoe UI',Arial,sans-serif";
+const MONO = "'JetBrains Mono','SF Mono',Consolas,monospace";
+
+const BULK_THEMES = {
+  // Industry-specific (12)
+  nursing:    { primary: '#9f1239', accent: '#fb7185', fontFamily: SANS,   headerStyle: 'centered', sectionStyle: 'rule',  skillStyle: 'pills',  tagline: 'Registered Nurse' },
+  faculty:    { primary: '#14532d', accent: '#92400e', fontFamily: SERIF,  headerStyle: 'centered', sectionStyle: 'plain', skillStyle: 'inline', tagline: 'University Faculty', baseSize: 14 },
+  dental:     { primary: '#0d9488', accent: '#86efac', fontFamily: SANS,   headerStyle: 'left',     sectionStyle: 'rule',  skillStyle: 'pills',  tagline: 'Dental Practitioner' },
+  solicitor:  { primary: '#7f1d1d', accent: '#a16207', fontFamily: SERIF,  headerStyle: 'centered', sectionStyle: 'rule',  skillStyle: 'inline', tagline: 'Solicitor' },
+  police:     { primary: '#1e3a8a', accent: '#fbbf24', fontFamily: SANS,   headerStyle: 'band',     sectionStyle: 'rule',  skillStyle: 'plain',  tagline: 'Public Safety' },
+  military:   { primary: '#365314', accent: '#a3a380', fontFamily: SANS,   headerStyle: 'centered', sectionStyle: 'rule',  skillStyle: 'plain',  tagline: 'Veteran' },
+  aviation:   { primary: '#1e293b', accent: '#cbd5e1', fontFamily: SANS,   headerStyle: 'band',     sectionStyle: 'rule',  skillStyle: 'plain',  tagline: 'Aviation' },
+  culinary:   { primary: '#451a03', accent: '#dc2626', fontFamily: SERIF2, headerStyle: 'centered', sectionStyle: 'plain', skillStyle: 'inline', tagline: 'Culinary Professional', baseSize: 14 },
+  fitness:    { primary: '#0a0a0a', accent: '#f97316', fontFamily: SANS,   headerStyle: 'band',     sectionStyle: 'tab',   skillStyle: 'pills',  tagline: 'Strength · Conditioning' },
+  ngofield:   { primary: '#92400e', accent: '#fbbf24', fontFamily: SANS,   headerStyle: 'left',     sectionStyle: 'plain', skillStyle: 'pills',  tagline: 'NGO · Field Programs' },
+  translator: { primary: '#3730a3', accent: '#fcd34d', fontFamily: SANS,   headerStyle: 'left',     sectionStyle: 'rule',  skillStyle: 'pills',  tagline: 'Translator · Linguist' },
+  accountant: { primary: '#14532d', accent: '#bef264', fontFamily: SANS,   headerStyle: 'centered', sectionStyle: 'rule',  skillStyle: 'plain',  tagline: 'Certified Public Accountant' },
+
+  // Color / aesthetic (15)
+  arctic:      { primary: '#0c4a6e', accent: '#7dd3fc', fontFamily: SANS,   headerStyle: 'left',     sectionStyle: 'plain', skillStyle: 'inline', bg: '#f0f9ff' },
+  terracotta:  { primary: '#92400e', accent: '#fdba74', fontFamily: SERIF2, headerStyle: 'centered', sectionStyle: 'plain', skillStyle: 'pills',  bg: '#fef9f3' },
+  lavender:    { primary: '#5b21b6', accent: '#c4b5fd', fontFamily: SANS,   headerStyle: 'left',     sectionStyle: 'rule',  skillStyle: 'pills' },
+  emerald:     { primary: '#065f46', accent: '#fbbf24', fontFamily: SERIF,  headerStyle: 'band',     sectionStyle: 'rule',  skillStyle: 'plain' },
+  sapphire:    { primary: '#1e3a8a', accent: '#94a3b8', fontFamily: SERIF,  headerStyle: 'band',     sectionStyle: 'block', skillStyle: 'plain' },
+  plum:        { primary: '#86198f', accent: '#fda4af', fontFamily: SANS,   headerStyle: 'left',     sectionStyle: 'rule',  skillStyle: 'pills' },
+  mustard:     { primary: '#854d0e', accent: '#1e3a8a', fontFamily: SANS,   headerStyle: 'band',     sectionStyle: 'tab',   skillStyle: 'pills' },
+  seafoam:     { primary: '#0f766e', accent: '#fde68a', fontFamily: SANS,   headerStyle: 'centered', sectionStyle: 'plain', skillStyle: 'pills',  bg: '#f0fdfa' },
+  rose:        { primary: '#9f1239', accent: '#f5d0c0', fontFamily: SERIF,  headerStyle: 'centered', sectionStyle: 'plain', skillStyle: 'inline' },
+  coal:        { primary: '#1f2937', accent: '#94a3b8', fontFamily: MONO,   headerStyle: 'left',     sectionStyle: 'tab',   skillStyle: 'pills' },
+  forest:      { primary: '#14532d', accent: '#a3e635', fontFamily: SANS,   headerStyle: 'left',     sectionStyle: 'rule',  skillStyle: 'pills' },
+  crimson:     { primary: '#7f1d1d', accent: '#fecaca', fontFamily: SANS,   headerStyle: 'band',     sectionStyle: 'rule',  skillStyle: 'plain' },
+  mocha:       { primary: '#451a03', accent: '#92400e', fontFamily: SERIF,  headerStyle: 'centered', sectionStyle: 'plain', skillStyle: 'inline', bg: '#fdf6e3' },
+  cobalt:      { primary: '#1e40af', accent: '#fbbf24', fontFamily: MONO,   headerStyle: 'band',     sectionStyle: 'tab',   skillStyle: 'pills' },
+  ash:         { primary: '#404040', accent: '#a3a3a3', fontFamily: SANS,   headerStyle: 'left',     sectionStyle: 'plain', skillStyle: 'inline' },
+
+  // Style / mood (15)
+  retro:       { primary: '#86198f', accent: '#06b6d4', fontFamily: MONO,   headerStyle: 'band',     sectionStyle: 'block', skillStyle: 'pills' },
+  modernist:   { primary: '#0a0a0a', accent: '#dc2626', fontFamily: SANS,   headerStyle: 'band',     sectionStyle: 'tab',   skillStyle: 'pills' },
+  ultramin:    { primary: '#0a0a0a', accent: '#9ca3af', fontFamily: SANS,   headerStyle: 'left',     sectionStyle: 'plain', skillStyle: 'inline' },
+  coolgrad:    { primary: '#1e40af', accent: '#a78bfa', fontFamily: SANS,   headerStyle: 'band',     sectionStyle: 'rule',  skillStyle: 'pills' },
+  chrome:      { primary: '#1a1a1a', accent: '#9ca3af', fontFamily: MONO,   headerStyle: 'band',     sectionStyle: 'tab',   skillStyle: 'pills' },
+  pastoral:    { primary: '#78350f', accent: '#d6c8a3', fontFamily: SERIF2, headerStyle: 'centered', sectionStyle: 'plain', skillStyle: 'inline', bg: '#fef9e7', baseSize: 14 },
+  zen:         { primary: '#3f2a14', accent: '#a8a29e', fontFamily: SERIF2, headerStyle: 'centered', sectionStyle: 'plain', skillStyle: 'inline', bg: '#fafaf9', baseSize: 14 },
+  industrial:  { primary: '#27272a', accent: '#f97316', fontFamily: SANS,   headerStyle: 'band',     sectionStyle: 'tab',   skillStyle: 'pills' },
+  paperback:   { primary: '#451a03', accent: '#92400e', fontFamily: SERIF,  headerStyle: 'left',     sectionStyle: 'rule',  skillStyle: 'inline', bg: '#f5e6c4', baseSize: 14 },
+  midnight:    { primary: '#0c1d3d', accent: '#22d3ee', fontFamily: SANS,   headerStyle: 'band',     sectionStyle: 'block', skillStyle: 'pills' },
+  coralcalm:   { primary: '#9a3412', accent: '#fed7aa', fontFamily: SANS,   headerStyle: 'centered', sectionStyle: 'plain', skillStyle: 'pills' },
+  ashfog:      { primary: '#475569', accent: '#cbd5e1', fontFamily: SANS,   headerStyle: 'left',     sectionStyle: 'plain', skillStyle: 'pills' },
+  goldroyal:   { primary: '#0a0a0a', accent: '#d4af37', fontFamily: SERIF,  headerStyle: 'centered', sectionStyle: 'rule',  skillStyle: 'inline' },
+  scarlet:     { primary: '#dc2626', accent: '#fef3c7', fontFamily: SANS,   headerStyle: 'band',     sectionStyle: 'rule',  skillStyle: 'plain' },
+  tealclean:   { primary: '#0f766e', accent: '#a7f3d0', fontFamily: SANS,   headerStyle: 'left',     sectionStyle: 'rule',  skillStyle: 'pills' },
+
+  // Final mix (8)
+  navycoral:     { primary: '#1e3a8a', accent: '#f87171', fontFamily: SANS,  headerStyle: 'left',     sectionStyle: 'rule',  skillStyle: 'pills' },
+  bronze:        { primary: '#78350f', accent: '#fcd34d', fontFamily: SERIF, headerStyle: 'centered', sectionStyle: 'plain', skillStyle: 'inline' },
+  violet:        { primary: '#6b21a8', accent: '#cbd5e1', fontFamily: SANS,  headerStyle: 'left',     sectionStyle: 'rule',  skillStyle: 'pills' },
+  orangebold:    { primary: '#27272a', accent: '#f97316', fontFamily: SANS,  headerStyle: 'band',     sectionStyle: 'block', skillStyle: 'pills' },
+  charcoalserif: { primary: '#1f2937', accent: '#9ca3af', fontFamily: SERIF, headerStyle: 'centered', sectionStyle: 'plain', skillStyle: 'inline' },
+  maroon:        { primary: '#7f1d1d', accent: '#a16207', fontFamily: SERIF, headerStyle: 'centered', sectionStyle: 'plain', skillStyle: 'inline', bg: '#fffbeb' },
+  jade:          { primary: '#047857', accent: '#a7f3d0', fontFamily: SANS,  headerStyle: 'left',     sectionStyle: 'rule',  skillStyle: 'pills' },
+  silverelite:   { primary: '#1f2937', accent: '#cbd5e1', fontFamily: SANS,  headerStyle: 'band',     sectionStyle: 'rule',  skillStyle: 'pills' },
+};
+
 // ─── Singleton browser ──────────────────────────────────────────────
 // Launching Chromium is expensive (1-3s). Keep one instance alive for the
 // process lifetime and just open a fresh Page per PDF. This alone takes
@@ -67,8 +140,12 @@ const getBrowser = async () => {
 });
 
 const generateCVPdfBuffer = async (finalCV, options = {}) => {
-  const templateId = TEMPLATES.includes(options.template) ? options.template : DEFAULT_TEMPLATE;
-  const photo = PHOTO_TEMPLATES.includes(templateId)
+  const requested = typeof options.template === 'string' ? options.template : '';
+  const isKnown = TEMPLATES.includes(requested) || Object.prototype.hasOwnProperty.call(BULK_THEMES, requested);
+  const templateId = isKnown ? requested : DEFAULT_TEMPLATE;
+  // All bulk theme templates support photo (via genericTemplate's Header).
+  const supportsPhoto = PHOTO_TEMPLATES.includes(templateId) || Object.prototype.hasOwnProperty.call(BULK_THEMES, templateId);
+  const photo = supportsPhoto
     && typeof options.photo === 'string'
     && options.photo.startsWith('data:image/')
     ? options.photo
@@ -108,6 +185,12 @@ function escapeHtml(text) {
 }
 
 function buildCVHtml(cv, templateId, photo) {
+  // Route theme-variant templates (zen, arctic, etc.) through the shared
+  // genericTemplate so adding a new tile on the frontend doesn't require a
+  // new backend fn — just a BULK_THEMES entry.
+  if (Object.prototype.hasOwnProperty.call(BULK_THEMES, templateId)) {
+    return genericTemplate(cv, photo, BULK_THEMES[templateId]);
+  }
   switch (templateId) {
     case 'modern':      return modernTemplate(cv);
     case 'minimalist':  return minimalistTemplate(cv);
@@ -1293,6 +1376,206 @@ p { font-size: 11pt; }
     ${certs.length > 0 ? `<div class="section"><h2>Certifications</h2>${certs.map((c) => `<div class="entry"><p style="font-family:'Playfair Display',serif;font-weight:600;">${escapeHtml(certText(c))}</p>${certExtrasHtml(c)}</div>`).join('')}</div>` : ''}
   </div>
 </body></html>`;
+}
+
+/* ═══════════════════════ Generic theme-driven template ═══════════════════════
+ * Shared renderer for all BULK_THEMES tiles (zen, arctic, mocha, etc.).
+ * Mirrors frontend/components/cv/templates/GenericRenderer.tsx — three header
+ * styles (band / centered / left), four section styles (rule / block / tab /
+ * plain), three skill styles (pills / inline / plain).
+ *
+ * If you tweak this, also update GenericRenderer.tsx so preview === PDF.
+ * ════════════════════════════════════════════════════════════════════════════ */
+
+function genericTemplate(cv, photo, themeIn) {
+  const t = {
+    primary: themeIn.primary,
+    accent: themeIn.accent,
+    fontFamily: themeIn.fontFamily,
+    bg: themeIn.bg || '#ffffff',
+    text: themeIn.text || '#1f2937',
+    sectionStyle: themeIn.sectionStyle || 'rule',
+    headerStyle: themeIn.headerStyle || 'left',
+    skillStyle: themeIn.skillStyle || 'inline',
+    baseSize: themeIn.baseSize || 13.5,
+    photoSide: themeIn.photoSide || (photo ? 'left' : 'none'),
+    tagline: themeIn.tagline || '',
+  };
+
+  const contact = [cv.email, cv.phone, cv.location, cv.linkedin].filter(Boolean);
+  const skills = (cv.skills || []).filter((s) => s && String(s).trim());
+  const edu = (cv.education || []).filter((e) =>
+    [e && e.degree, e && e.institution, e && e.year, e && e.url].filter(Boolean).join(' ').trim().length > 0
+  );
+  const langs = (cv.languages || []).filter((l) => langText(l).length > 0);
+  const certs = (cv.certifications || []).filter((c) => certText(c).length > 0);
+
+  return `<!DOCTYPE html>
+<html><head><meta charset="utf-8"><style>
+${baseStyles()}
+body { font-family: ${t.fontFamily}; font-size: ${t.baseSize}px; line-height: 1.5; background: ${t.bg}; color: ${t.text}; word-break: break-word; overflow-wrap: anywhere; }
+.page-body { padding: 28px 40px; }
+.section { margin-bottom: 20px; }
+.section:last-child { margin-bottom: 0; }
+.section h2 { ${sectionHeaderCss(t)} }
+.entry-meta { font-size: ${t.baseSize - 2.5}px; color: #6b7280; }
+.entry-link a { color: ${t.primary}; }
+${headerCss(t)}
+${skillsCss(t)}
+.exp { margin-bottom: 14px; }
+.exp-row { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.exp-title { font-weight: bold; font-size: ${t.baseSize + 0.5}px; color: ${t.primary}; }
+.exp-dur { font-size: 11px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.12em; color: ${t.accent}; }
+.exp-company { font-style: italic; color: #4b5563; font-size: ${t.baseSize - 1}px; margin-top: 2px; }
+.exp ul { margin-top: 5px; margin-left: 16px; padding-left: 0; list-style: disc; }
+.exp li { font-size: ${t.baseSize - 0.5}px; color: ${t.text}; margin-bottom: 2px; }
+.edu-row { font-size: ${t.baseSize}px; color: ${t.text}; margin-bottom: 4px; }
+.lang-row { font-size: ${t.baseSize}px; color: ${t.text}; }
+.cert-row { font-weight: 600; font-size: ${t.baseSize - 0.5}px; color: ${t.text}; margin-bottom: 4px; }
+</style></head><body>
+  ${renderGenericHeader(cv, contact, photo, t)}
+  <div class="page-body">
+    ${cv.summary ? `<div class="section"><h2>Profile</h2><p style="font-size:${t.baseSize}px;color:${t.text};">${escapeHtml(cv.summary)}</p></div>` : ''}
+    ${cv.experience && cv.experience.length > 0 ? `
+      <div class="section">
+        <h2>Experience</h2>
+        ${cv.experience.map((r) => `
+          <div class="exp">
+            <div class="exp-row">
+              <div class="exp-title">${escapeHtml(r.title || '')}</div>
+              ${r.duration ? `<div class="exp-dur">${escapeHtml(r.duration)}</div>` : ''}
+            </div>
+            ${r.company ? `<div class="exp-company">${escapeHtml(r.company)}</div>` : ''}
+            ${r.bullets && r.bullets.length > 0 ? `<ul>${r.bullets.map((b) => `<li>${escapeHtml(b)}</li>`).join('')}</ul>` : ''}
+          </div>
+        `).join('')}
+      </div>` : ''}
+    ${skills.length > 0 ? `<div class="section"><h2>Skills</h2>${renderGenericSkills(skills, t)}</div>` : ''}
+    ${edu.length > 0 ? `
+      <div class="section">
+        <h2>Education</h2>
+        ${edu.map((e) => {
+          const parts = [e.degree, e.institution, e.year].filter(Boolean);
+          return `<div class="edu-row"><p>${escapeHtml(parts.join(' — '))}</p>${eduExtrasHtml(e)}</div>`;
+        }).join('')}
+      </div>` : ''}
+    ${langs.length > 0 ? `<div class="section"><h2>Languages</h2><div class="lang-row">${escapeHtml(langs.map(langText).join('  ·  '))}</div></div>` : ''}
+    ${certs.length > 0 ? `
+      <div class="section">
+        <h2>Certifications</h2>
+        ${certs.map((c) => `<div class="cert-row"><p>${escapeHtml(certText(c))}</p>${certExtrasHtml(c)}</div>`).join('')}
+      </div>` : ''}
+  </div>
+</body></html>`;
+}
+
+function sectionHeaderCss(t) {
+  // h2 base — variant-specific decoration applied below.
+  const base = `font-weight: bold; text-transform: uppercase; font-size: 11.5px; letter-spacing: 0.20em; margin-bottom: 8px; color: ${t.primary};`;
+  if (t.sectionStyle === 'block') {
+    return `${base} display: inline-block; padding: 2px 8px; border-radius: 3px; background: ${t.primary}; color: #fff; letter-spacing: 0.18em;`;
+  }
+  if (t.sectionStyle === 'tab') {
+    return `${base} padding-left: 8px; border-left: 3px solid ${t.accent};`;
+  }
+  if (t.sectionStyle === 'plain') {
+    return `${base} letter-spacing: 0.22em;`;
+  }
+  return `${base} padding-bottom: 4px; border-bottom: 1.5px solid ${t.primary}; letter-spacing: 0.18em;`;
+}
+
+function headerCss(t) {
+  if (t.headerStyle === 'band') {
+    return `
+.cv-header { padding: 28px 40px; background: ${t.primary}; color: #fff; display: flex; align-items: center; gap: 20px; flex-wrap: wrap; }
+.cv-header .name { font-size: 28px; font-weight: bold; color: #fff; letter-spacing: -0.01em; line-height: 1.1; }
+.cv-header .tagline { font-size: 11px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.22em; color: ${t.accent}; margin-top: 4px; }
+.cv-header .contact { font-size: 12px; color: rgba(255,255,255,0.85); margin-top: 8px; word-break: break-all; }
+.cv-header .head-body { flex: 1; min-width: 0; }
+`;
+  }
+  if (t.headerStyle === 'centered') {
+    return `
+.cv-header { padding: 36px 40px 16px; text-align: center; border-bottom: 2px solid ${t.primary}; }
+.cv-header .name { font-size: 28px; font-weight: bold; color: ${t.primary}; letter-spacing: 0.04em; line-height: 1.1; }
+.cv-header .tagline { font-size: 11px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.30em; color: ${t.accent}; margin-top: 4px; }
+.cv-header .contact { font-size: 12px; color: #6b7280; margin-top: 8px; word-break: break-all; }
+.cv-photo { margin: 0 auto 12px; }
+`;
+  }
+  return `
+.cv-header { padding: 32px 40px 12px; display: flex; align-items: center; gap: 20px; flex-wrap: wrap; }
+.cv-header .head-body { flex: 1; min-width: 0; }
+.cv-header .name { font-size: 28px; font-weight: bold; color: ${t.primary}; letter-spacing: -0.01em; line-height: 1.1; margin-top: 2px; }
+.cv-header .tagline { font-size: 11px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.22em; color: ${t.accent}; }
+.cv-header .accent-bar { width: 50px; height: 3px; background: ${t.accent}; margin: 8px 0 6px; }
+.cv-header .contact { font-size: 12px; color: #6b7280; word-break: break-all; }
+`;
+}
+
+function skillsCss(t) {
+  if (t.skillStyle === 'pills') {
+    // Pills get a faint accent tint — replicate Tailwind's `${accent}1f`
+    // (≈12% alpha) by appending '1f' to a 6-char hex. Solid color is fine too;
+    // most accents are pastel enough that this just reads as a soft chip.
+    return `.skill-pills { display: flex; flex-wrap: wrap; gap: 6px; }
+.skill-pill { display: inline-block; font-size: 12px; padding: 2px 10px; border-radius: 9999px; background: ${t.accent}33; color: ${t.primary}; }`;
+  }
+  return `.skill-list { font-size: ${t.baseSize}px; color: ${t.text}; }`;
+}
+
+function photoHtml(photo, t, sideOverride) {
+  if (!photo) return '';
+  const side = sideOverride || t.photoSide;
+  if (side === 'none') return '';
+  return `<div class="cv-photo" style="width:88px;height:88px;border-radius:50%;border:2px solid ${t.accent};overflow:hidden;flex-shrink:0;"><img src="${photo}" alt="" style="width:100%;height:100%;object-fit:cover;display:block;" /></div>`;
+}
+
+function renderGenericHeader(cv, contact, photo, t) {
+  const name = escapeHtml(cv.full_name || 'Your Name');
+  const tagline = t.tagline ? `<div class="tagline">${escapeHtml(t.tagline)}</div>` : '';
+  const contactHtml = contact.length > 0 ? `<div class="contact">${escapeHtml(contact.join('  ·  '))}</div>` : '';
+  const showLeftPhoto = t.photoSide === 'left' ? photoHtml(photo, t) : '';
+  const showRightPhoto = t.photoSide === 'right' ? photoHtml(photo, t) : '';
+
+  if (t.headerStyle === 'band') {
+    return `<div class="cv-header">
+      ${showLeftPhoto}
+      <div class="head-body">
+        <div class="name">${name}</div>
+        ${tagline}
+        ${contactHtml}
+      </div>
+      ${showRightPhoto}
+    </div>`;
+  }
+  if (t.headerStyle === 'centered') {
+    return `<div class="cv-header">
+      ${photo && t.photoSide !== 'none' ? photoHtml(photo, t, 'centered') : ''}
+      <div class="name">${name}</div>
+      ${tagline}
+      ${contactHtml}
+    </div>`;
+  }
+  // left
+  return `<div class="cv-header">
+    ${showLeftPhoto}
+    <div class="head-body">
+      ${tagline}
+      <div class="name">${name}</div>
+      <div class="accent-bar"></div>
+      ${contactHtml}
+    </div>
+    ${showRightPhoto}
+  </div>`;
+}
+
+function renderGenericSkills(skills, t) {
+  if (t.skillStyle === 'pills') {
+    return `<div class="skill-pills">${skills.map((s) => `<span class="skill-pill">${escapeHtml(s)}</span>`).join('')}</div>`;
+  }
+  const sep = t.skillStyle === 'plain' ? '  ·  ' : ', ';
+  return `<div class="skill-list">${escapeHtml(skills.join(sep))}</div>`;
 }
 
 module.exports = { generateCVPdfBuffer };
