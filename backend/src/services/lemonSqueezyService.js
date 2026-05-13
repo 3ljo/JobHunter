@@ -184,6 +184,7 @@ const resolvePlanFromVariantId = (variantId) => {
     if (!config.ls_variants) continue;
     if (
       config.ls_variants.month === id ||
+      config.ls_variants.quarter === id ||
       config.ls_variants.year === id ||
       config.ls_variants.once === id
     ) {
@@ -200,6 +201,7 @@ const resolveIntervalFromVariantId = (variantId) => {
     if (config.legacy_alias_for) continue;
     if (!config.ls_variants) continue;
     if (config.ls_variants.month === id) return 'month';
+    if (config.ls_variants.quarter === id) return 'quarter';
     if (config.ls_variants.year === id) return 'year';
     if (config.ls_variants.once === id) return 'once';
   }

@@ -26,9 +26,9 @@ const inspectConfig = () => ({
 // NOWPayments rail.
 const PRICES_USD = {
   starter: { once: 9 },
-  pro: { month: 19, year: 149 },
-  pro_voice: { month: 39, year: 299 },
-  pro_plus: { month: 39, year: 299 }, // legacy alias for pro_voice
+  pro: { month: 19, quarter: 45, year: 149 },
+  pro_voice: { month: 39, quarter: 99, year: 299 },
+  pro_plus: { month: 39, quarter: 99, year: 299 }, // legacy alias for pro_voice
 };
 
 const getPriceUSD = (plan, interval) => {

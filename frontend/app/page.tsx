@@ -68,6 +68,7 @@ export default function Home() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [promoBanner, setPromoBanner] = useState<{ code: string; discount_type: string; discount_amount: number; expires_at: string | null } | null>(null);
   const [bannerDismissed, setBannerDismissed] = useState(false);
+  const [billingInterval, setBillingInterval] = useState<'month' | 'quarter' | 'year'>('month');
   const navScrolled = useNavbarScroll();
   useScrollReveal();
 
@@ -162,69 +163,86 @@ export default function Home() {
   // pricing tier on the landing page. Free goes back to the dashboard,
   // paid plans land directly in their checkout flow. Logged-out visitors
   // always start at /register first.
-  const planHref = (key: 'free' | 'starter' | 'pro' | 'pro_voice') => {
+  const planHref = (key: 'free' | 'starter' | 'pro' | 'pro_voice', cadence: 'month' | 'quarter' | 'year' = 'month') => {
     if (!isLoggedIn) return '/register';
     if (key === 'free') return '/cv';
     if (key === 'starter') return '/checkout?plan=starter&interval=once';
-    return `/checkout?plan=${key}&interval=month`;
+    return `/checkout?plan=${key}&interval=${cadence}`;
   };
 
-  const pricing = [
+  // Subscription cards mirror the same prices as the in-app pricing page.
+  // Free + 7-Day Pass ignore the toggle (one-time / always free).
+  type PricingCard = {
+    key: 'free' | 'starter' | 'pro' | 'pro_voice';
+    bg: string;
+    plan: string;
+    monthly: number;
+    quarterly?: number;
+    yearly?: number;
+    tagline: string;
+    features: string[];
+    cta: string;
+    highlight: boolean;
+    premium: boolean;
+    badge: string;
+    oneTime: boolean;
+  };
+  const pricing: PricingCard[] = [
     {
       key: 'free' as const,
       bg: '/aivent/misc/l3.webp',
       plan: 'Free',
-      price: '$0',
-      period: '',
+      monthly: 0,
       tagline: 'Try the core tools',
       features: ['1 CV analysis', '2 cover letters', 'ATS score & keyword report', 'PDF downloads', 'Tracker — up to 15 jobs'],
       cta: 'Get Started Free',
-      href: planHref('free'),
       highlight: false,
       premium: false,
       badge: '',
+      oneTime: true,
     },
     {
       key: 'starter' as const,
       bg: '/aivent/misc/l3.webp',
       plan: '7-Day Pass',
-      price: '$9',
-      period: 'one-time',
+      monthly: 9,
       tagline: 'No auto-renew',
       features: ['Unlimited CV analyses (7 days)', 'Unlimited cover letters (7 days)', 'Full ATS audit & optimization', 'AI quick edits', 'Unlimited job tracker', 'Pay once — no subscription'],
       cta: 'Get Pass',
-      href: planHref('starter'),
       highlight: false,
       premium: false,
       badge: 'Pay once',
+      oneTime: true,
     },
     {
       key: 'pro' as const,
       bg: '/aivent/misc/l4.webp',
       plan: 'Pro',
-      price: '$19',
-      period: '/month',
+      monthly: 19,
+      quarterly: 45,
+      yearly: 149,
       tagline: 'For active job seekers',
       features: ['Unlimited CV analyses', 'Unlimited cover letters', 'Full ATS audit & optimization', 'AI quick edits', 'Priority AI processing', 'Full CV history & analytics', 'Unlimited job tracker'],
       cta: isLoggedIn ? 'Upgrade to Pro' : 'Start Pro',
-      href: planHref('pro'),
       highlight: true,
       premium: false,
       badge: 'Most Popular',
+      oneTime: false,
     },
     {
       key: 'pro_voice' as const,
       bg: '/aivent/misc/l5.webp',
       plan: 'Pro+',
-      price: '$39',
-      period: '/month',
+      monthly: 39,
+      quarterly: 99,
+      yearly: 299,
       tagline: 'AI voice coach + full job hunter',
       features: ['Everything in Pro', 'Job Hunter — AI matching across 12+ boards', 'Voice Mock Interview — 8 sessions / month', 'Voice feedback report', 'Interview prep library', 'LinkedIn-ready CV export', 'Priority AI processing'],
       cta: isLoggedIn ? 'Upgrade to Pro+' : 'Start Pro+',
-      href: planHref('pro_voice'),
       highlight: false,
       premium: true,
       badge: 'Premium',
+      oneTime: false,
     },
   ];
 
@@ -725,15 +743,43 @@ export default function Home() {
         <div className="absolute bottom-0 left-0 right-0 h-1/4" style={{ background: 'linear-gradient(0deg,#101435 0%,transparent 100%)' }} />
 
         <div className="relative mx-auto max-w-7xl" style={{ zIndex: 2 }}>
-          <div className="text-center mb-16">
+          <div className="text-center mb-10">
             <span className="aivent-subtitle s2" data-reveal>Pricing Plans</span>
             <h2 className="text-white tracking-tight wow fadeInUp" data-wow-delay=".1s" style={{ fontSize: 'clamp(32px,4vw,48px)', fontWeight: 800 }}>Choose Your Plan</h2>
             <p className="text-white/55 text-lg mt-4 max-w-2xl mx-auto wow fadeInUp" style={{ fontWeight: 400 }} data-wow-delay=".2s">Start free. Grab a one-time 7-day pass. Or subscribe for the full search.</p>
           </div>
 
+          {/* Monthly / 3-Months / Yearly toggle — drives the per-card price math below */}
+          <div className="flex items-center justify-center gap-2 mb-12 flex-wrap">
+            <button
+              onClick={() => setBillingInterval('month')}
+              className={`btn-aivent fx-slide ${billingInterval === 'month' ? '' : 'btn-line'}`}
+              data-hover="MONTHLY"
+              style={{ minWidth: '120px' }}
+            >
+              <span>Monthly</span>
+            </button>
+            <button
+              onClick={() => setBillingInterval('quarter')}
+              className={`btn-aivent fx-slide ${billingInterval === 'quarter' ? '' : 'btn-line'}`}
+              data-hover="3 MONTHS"
+              style={{ minWidth: '150px' }}
+            >
+              <span>3 Months</span>
+            </button>
+            <button
+              onClick={() => setBillingInterval('year')}
+              className={`btn-aivent fx-slide ${billingInterval === 'year' ? '' : 'btn-line'}`}
+              data-hover="YEARLY — SAVE 35%"
+              style={{ minWidth: '200px' }}
+            >
+              <span>Yearly — Save 35%</span>
+            </button>
+          </div>
+
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
             {pricing.map((p, i) => {
-              // Pro Voice gets the gold treatment so it doesn't sit ignored
+              // Pro+ gets the gold treatment so it doesn't sit ignored
               // in the 4th slot — it's our highest-margin SKU.
               const accent = p.premium
                 ? '#fbbf24'                      // amber-400
@@ -742,6 +788,34 @@ export default function Home() {
                   : 'rgba(255,255,255,0.08)';
               const borderStyle = (p.highlight || p.premium) ? `2px solid ${accent}` : `2px solid ${accent}`;
               const cardShadow = p.premium ? '0 12px 40px rgba(251,191,36,0.18)' : undefined;
+
+              // Free + 7-Day Pass ignore the toggle. Free is always $0; the
+              // pass is always $9 one-time. Subscriptions read off the
+              // selected interval and fall back to 3× monthly if quarterly
+              // isn't explicitly set (matches the in-app pricing page).
+              let priceLabel: string;
+              let periodLabel: string;
+              let perMonthLabel: string | null = null;
+              if (p.oneTime) {
+                priceLabel = p.monthly === 0 ? '$0' : `$${p.monthly}`;
+                periodLabel = p.monthly === 0 ? '' : 'one-time';
+              } else {
+                const quarterly = p.quarterly ?? p.monthly * 3;
+                const yearly = p.yearly ?? p.monthly * 12;
+                const amount =
+                  billingInterval === 'month' ? p.monthly
+                  : billingInterval === 'quarter' ? quarterly
+                  : yearly;
+                priceLabel = `$${amount}`;
+                periodLabel = billingInterval === 'month' ? '/month' : billingInterval === 'quarter' ? '/3mo' : '/year';
+                if (billingInterval === 'year') {
+                  perMonthLabel = `$${(yearly / 12).toFixed(2)}/mo · Save ${Math.round(((p.monthly * 12 - yearly) / (p.monthly * 12)) * 100)}%`;
+                } else if (billingInterval === 'quarter' && p.quarterly) {
+                  perMonthLabel = `$${(p.quarterly / 3).toFixed(2)}/mo · Save ${Math.round(((p.monthly * 3 - p.quarterly) / (p.monthly * 3)) * 100)}%`;
+                }
+              }
+
+              const href = planHref(p.key, p.oneTime ? 'month' : billingInterval);
               return (
                 <div key={p.plan} data-reveal data-delay={String(i * 100)} style={{ boxShadow: cardShadow }}>
                   <div className="d-ticket-card mb-0 rounded-b-none" style={{ backgroundImage: `url(${p.bg})`, border: borderStyle, borderBottom: 'none' }}>
@@ -752,12 +826,15 @@ export default function Home() {
                       {p.tagline && (
                         <p className="text-white/50 text-xs mb-3" style={{ fontWeight: 500 }}>{p.tagline}</p>
                       )}
-                      <h4 className="text-white/80 mb-3" style={{ fontWeight: 600 }}>
-                        <span className="text-white" style={{ fontSize: '2rem', fontWeight: 800 }}>{p.price}</span>
-                        {p.period && (
-                          <span className="text-white/50 ml-1" style={{ fontSize: '0.95rem', fontWeight: 400 }}>{p.period}</span>
+                      <h4 className="text-white/80 mb-2" style={{ fontWeight: 600 }}>
+                        <span className="text-white" style={{ fontSize: '2rem', fontWeight: 800 }}>{priceLabel}</span>
+                        {periodLabel && (
+                          <span className="text-white/50 ml-1" style={{ fontSize: '0.95rem', fontWeight: 400 }}>{periodLabel}</span>
                         )}
                       </h4>
+                      {perMonthLabel && (
+                        <p className="text-xs mb-2" style={{ color: '#34d399', fontWeight: 500 }}>{perMonthLabel}</p>
+                      )}
                       {p.badge === 'Most Popular' && (
                         <span className="inline-block px-3 py-1 rounded-full text-xs uppercase tracking-widest text-white" style={{ fontWeight: 700, background: 'oklch(0.59 0.245 291)' }}>Most Popular</span>
                       )}
@@ -776,7 +853,7 @@ export default function Home() {
                     <ul className="ul-check mb-5 space-y-2 text-sm">
                       {p.features.map(f => <li key={f}>{f}</li>)}
                     </ul>
-                    <Link href={p.href} className="btn-aivent fx-slide w-full text-center block" data-hover={p.cta.toUpperCase()}>
+                    <Link href={href} className="btn-aivent fx-slide w-full text-center block" data-hover={p.cta.toUpperCase()}>
                       <span>{p.cta}</span>
                     </Link>
                   </div>

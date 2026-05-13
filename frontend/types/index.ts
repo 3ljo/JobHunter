@@ -81,7 +81,7 @@ export interface Subscription {
   // ladder — runtime treats it identically to `pro_voice`.
   plan: 'free' | 'starter' | 'pro' | 'pro_voice' | 'pro_plus';
   status: 'active' | 'trialing' | 'past_due' | 'canceled' | 'unpaid' | 'incomplete';
-  billing_interval: 'month' | 'year' | 'once' | null;
+  billing_interval: 'month' | 'quarter' | 'year' | 'once' | null;
   current_period_end: string | null;
   cancel_at_period_end: boolean;
   stripe_customer_id?: string;

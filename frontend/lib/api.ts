@@ -512,7 +512,7 @@ export interface CheckoutResponse {
 
 export const createCheckoutSession = (
   plan: string,
-  interval: 'month' | 'year' | 'once',
+  interval: 'month' | 'quarter' | 'year' | 'once',
   payment_method?: string,
   provider?: 'lemonsqueezy' | 'paypal' | 'nowpayments',
 ) =>

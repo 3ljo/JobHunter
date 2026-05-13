@@ -7,7 +7,7 @@ import Link from 'next/link';
 import toast from 'react-hot-toast';
 
 type PlanKey = 'free' | 'starter' | 'pro' | 'pro_voice';
-type Cadence = 'month' | 'year';
+type Cadence = 'month' | 'quarter' | 'year';
 
 interface Plan {
   key: PlanKey;
@@ -15,6 +15,7 @@ interface Plan {
   name: string;
   tagline?: string;
   monthly: number;
+  quarterly?: number;
   yearly: number;
   oneTime?: number;
   features: string[];
@@ -67,6 +68,7 @@ const plans: Plan[] = [
     name: 'Pro',
     tagline: 'For active job seekers',
     monthly: 19,
+    quarterly: 45,
     yearly: 149,
     features: [
       'Unlimited CV analyses',
@@ -86,6 +88,7 @@ const plans: Plan[] = [
     name: 'Pro+',
     tagline: 'AI voice coach + full job hunter',
     monthly: 39,
+    quarterly: 99,
     yearly: 299,
     features: [
       'Everything in Pro',
@@ -140,8 +143,8 @@ function PricingContent() {
         </p>
       </div>
 
-      {/* Monthly / Yearly toggle */}
-      <div className="flex items-center justify-center gap-2 mb-12">
+      {/* Monthly / 3-Months / Yearly toggle */}
+      <div className="flex items-center justify-center gap-2 mb-12 flex-wrap">
         <button
           onClick={() => setInterval('month')}
           className={`btn-aivent fx-slide ${interval === 'month' ? '' : 'btn-line'}`}
@@ -149,6 +152,14 @@ function PricingContent() {
           style={{ minWidth: '120px' }}
         >
           <span>Monthly</span>
+        </button>
+        <button
+          onClick={() => setInterval('quarter')}
+          className={`btn-aivent fx-slide ${interval === 'quarter' ? '' : 'btn-line'}`}
+          data-hover="3 MONTHS"
+          style={{ minWidth: '150px' }}
+        >
+          <span>3 Months</span>
         </button>
         <button
           onClick={() => setInterval('year')}
@@ -167,25 +178,41 @@ function PricingContent() {
           const isPaidSubscription = p.key === 'pro' || p.key === 'pro_voice';
           const isOneTime = p.oneTimeOnly === true;
 
+          // Quarterly is optional per-plan — fall back to monthly so the
+          // Free / 7-Day Pass cards stay coherent when the user picks 3 Months.
+          const quarterlyPrice = p.quarterly ?? p.monthly * 3;
+
           // Price math
           const price = isOneTime
             ? p.oneTime ?? 0
             : interval === 'month'
               ? p.monthly
-              : p.yearly;
+              : interval === 'quarter'
+                ? quarterlyPrice
+                : p.yearly;
 
           const period = isOneTime
             ? 'one-time'
             : interval === 'month'
               ? '/mo'
-              : '/yr';
+              : interval === 'quarter'
+                ? '/3mo'
+                : '/yr';
 
-          const perMonth = isPaidSubscription && interval === 'year' && p.monthly > 0
-            ? `$${(p.yearly / 12).toFixed(2)}/mo`
+          const perMonth = isPaidSubscription && p.monthly > 0
+            ? interval === 'year'
+              ? `$${(p.yearly / 12).toFixed(2)}/mo`
+              : interval === 'quarter' && p.quarterly
+                ? `$${(p.quarterly / 3).toFixed(2)}/mo`
+                : null
             : null;
 
-          const savings = isPaidSubscription && interval === 'year' && p.monthly > 0
-            ? Math.round(((p.monthly * 12 - p.yearly) / (p.monthly * 12)) * 100)
+          const savings = isPaidSubscription && p.monthly > 0
+            ? interval === 'year'
+              ? Math.round(((p.monthly * 12 - p.yearly) / (p.monthly * 12)) * 100)
+              : interval === 'quarter' && p.quarterly
+                ? Math.round(((p.monthly * 3 - p.quarterly) / (p.monthly * 3)) * 100)
+                : 0
             : 0;
 
           // CTA link: subscription → interval param; one-time → interval=once

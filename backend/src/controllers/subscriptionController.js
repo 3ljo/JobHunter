@@ -109,7 +109,7 @@ const createCheckout = async (req, res) => {
     const planConfig = PLANS[plan];
     const isOneTime = planConfig.billing_type === 'one_time';
 
-    const validIntervals = isOneTime ? ['once'] : ['month', 'year'];
+    const validIntervals = isOneTime ? ['once'] : ['month', 'quarter', 'year'];
     if (!interval || !validIntervals.includes(interval)) {
       return res.status(400).json({
         error: isOneTime
@@ -764,7 +764,7 @@ const createCheckoutStripe = async (req, res) => {
     if (!plan || !PLANS[plan] || plan === 'free') {
       return res.status(400).json({ error: 'Invalid plan' });
     }
-    if (!interval || !['month', 'year'].includes(interval)) {
+    if (!interval || !['month', 'quarter', 'year'].includes(interval)) {
       return res.status(400).json({ error: 'Invalid billing interval' });
     }
 

@@ -15,6 +15,7 @@ interface PlanEntry {
   bg: string;
   ticketClass: string;
   monthly: number;
+  quarterly?: number;
   yearly: number;
   oneTime?: number;
   features: string[];
@@ -44,6 +45,7 @@ const PLANS: Record<string, PlanEntry> = {
     bg: '/aivent/misc/l4.webp',
     ticketClass: 's2',
     monthly: 19,
+    quarterly: 45,
     yearly: 149,
     features: [
       'Unlimited CV analyses',
@@ -60,6 +62,7 @@ const PLANS: Record<string, PlanEntry> = {
     bg: '/aivent/misc/l5.webp',
     ticketClass: 's3',
     monthly: 39,
+    quarterly: 99,
     yearly: 299,
     features: [
       'Everything in Pro',
@@ -94,9 +97,9 @@ function CheckoutForm() {
   const { fetchSubscription } = useSubscriptionStore();
 
   const planKey = searchParams.get('plan') || 'pro';
-  const intervalParam = (searchParams.get('interval') as 'month' | 'year' | 'once') || 'month';
+  const intervalParam = (searchParams.get('interval') as 'month' | 'quarter' | 'year' | 'once') || 'month';
 
-  const [interval, setInterval] = useState<'month' | 'year' | 'once'>(intervalParam);
+  const [interval, setInterval] = useState<'month' | 'quarter' | 'year' | 'once'>(intervalParam);
   const [loading, setLoading] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<'card' | 'crypto'>('card');
 
@@ -124,17 +127,30 @@ function CheckoutForm() {
     return null;
   }
 
+  // Quarterly falls back to 3× monthly if a plan didn't define its own price,
+  // matching the pricing page's behavior so the math stays consistent.
+  const quarterlyPrice = plan.quarterly ?? plan.monthly * 3;
   const price = isOneTime
     ? plan.oneTime ?? plan.monthly
     : interval === 'month'
       ? plan.monthly
-      : plan.yearly;
+      : interval === 'quarter'
+        ? quarterlyPrice
+        : plan.yearly;
   const period = isOneTime
     ? 'One-time'
     : interval === 'month'
       ? 'Monthly'
-      : 'Yearly';
-  const perMonth = !isOneTime && interval === 'year' ? (plan.yearly / 12).toFixed(2) : null;
+      : interval === 'quarter'
+        ? '3 Months'
+        : 'Yearly';
+  const perMonth = !isOneTime
+    ? interval === 'year'
+      ? (plan.yearly / 12).toFixed(2)
+      : interval === 'quarter'
+        ? (quarterlyPrice / 3).toFixed(2)
+        : null
+    : null;
 
   const activeDiscount = discount;
 
@@ -285,12 +301,12 @@ function CheckoutForm() {
                 ${price.toFixed(2)}
               </span>
               <span className="text-white/50 ml-2" style={{ fontSize: '1rem', fontWeight: 400 }}>
-                {isOneTime ? 'one-time' : interval === 'month' ? '/mo' : '/yr'}
+                {isOneTime ? 'one-time' : interval === 'month' ? '/mo' : interval === 'quarter' ? '/3mo' : '/yr'}
               </span>
             </h4>
             {perMonth && (
               <div className="text-sm" style={{ color: '#34d399', fontWeight: 500 }}>
-                ${perMonth}/mo billed yearly
+                ${perMonth}/mo billed {interval === 'year' ? 'yearly' : 'every 3 months'}
               </div>
             )}
             {isOneTime && (
@@ -317,7 +333,7 @@ function CheckoutForm() {
           {!isOneTime && (
             <div className="mt-2 mb-6">
               <h4 className="text-white mb-4" style={{ fontWeight: 700 }}>Billing Period:</h4>
-              <div className="flex gap-3">
+              <div className="flex gap-3 flex-wrap">
                 <button
                   onClick={() => setInterval('month')}
                   className={`btn-aivent fx-slide ${interval === 'month' ? '' : 'btn-line'}`}
@@ -325,6 +341,14 @@ function CheckoutForm() {
                   style={{ minWidth: '130px' }}
                 >
                   <span>Monthly</span>
+                </button>
+                <button
+                  onClick={() => setInterval('quarter')}
+                  className={`btn-aivent fx-slide ${interval === 'quarter' ? '' : 'btn-line'}`}
+                  data-hover="3 MONTHS"
+                  style={{ minWidth: '130px' }}
+                >
+                  <span>3 Months</span>
                 </button>
                 <button
                   onClick={() => setInterval('year')}
@@ -408,7 +432,7 @@ function CheckoutForm() {
             </div>
           </div>
 
-          {/* Yearly savings row */}
+          {/* Multi-month savings row */}
           {interval === 'year' && (
             <div className="flex items-center py-3" style={{ borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
               <div className="flex-1">
@@ -419,6 +443,20 @@ function CheckoutForm() {
               <div className="text-right">
                 <p className="mb-0 text-sm" style={{ color: '#34d399', fontWeight: 700 }}>
                   -${(plan.monthly * 12 - plan.yearly).toFixed(2)}
+                </p>
+              </div>
+            </div>
+          )}
+          {interval === 'quarter' && plan.quarterly && (
+            <div className="flex items-center py-3" style={{ borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
+              <div className="flex-1">
+                <span className="text-sm" style={{ color: '#34d399', fontWeight: 600 }}>
+                  3-month savings
+                </span>
+              </div>
+              <div className="text-right">
+                <p className="mb-0 text-sm" style={{ color: '#34d399', fontWeight: 700 }}>
+                  -${(plan.monthly * 3 - plan.quarterly).toFixed(2)}
                 </p>
               </div>
             </div>
@@ -511,7 +549,7 @@ function CheckoutForm() {
               </h3>
               <br />
               <span className="text-white op-5" style={{ fontSize: '0.75rem' }}>
-                {isOneTime ? 'one-time' : interval === 'month' ? '/month' : '/year'}
+                {isOneTime ? 'one-time' : interval === 'month' ? '/month' : interval === 'quarter' ? '/3 months' : '/year'}
               </span>
             </div>
           </div>

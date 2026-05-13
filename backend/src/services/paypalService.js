@@ -227,6 +227,7 @@ const resolveIntervalFromPlanId = (planId) => {
     if (config.legacy_alias_for) continue;
     if (!config.paypal_plans) continue;
     if (config.paypal_plans.month === planId) return 'month';
+    if (config.paypal_plans.quarter === planId) return 'quarter';
     if (config.paypal_plans.year === planId) return 'year';
   }
   return 'month';

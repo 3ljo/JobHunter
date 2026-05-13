@@ -75,14 +75,17 @@ const PLANS = {
     ],
     prices: {
       month: process.env.STRIPE_PRICE_PRO_MONTHLY,
+      quarter: process.env.STRIPE_PRICE_PRO_QUARTERLY,
       year: process.env.STRIPE_PRICE_PRO_YEARLY,
     },
     ls_variants: {
       month: process.env.LEMONSQUEEZY_VARIANT_PRO_MONTHLY,
+      quarter: process.env.LEMONSQUEEZY_VARIANT_PRO_QUARTERLY,
       year: process.env.LEMONSQUEEZY_VARIANT_PRO_YEARLY,
     },
     paypal_plans: {
       month: process.env.PAYPAL_PLAN_PRO_MONTHLY,
+      quarter: process.env.PAYPAL_PLAN_PRO_QUARTERLY,
       year: process.env.PAYPAL_PLAN_PRO_YEARLY,
     },
   },
@@ -102,14 +105,17 @@ const PLANS = {
     ],
     prices: {
       month: process.env.STRIPE_PRICE_PRO_VOICE_MONTHLY,
+      quarter: process.env.STRIPE_PRICE_PRO_VOICE_QUARTERLY,
       year: process.env.STRIPE_PRICE_PRO_VOICE_YEARLY,
     },
     ls_variants: {
       month: process.env.LEMONSQUEEZY_VARIANT_PRO_VOICE_MONTHLY,
+      quarter: process.env.LEMONSQUEEZY_VARIANT_PRO_VOICE_QUARTERLY,
       year: process.env.LEMONSQUEEZY_VARIANT_PRO_VOICE_YEARLY,
     },
     paypal_plans: {
       month: process.env.PAYPAL_PLAN_PRO_VOICE_MONTHLY,
+      quarter: process.env.PAYPAL_PLAN_PRO_VOICE_QUARTERLY,
       year: process.env.PAYPAL_PLAN_PRO_VOICE_YEARLY,
     },
   },
