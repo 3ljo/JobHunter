@@ -167,7 +167,10 @@ export default function CVPage() {
   };
 
   const handleDownload = () => {
-    if (!result?.cv_record_id) return;
+    if (!result?.cv_record_id) {
+      toast.error('This analysis didn\'t save to your history — re-run the analysis to enable downloads');
+      return;
+    }
     // Always open the options modal — lets the user pick filename + format,
     // and (when on original-PDF view) pick which version to download.
     const finalCV = result.final?.final_cv;

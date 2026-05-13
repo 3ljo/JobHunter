@@ -132,6 +132,7 @@ export const useCVAnalysisStore = create<CVAnalysisState>((set, get) => ({
       formData.append('cv_file', file);
       formData.append('job_description', jobDescription);
 
+      let saveError: string | null = null;
       const result = await analyzeCVStream(formData, (event) => {
         switch (event.type) {
           case 'parsed':
@@ -151,7 +152,9 @@ export const useCVAnalysisStore = create<CVAnalysisState>((set, get) => ({
             // Surfaced on the rejection path below — nothing to do here.
             break;
           case 'done':
-            // Full result handled after the stream finishes.
+            // Capture the DB save error (if any) so we can warn the user
+            // that AI edit + download will be unavailable for this run.
+            saveError = event.save_error ?? null;
             break;
         }
       });
@@ -172,7 +175,18 @@ export const useCVAnalysisStore = create<CVAnalysisState>((set, get) => ({
         sessionStorage.setItem('cl_cv_text', JSON.stringify(result.final.final_cv));
       }
 
-      toast.success('CV analysis complete!');
+      // If the DB save failed, the AI editor and Download buttons can't work
+      // for this run (both need a cv_record_id). Tell the user up-front with
+      // the actual reason — much better than a useless "CV record not ready"
+      // toast later when they click Edit or Download.
+      if (saveError || !result?.cv_record_id) {
+        toast.error(
+          `CV analyzed, but couldn't save to your history — AI edits and downloads won't work for this run. Reason: ${saveError || 'unknown'}. Try re-running, or contact support if it keeps failing.`,
+          { duration: 10000 },
+        );
+      } else {
+        toast.success('CV analysis complete!');
+      }
       // Bump local usage so the meter on the CV page reflects this run
       // without needing a full subscription refetch.
       try { useSubscriptionStore.getState().bumpLocalUsage('cv'); } catch { /* noop */ }

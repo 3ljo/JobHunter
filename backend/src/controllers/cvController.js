@@ -123,8 +123,14 @@ const analyzeCV = async (req, res) => {
       .single();
 
     // Retry without projected_score if column doesn't exist
+    let finalDbError = null;
     if (dbError) {
-      console.error('DB save error (retrying without projected_score):', dbError.message);
+      console.error('DB save error (retrying without projected_score):', {
+        message: dbError.message,
+        code: dbError.code,
+        details: dbError.details,
+        hint: dbError.hint,
+      });
       const { projected_score, ...fallbackData } = insertData;
       const fallback = await supabase
         .from('cvs')
@@ -133,14 +139,29 @@ const analyzeCV = async (req, res) => {
         .single();
       cvRecord = fallback.data;
       if (fallback.error) {
-        console.error('DB save fallback error:', fallback.error.message);
+        console.error('DB save fallback error:', {
+          message: fallback.error.message,
+          code: fallback.error.code,
+          details: fallback.error.details,
+          hint: fallback.error.hint,
+          user_id: req.user.id,
+        });
+        finalDbError = fallback.error;
       }
     }
+
+    // If both inserts failed, the AI editor and download buttons will be dead
+    // (they need a cv_record_id). Surface the actual reason in the done event
+    // so the UI can show something more actionable than "CV record not ready".
+    const saveError = !cvRecord && finalDbError
+      ? `${finalDbError.message}${finalDbError.code ? ` (${finalDbError.code})` : ''}`
+      : null;
 
     writeEvent({
       type: 'done',
       result: { ...result, download_url: null, cv_record_id: cvRecord ? cvRecord.id : null },
       cv_record_id: cvRecord ? cvRecord.id : null,
+      save_error: saveError,
     });
     return res.end();
   } catch (err) {

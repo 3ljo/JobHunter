@@ -219,7 +219,10 @@ export default function CreateCVForm({ onSubmittingChange }: CreateCVFormProps =
   };
 
   const openDownloadDialog = () => {
-    if (!cvRecordId) return;
+    if (!cvRecordId) {
+      toast.error('CV didn\'t save — go back and re-generate to enable downloads');
+      return;
+    }
     const nameSource = generatedCV?.full_name || fullName || '';
     setDlFilename(buildDefaultFilename(nameSource));
     setDlFormat('pdf');

@@ -218,7 +218,7 @@ export type CVAnalyzeEvent =
   | { type: 'parsed'; parsed: any }
   | { type: 'audit'; audit: any; scores: any }
   | { type: 'rewrite'; final_cv: any }
-  | { type: 'done'; result: CVAnalysisResult; cv_record_id: string | null }
+  | { type: 'done'; result: CVAnalysisResult; cv_record_id: string | null; save_error?: string | null }
   | { type: 'error'; error: string };
 
 export const analyzeCVStream = async (
