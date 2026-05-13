@@ -27,6 +27,22 @@ const upload = multer({
 // Middleware for single PDF upload
 const uploadCV = upload.single('cv_file');
 
+// Postgres TEXT/JSONB columns reject NUL bytes (error 22P05 "unsupported Unicode
+// escape sequence"), even though they're valid in JSON. pdf-parse leaks them
+// from PDFs with custom fonts, and the AI occasionally echoes them back inside
+// the JSON result — both inserts then fail with no useful fallback. Walk the
+// value and strip `\x00` from every string in place.
+const stripNulBytes = (value) => {
+  if (typeof value === 'string') return value.replace(/\x00/g, '');
+  if (Array.isArray(value)) return value.map(stripNulBytes);
+  if (value && typeof value === 'object') {
+    const out = {};
+    for (const k of Object.keys(value)) out[k] = stripNulBytes(value[k]);
+    return out;
+  }
+  return value;
+};
+
 // POST /api/cv/analyze — Full CV analysis pipeline
 const analyzeCV = async (req, res) => {
   let uploadedFilePath = null;
@@ -109,10 +125,10 @@ const analyzeCV = async (req, res) => {
       user_id: req.user.id,
       file_name: `cv_optimized_${Date.now()}.pdf`,
       file_url: null,
-      raw_text: cvText,
+      raw_text: stripNulBytes(cvText),
       ats_score: result.scores.current_ats,
       projected_score: result.scores.projected_ats || null,
-      ats_feedback: result,
+      ats_feedback: stripNulBytes(result),
       is_generated: false,
     };
 
