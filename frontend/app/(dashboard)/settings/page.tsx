@@ -536,7 +536,7 @@ function BillingCard({
           <div className="flex items-center gap-2 mb-1">
             <span className="text-lg font-black text-foreground capitalize">
               {subscription?.plan === 'pro_voice' || subscription?.plan === 'pro_plus'
-                ? 'Pro Voice'
+                ? 'Pro+'
                 : subscription?.plan === 'starter'
                 ? '7-Day Pass'
                 : subscription?.plan || 'Free'}

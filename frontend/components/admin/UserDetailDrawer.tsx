@@ -50,7 +50,7 @@ const PLANS = [
   { key: 'free', label: 'Free' },
   { key: 'starter', label: '7-Day Pass' },
   { key: 'pro', label: 'Pro' },
-  { key: 'pro_voice', label: 'Pro Voice' },
+  { key: 'pro_voice', label: 'Pro+' },
 ];
 
 export default function UserDetailDrawer({ userId, onClose, onMutated }: Props) {
@@ -245,7 +245,7 @@ export default function UserDetailDrawer({ userId, onClose, onMutated }: Props) 
                 >
                   <option value="starter">7-Day Pass</option>
                   <option value="pro">Pro</option>
-                  <option value="pro_voice">Pro Voice</option>
+                  <option value="pro_voice">Pro+</option>
                 </select>
                 <input
                   type="number"

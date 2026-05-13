@@ -44,7 +44,7 @@ export default function RefundPage() {
           </div>
 
           <div>
-            <h2 className="text-white text-2xl font-bold mb-3">3. Pro & Pro Voice Subscriptions</h2>
+            <h2 className="text-white text-2xl font-bold mb-3">3. Pro & Pro+ Subscriptions</h2>
             <ul className="list-disc pl-6 space-y-2">
               <li><strong>14-day satisfaction window:</strong> If you are not satisfied with your first paid month or first year, contact us within 14 days of the initial charge for a full refund.</li>
               <li><strong>Renewal charges:</strong> Renewal charges are not refunded automatically. You can cancel at any time from your account settings; cancellation stops future renewals but does not refund the current period (you keep access until the end of it).</li>

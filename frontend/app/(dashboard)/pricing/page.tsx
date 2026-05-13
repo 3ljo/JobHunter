@@ -83,19 +83,20 @@ const plans: Plan[] = [
   {
     key: 'pro_voice',
     bg: '/aivent/misc/l5.webp',
-    name: 'Pro Voice',
-    tagline: 'With AI voice interview coach',
+    name: 'Pro+',
+    tagline: 'AI voice coach + full job hunter',
     monthly: 39,
     yearly: 299,
     features: [
       'Everything in Pro',
+      'Job Hunter — AI matching across 12+ boards',
       'Voice Mock Interview — 8 sessions / month',
       'Voice feedback report',
       'Interview prep library',
       'LinkedIn-ready CV export',
       'Priority AI processing',
     ],
-    cta: 'Start Pro Voice',
+    cta: 'Start Pro+',
     highlight: false,
   },
 ];

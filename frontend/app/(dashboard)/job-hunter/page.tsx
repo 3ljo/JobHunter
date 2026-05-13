@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
 import toast from 'react-hot-toast';
 import {
   Briefcase,
@@ -21,6 +22,8 @@ import {
   ChevronLeft,
   ChevronRight,
   Check,
+  Crown,
+  Lock,
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
@@ -36,6 +39,7 @@ import {
   JobHunterJob,
   JobHunterMatch,
 } from '@/lib/api';
+import { useSubscriptionStore } from '@/store/subscriptionStore';
 
 // Per-source pill colors. Mirrors the violet-tinted "glass" style used
 // elsewhere in the dashboard so this page doesn't feel like a foreign
@@ -167,6 +171,22 @@ const countryName = (code?: string | null) => {
 };
 
 export default function JobHunterPage() {
+  // Pro+ exclusive — multi-source aggregator burns paid API quota.
+  // `pro_plus` is the legacy alias for `pro_voice`.
+  const { subscription, fetchSubscription } = useSubscriptionStore();
+  useEffect(() => {
+    if (!subscription) fetchSubscription();
+  }, [subscription, fetchSubscription]);
+  const plan = subscription?.plan;
+  const isProPlus = plan === 'pro_voice' || plan === 'pro_plus';
+  // Wait for plan to load before deciding — avoids a flash of the gate
+  // on first paint for actual Pro+ users.
+  if (subscription && !isProPlus) return <JobHunterGate />;
+
+  return <JobHunterContent />;
+}
+
+function JobHunterContent() {
   const [match, setMatch] = useState<JobHunterMatch | null>(null);
   const [initialLoading, setInitialLoading] = useState(true);
   const [searching, setSearching] = useState(false);
@@ -1027,5 +1047,113 @@ function JobCard({ job }: { job: JobHunterJob }) {
         </div>
       </div>
     </a>
+  );
+}
+
+function JobHunterGate() {
+  return (
+    <div
+      style={{
+        width: '100vw',
+        maxWidth: '100vw',
+        marginLeft: 'calc(-50vw + 50%)',
+        marginTop: '-32px',
+        marginBottom: '-32px',
+        background: '#0d1130',
+        minHeight: 'calc(100vh - 56px)',
+        overflowX: 'hidden',
+      }}
+    >
+      <section
+        className="relative overflow-hidden pt-10 sm:pt-16 pb-10 sm:pb-14"
+        style={{
+          backgroundImage: 'url(/aivent/background/5.webp)',
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          backgroundAttachment: 'fixed',
+        }}
+      >
+        <div className="absolute inset-0" style={{ background: 'rgba(8,11,35,0.82)' }} />
+        <div
+          className="absolute bottom-0 left-0 right-0"
+          style={{ height: '50%', background: 'linear-gradient(0deg,#0d1130 0%,transparent 100%)' }}
+        />
+
+        <div className="relative mx-auto max-w-3xl px-4 sm:px-6" style={{ zIndex: 2 }}>
+          <div className="text-center mb-6 sm:mb-8">
+            <span className="aivent-subtitle s2">
+              <Crown className="inline h-3.5 w-3.5 mr-1" style={{ color: '#fbbf24' }} />
+              Pro+ feature
+            </span>
+            <h1
+              className="text-white leading-[1.1] mt-2"
+              style={{ fontSize: 'clamp(26px,6vw,46px)', fontWeight: 800, letterSpacing: '-0.02em' }}
+            >
+              Job Hunter
+            </h1>
+            <p className="mt-2 text-sm sm:text-base text-white/55 max-w-xl mx-auto">
+              AI matching across 12+ job boards — Remotive, RemoteOK, LinkedIn, Indeed,
+              Glassdoor, Adzuna, JSearch and more. Pro+ only.
+            </p>
+          </div>
+
+          <div
+            className="relative rounded-2xl p-6 sm:p-8 mx-auto"
+            style={{
+              background: 'rgba(118,77,240,0.06)',
+              border: '1px solid rgba(118,77,240,0.18)',
+            }}
+          >
+            <div
+              className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl mb-4"
+              style={{
+                background: 'linear-gradient(135deg,rgba(118,77,240,0.25),rgba(167,139,250,0.15))',
+                border: '1px solid rgba(118,77,240,0.45)',
+              }}
+            >
+              <Lock className="h-6 w-6" style={{ color: '#c4b5fd' }} />
+            </div>
+            <p className="text-center text-white/70 text-sm sm:text-base mb-6">
+              Upgrade to Pro+ to unlock the full job aggregator — AI-scored matches
+              from a dozen+ sources, refreshed on demand.
+            </p>
+
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+              <Link
+                href="/checkout?plan=pro_voice&interval=month"
+                className="group inline-flex items-center justify-center gap-2 rounded-xl px-6 py-3.5 text-sm font-black transition-all w-full sm:w-auto"
+                style={{
+                  background: 'linear-gradient(135deg,#764DF0,#5b21b6)',
+                  color: 'white',
+                  boxShadow: '0 10px 30px rgba(118,77,240,0.45)',
+                  letterSpacing: '0.02em',
+                }}
+              >
+                <Crown className="h-4 w-4" />
+                Upgrade to Pro+
+                <span
+                  className="text-[10px] font-bold px-1.5 py-0.5 rounded ml-1"
+                  style={{ background: 'rgba(255,255,255,0.18)' }}
+                >
+                  $39/mo
+                </span>
+              </Link>
+
+              <Link
+                href="/pricing"
+                className="inline-flex items-center justify-center gap-1.5 rounded-xl px-4 py-3 text-[12px] font-bold w-full sm:w-auto"
+                style={{
+                  background: 'rgba(255,255,255,0.04)',
+                  border: '1px solid rgba(255,255,255,0.08)',
+                  color: 'rgba(255,255,255,0.7)',
+                }}
+              >
+                Compare plans
+              </Link>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
   );
 }

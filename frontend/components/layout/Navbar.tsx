@@ -71,7 +71,7 @@ export default function Navbar() {
   const isProVoice = rawPlan === 'pro_voice' || rawPlan === 'pro_plus';
   const isPro = rawPlan === 'pro';
   const isStarter = rawPlan === 'starter';
-  const planLabel = isProVoice ? 'Pro Voice' : isPro ? 'Pro' : isStarter ? '7-Day Pass' : 'Free';
+  const planLabel = isProVoice ? 'Pro+' : isPro ? 'Pro' : isStarter ? '7-Day Pass' : 'Free';
   const planColor = isProVoice ? '#c084fc' : isPro ? '#764DF0' : isStarter ? '#34d399' : 'rgba(255,255,255,0.5)';
   const planBg = isProVoice ? 'rgba(192,132,252,0.18)' : isPro ? 'rgba(118,77,240,0.18)' : isStarter ? 'rgba(52,211,153,0.18)' : 'rgba(255,255,255,0.08)';
 

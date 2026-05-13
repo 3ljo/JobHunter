@@ -22,7 +22,7 @@ interface AdminUser {
 }
 
 const planLabel = (plan: string) =>
-  plan === 'pro_voice' || plan === 'pro_plus' ? 'Pro Voice'
+  plan === 'pro_voice' || plan === 'pro_plus' ? 'Pro+'
     : plan === 'pro' ? 'Pro'
     : plan === 'starter' ? 'Pass'
     : 'Free';
@@ -40,7 +40,7 @@ type SortKey = 'newest' | 'oldest' | 'cost' | 'cvs' | 'jobs';
 const PLAN_FILTERS: { key: PlanFilter; label: string }[] = [
   { key: 'all', label: 'All' },
   { key: 'paid', label: 'Paid' },
-  { key: 'pro_voice', label: 'Pro Voice' },
+  { key: 'pro_voice', label: 'Pro+' },
   { key: 'pro', label: 'Pro' },
   { key: 'starter', label: 'Pass' },
   { key: 'free', label: 'Free' },

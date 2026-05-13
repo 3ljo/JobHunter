@@ -5,9 +5,15 @@ const express = require('express');
 const router = express.Router();
 const { getLatestMatches, findJobs, clearMatches } = require('../controllers/jobHunterController');
 const requireAuth = require('../middleware/requireAuth');
+const requirePlan = require('../middleware/requirePlan');
 
-router.get('/latest', requireAuth, getLatestMatches);
-router.post('/find', requireAuth, findJobs);
-router.delete('/clear', requireAuth, clearMatches);
+// Pro+ exclusive — multi-source aggregator burns paid API quota
+// (Adzuna, JSearch, etc.), so we gate at the top tier. `pro_plus` is
+// normalized to `pro_voice` inside requirePlan via canonicalPlan.
+const proPlusOnly = requirePlan(['pro_voice']);
+
+router.get('/latest', requireAuth, proPlusOnly, getLatestMatches);
+router.post('/find', requireAuth, proPlusOnly, findJobs);
+router.delete('/clear', requireAuth, proPlusOnly, clearMatches);
 
 module.exports = router;

@@ -14,7 +14,7 @@ const FEATURE_COPY: Record<FeatureKey, { noun: string; verb: string }> = {
 
 const planLabel = (plan?: string | null) => {
   // `pro_plus` is a legacy alias for `pro_voice`.
-  if (plan === 'pro_voice' || plan === 'pro_plus') return 'Pro Voice';
+  if (plan === 'pro_voice' || plan === 'pro_plus') return 'Pro+';
   if (plan === 'pro') return 'Pro';
   if (plan === 'starter') return '7-Day Pass';
   return 'Free';
@@ -34,7 +34,7 @@ const upgradeCopy = (feature: FeatureKey, plan?: string | null) => {
   // mock_interview: free/Pro → upsell to Pro Voice; Pro Voice is top tier.
   if (feature === 'mock_interview') {
     if (isProVoice) return { label: '', target: '' };
-    return { label: 'Upgrade to Pro Voice for voice interviews', target: 'pro_voice' };
+    return { label: 'Upgrade to Pro+ for voice interviews', target: 'pro_voice' };
   }
   return { label: '', target: '' };
 };

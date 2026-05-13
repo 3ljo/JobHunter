@@ -34,7 +34,7 @@ export default function TermsPage() {
 
           <div>
             <h2 className="text-white text-2xl font-bold mb-3">2. Description of Service</h2>
-            <p>CvClimber is an AI-powered web application that provides CV/resume analysis, ATS scoring, keyword gap reports, AI-generated cover letters, a job application tracker, CV history and analytics, and (on Pro Voice plans) AI voice mock-interview coaching.</p>
+            <p>CvClimber is an AI-powered web application that provides CV/resume analysis, ATS scoring, keyword gap reports, AI-generated cover letters, a job application tracker, CV history and analytics, and (on Pro+ plans) AI voice mock-interview coaching plus the multi-source Job Hunter job aggregator.</p>
           </div>
 
           <div>
@@ -44,7 +44,7 @@ export default function TermsPage() {
 
           <div>
             <h2 className="text-white text-2xl font-bold mb-3">4. Plans, Billing & Auto-Renewal</h2>
-            <p>CvClimber offers a Free plan, a one-time 7-Day Pass ($9, no auto-renewal), and recurring subscriptions (Pro $19/month or $149/year, Pro Voice $39/month or $299/year). Subscriptions automatically renew at the end of each billing cycle until cancelled. Payments are processed by Lemon Squeezy, our authorized reseller and Merchant of Record.</p>
+            <p>CvClimber offers a Free plan, a one-time 7-Day Pass ($9, no auto-renewal), and recurring subscriptions (Pro $19/month or $149/year, Pro+ $39/month or $299/year). Subscriptions automatically renew at the end of each billing cycle until cancelled. Payments are processed by Lemon Squeezy, our authorized reseller and Merchant of Record.</p>
           </div>
 
           <div>

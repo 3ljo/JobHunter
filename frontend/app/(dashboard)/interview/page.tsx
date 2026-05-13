@@ -59,7 +59,7 @@ export default function InterviewPage() {
           <div className="text-center mb-6 sm:mb-8">
             <span className="aivent-subtitle s2">
               <Crown className="inline h-3.5 w-3.5 mr-1" style={{ color: '#fbbf24' }} />
-              Pro Voice feature
+              Pro+ feature
             </span>
             <h1
               className="text-white leading-[1.1] mt-2"
@@ -172,7 +172,7 @@ function ProVoiceGate() {
             Train for the real interview
           </h2>
           <p className="text-sm sm:text-base text-white/55 mt-2 max-w-lg mx-auto">
-            Upgrade to Pro Voice to unlock voice mock interviews — scored, debriefed, and tailored
+            Upgrade to Pro+ to unlock voice mock interviews — scored, debriefed, and tailored
             to every role you apply for.
           </p>
         </div>
@@ -213,7 +213,7 @@ function ProVoiceGate() {
           <div className="flex items-center gap-2 mb-3">
             <Crown className="h-4 w-4" style={{ color: '#fbbf24' }} />
             <p className="text-[11px] font-black uppercase tracking-widest" style={{ color: '#fbbf24' }}>
-              Everything in Pro Voice
+              Everything in Pro+
             </p>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -239,7 +239,7 @@ function ProVoiceGate() {
             }}
           >
             <Crown className="h-4 w-4" />
-            Upgrade to Pro Voice
+            Upgrade to Pro+
             <span
               className="text-[10px] font-bold px-1.5 py-0.5 rounded ml-1"
               style={{ background: 'rgba(255,255,255,0.18)' }}

@@ -21,7 +21,7 @@ const ROWS: Row[] = [
 
 const planLabel = (plan?: string | null) => {
   // `pro_plus` is a legacy alias for `pro_voice`.
-  if (plan === 'pro_voice' || plan === 'pro_plus') return 'Pro Voice';
+  if (plan === 'pro_voice' || plan === 'pro_plus') return 'Pro+';
   if (plan === 'pro') return 'Pro';
   if (plan === 'starter') return '7-Day Pass';
   return 'Free';

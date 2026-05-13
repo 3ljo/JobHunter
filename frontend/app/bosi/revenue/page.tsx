@@ -51,7 +51,7 @@ interface Revenue {
 }
 
 const planLabel = (p: string) =>
-  p === 'pro_voice' || p === 'pro_plus' ? 'Pro Voice'
+  p === 'pro_voice' || p === 'pro_plus' ? 'Pro+'
     : p === 'pro' ? 'Pro'
     : p === 'starter' ? '7-Day Pass'
     : p;
@@ -103,7 +103,7 @@ export default function BosiRevenue() {
       <div className="rounded-xl p-5" style={{ background: '#1a1e42', border: '1px solid rgba(255,255,255,0.10)' }}>
         <p className="text-white/70 text-[10px] uppercase tracking-widest font-semibold mb-3">Paying Plans</p>
         <div className="flex items-center gap-4 flex-wrap">
-          <Chip label="Pro Voice" value={data.planBreakdown.pro_voice} color="#c084fc" />
+          <Chip label="Pro+" value={data.planBreakdown.pro_voice} color="#c084fc" />
           <Chip label="Pro" value={data.planBreakdown.pro} color="#a78bfa" />
           <Chip label="7-Day Pass" value={data.planBreakdown.starter} color="#34d399" />
           <Chip label="Canceled" value={data.planBreakdown.canceled} color="#f87171" />

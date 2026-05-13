@@ -18,16 +18,16 @@ const PLAN_META: Record<
   { name: string; accent: string; glow: string; subtitle: string }
 > = {
   pro_voice: {
-    name: 'Pro Voice',
+    name: 'Pro+',
     accent: 'oklch(0.72 0.19 291)',
     glow: 'rgba(192,132,252,0.22)',
-    subtitle: 'Everything in Pro + 8 voice mock interviews a month.',
+    subtitle: 'Everything in Pro + Job Hunter + 8 voice mock interviews a month.',
   },
   pro_plus: {
-    name: 'Pro Voice',
+    name: 'Pro+',
     accent: 'oklch(0.72 0.19 291)',
     glow: 'rgba(192,132,252,0.22)',
-    subtitle: 'Everything in Pro + 8 voice mock interviews a month.',
+    subtitle: 'Everything in Pro + Job Hunter + 8 voice mock interviews a month.',
   },
   pro: {
     name: 'Pro',
@@ -450,7 +450,7 @@ function SuccessContent({
             'Interview prep library',
             'LinkedIn-ready CV export',
             'Priority support',
-            meta.name === 'Pro Voice' ? '8 voice mock interviews / month' : 'Advanced ATS scoring',
+            meta.name === 'Pro+' ? '8 voice mock interviews / month' : 'Advanced ATS scoring',
           ].map((item) => (
             <li key={item} className="flex items-start gap-2.5 text-sm text-white/80">
               <Sparkles

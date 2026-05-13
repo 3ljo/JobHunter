@@ -165,7 +165,7 @@ function PlanBars({
 }) {
   const free = Math.max(totalUsers - paidTotal - breakdown.canceled, 0);
   const rows = [
-    { label: 'Pro Voice', value: breakdown.pro_voice, color: '#c084fc' },
+    { label: 'Pro+', value: breakdown.pro_voice, color: '#c084fc' },
     { label: 'Pro', value: breakdown.pro, color: '#a78bfa' },
     { label: '7-Day Pass', value: breakdown.starter, color: '#34d399' },
     { label: 'Free', value: free, color: 'rgba(255,255,255,0.3)' },

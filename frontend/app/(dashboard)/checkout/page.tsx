@@ -56,7 +56,7 @@ const PLANS: Record<string, PlanEntry> = {
     ],
   },
   pro_voice: {
-    name: 'Pro Voice',
+    name: 'Pro+',
     bg: '/aivent/misc/l5.webp',
     ticketClass: 's3',
     monthly: 39,
