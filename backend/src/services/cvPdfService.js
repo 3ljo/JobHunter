@@ -84,6 +84,53 @@ const BULK_THEMES = {
   maroon:        { primary: '#7f1d1d', accent: '#a16207', fontFamily: SERIF, headerStyle: 'centered', sectionStyle: 'plain', skillStyle: 'inline', bg: '#fffbeb' },
   jade:          { primary: '#047857', accent: '#a7f3d0', fontFamily: SANS,  headerStyle: 'left',     sectionStyle: 'rule',  skillStyle: 'pills' },
   silverelite:   { primary: '#1f2937', accent: '#cbd5e1', fontFamily: SANS,  headerStyle: 'band',     sectionStyle: 'rule',  skillStyle: 'pills' },
+
+  // ── Approximations for the 17 frontend templates that ship as hand-written
+  // React layouts (BankingConservative, ThreeColumn, etc.) rather than
+  // GenericRenderer wrappers. Each is mapped to the closest theme-token combo
+  // so the PDF uses the right primary/accent/font/header style — the unique
+  // layout details (3-col grid, drop caps, skill bars, sidebars) collapse to
+  // single-column. Acceptable middle-ground until each is given a dedicated
+  // backend template; nobody gets a plain Harvard fallback any more.
+  mono:       { primary: '#0a0a0a', accent: '#0a0a0a', fontFamily: SANS,  headerStyle: 'band',     sectionStyle: 'rule',  skillStyle: 'plain' },
+  timeline:   { primary: '#0f172a', accent: '#2563eb', fontFamily: SANS,  headerStyle: 'left',     sectionStyle: 'rule',  skillStyle: 'pills' },
+  banking:    { primary: '#0c1d3d', accent: '#0c1d3d', fontFamily: "'Times New Roman',Georgia,Garamond,serif", headerStyle: 'centered', sectionStyle: 'rule', skillStyle: 'inline', baseSize: 14 },
+  healthcare: { primary: '#115e59', accent: '#0d9488', fontFamily: SANS,  headerStyle: 'band',     sectionStyle: 'rule',  skillStyle: 'pills' },
+  government: { primary: '#002868', accent: '#002868', fontFamily: "'Times New Roman',Georgia,serif", headerStyle: 'centered', sectionStyle: 'rule', skillStyle: 'inline' },
+  designer:   { primary: '#1f1f2c', accent: '#fb7185', fontFamily: SANS,  headerStyle: 'left',     sectionStyle: 'rule',  skillStyle: 'pills', bg: '#fef3ec' },
+  marketing:  { primary: '#db2777', accent: '#f97316', fontFamily: SANS,  headerStyle: 'band',     sectionStyle: 'rule',  skillStyle: 'pills' },
+  legal:      { primary: '#7f1d1d', accent: '#7f1d1d', fontFamily: "'Garamond',Georgia,'Times New Roman',serif", headerStyle: 'centered', sectionStyle: 'plain', skillStyle: 'inline', baseSize: 14 },
+  twotone:    { primary: '#1e293b', accent: '#38bdf8', fontFamily: SANS,  headerStyle: 'band',     sectionStyle: 'rule',  skillStyle: 'pills' },
+  startup:    { primary: '#0a0a0a', accent: '#22c55e', fontFamily: "'Inter','SF Pro Text',Arial,sans-serif", headerStyle: 'left', sectionStyle: 'rule', skillStyle: 'pills' },
+  realestate: { primary: '#1f2937', accent: '#b8860b', fontFamily: "'Playfair Display','Georgia',serif", headerStyle: 'centered', sectionStyle: 'rule', skillStyle: 'inline', baseSize: 14, tagline: 'Licensed Real Estate Professional' },
+  magazine:   { primary: '#0a0a0a', accent: '#dc2626', fontFamily: "'Playfair Display','Georgia','Times New Roman',serif", headerStyle: 'centered', sectionStyle: 'rule', skillStyle: 'inline', baseSize: 14 },
+  rightcol:   { primary: '#0e7490', accent: '#a16207', fontFamily: SANS,  headerStyle: 'left',     sectionStyle: 'rule',  skillStyle: 'pills' },
+  threecol:   { primary: '#1e3a8a', accent: '#0ea5e9', fontFamily: SANS,  headerStyle: 'left',     sectionStyle: 'rule',  skillStyle: 'pills' },
+  horizontal: { primary: '#0f172a', accent: '#f97316', fontFamily: SANS,  headerStyle: 'band',     sectionStyle: 'rule',  skillStyle: 'pills' },
+  infographic:{ primary: '#0f766e', accent: '#facc15', fontFamily: SANS,  headerStyle: 'left',     sectionStyle: 'rule',  skillStyle: 'pills' },
+  cards:      { primary: '#312e81', accent: '#818cf8', fontFamily: SANS,  headerStyle: 'left',     sectionStyle: 'plain', skillStyle: 'pills', bg: '#f8fafc' },
+
+  // GenericRenderer-wrapped templates from individual files (18). Same data
+  // source as BulkTemplates above — just split across separate files on the
+  // frontend. Mirrors the `theme={...}` literal in each .tsx file.
+  education:   { primary: '#15803d', accent: '#f59e0b', fontFamily: SANS,  headerStyle: 'left',     sectionStyle: 'rule',  skillStyle: 'pills', tagline: 'Educator' },
+  nonprofit:   { primary: '#365314', accent: '#84cc16', fontFamily: SANS,  headerStyle: 'centered', sectionStyle: 'plain', skillStyle: 'pills', tagline: 'Mission-Driven Professional' },
+  construction:{ primary: '#1f2937', accent: '#ea580c', fontFamily: SANS,  headerStyle: 'band',     sectionStyle: 'tab',   skillStyle: 'plain', tagline: 'Skilled Trades Professional' },
+  journalism:  { primary: '#0a0a0a', accent: '#0a0a0a', fontFamily: "'Georgia','Times New Roman',serif", headerStyle: 'centered', sectionStyle: 'rule', skillStyle: 'inline', tagline: 'Reporter · Writer · Editor' },
+  finance:     { primary: '#064e3b', accent: '#10b981', fontFamily: SANS,  headerStyle: 'band',     sectionStyle: 'rule',  skillStyle: 'pills', tagline: 'Finance · Analytics' },
+  research:    { primary: '#1e40af', accent: '#0ea5e9', fontFamily: "'IBM Plex Sans','Inter',sans-serif", headerStyle: 'left', sectionStyle: 'rule', skillStyle: 'pills', tagline: 'Research Scientist' },
+  media:       { primary: '#27272a', accent: '#f43f5e', fontFamily: SANS,  headerStyle: 'band',     sectionStyle: 'tab',   skillStyle: 'pills', tagline: 'Production · Media' },
+  retail:      { primary: '#7c2d12', accent: '#f59e0b', fontFamily: SANS,  headerStyle: 'centered', sectionStyle: 'rule',  skillStyle: 'plain', tagline: 'Retail · Operations' },
+  logistics:   { primary: '#1e3a8a', accent: '#64748b', fontFamily: SANS,  headerStyle: 'left',     sectionStyle: 'rule',  skillStyle: 'inline', tagline: 'Supply Chain · Operations' },
+  pastel:      { primary: '#86198f', accent: '#f0abfc', fontFamily: SANS,  headerStyle: 'left',     sectionStyle: 'plain', skillStyle: 'pills', bg: '#fdf4ff' },
+  noir:        { primary: '#18181b', accent: '#ef4444', fontFamily: SANS,  headerStyle: 'band',     sectionStyle: 'tab',   skillStyle: 'pills' },
+  botanical:   { primary: '#3f6212', accent: '#a3a380', fontFamily: SERIF2, headerStyle: 'centered', sectionStyle: 'plain', skillStyle: 'pills', bg: '#f7f8f3', baseSize: 14 },
+  sunset:      { primary: '#9a3412', accent: '#fbbf24', fontFamily: SANS,  headerStyle: 'band',     sectionStyle: 'rule',  skillStyle: 'pills', bg: '#fff7ed' },
+  neon:        { primary: '#581c87', accent: '#06b6d4', fontFamily: MONO,  headerStyle: 'band',     sectionStyle: 'block', skillStyle: 'pills', baseSize: 13 },
+  kraft:       { primary: '#3f2a14', accent: '#92400e', fontFamily: "'Courier New','Courier',monospace", headerStyle: 'centered', sectionStyle: 'plain', skillStyle: 'inline', bg: '#e8d8b0', text: '#3f2a14' },
+  typewriter:  { primary: '#1a1a1a', accent: '#1a1a1a', fontFamily: "'Courier New','Courier',monospace", headerStyle: 'left', sectionStyle: 'rule', skillStyle: 'inline', baseSize: 13 },
+  booklet:     { primary: '#0f172a', accent: '#475569', fontFamily: "'Crimson Pro','Georgia',serif", headerStyle: 'centered', sectionStyle: 'plain', skillStyle: 'inline', baseSize: 14 },
+  blocks:      { primary: '#4338ca', accent: '#a78bfa', fontFamily: SANS,  headerStyle: 'left',     sectionStyle: 'block', skillStyle: 'pills' },
 };
 
 // ─── Singleton browser ──────────────────────────────────────────────
