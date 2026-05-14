@@ -10,7 +10,7 @@
 //   - /forgot-password already returns 200 unconditionally.
 //
 // Password policy (validatePassword) is enforced consistently on
-// /register, /reset-password, and /change-password — 12 chars min
+// /register, /reset-password, and /change-password — 8 chars min
 // and HIBP breach check (fails open on HIBP outage).
 //
 // Service-role Supabase client is used ONLY for admin operations

@@ -9,15 +9,15 @@ import { friendlyError } from '@/lib/errorMessages';
 import toast from 'react-hot-toast';
 import { Mail, Lock, ShieldCheck, Check, X as XIcon, Eye, EyeOff, MailCheck } from 'lucide-react';
 
-// 12-char minimum is enforced server-side AND client-side. The
+// 8-char minimum is enforced server-side AND client-side. The
 // strength meter awards at length thresholds the user can actually
-// reach (12, 16, 20+) plus character-class diversity.
-const MIN_LENGTH = 12;
+// reach (8, 12, 16+) plus character-class diversity.
+const MIN_LENGTH = 8;
 
 function getPasswordStrength(password: string): number {
   let score = 0;
   if (password.length >= MIN_LENGTH) score += 25;
-  if (password.length >= 16) score += 25;
+  if (password.length >= 12) score += 25;
   if (/[A-Z]/.test(password) && /[a-z]/.test(password)) score += 25;
   if (/[0-9!@#$%^&*]/.test(password)) score += 25;
   return score;
@@ -224,7 +224,7 @@ function RegisterForm() {
                 <Input
                   id="password"
                   type={showPassword ? 'text' : 'password'}
-                  placeholder="At least 12 characters"
+                  placeholder="At least 8 characters"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="h-12 rounded-xl border-white/10 bg-white/[0.04] pl-10 pr-10 text-sm font-500 text-white placeholder:text-white/25 transition-all focus:border-violet-500/50 focus:ring-2 focus:ring-violet-500/20"
