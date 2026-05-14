@@ -15,16 +15,51 @@ const supabase = createClient(supabaseUrl, supabaseServiceRoleKey, {
   },
 });
 
-// Resolve a user_id from an email address by paging through auth.users.
-// Used as a fallback by the payment webhook handlers when the provider
-// strips our custom_data (e.g. LS's "Want this for free?" simplified flow).
+// Resolve a user_id from an email address. Used as a fallback by the
+// payment webhook handlers when the provider strips our custom_data
+// (e.g. LS's "Want this for free?" simplified flow).
 //
-// Paginates up to ~1000 users (20 pages × 50). Returns null if not found.
-// Email comparison is case-insensitive — Supabase stores emails as-typed
-// but auth treats them as case-insensitive, so we normalize too.
+// Fast path: calls the find_user_id_by_email Postgres RPC, which queries
+// auth.users on its indexed email column. O(log n), sub-millisecond even
+// at millions of users. The function is SECURITY DEFINER and locked to
+// service_role only (see backend/src/database/find-user-by-email-rpc.sql).
+//
+// Slow-path fallback: if the RPC isn't installed yet (returns 404 / "function
+// not found"), page through auth.admin.listUsers up to 1000 users. Logs
+// a one-time warning so the missing migration is visible.
+//
+// Email comparison is case-insensitive on both paths.
+let warnedMissingRpc = false;
 supabase.findUserIdByEmail = async (email) => {
   const normalized = (email || '').toLowerCase().trim();
   if (!normalized) return null;
+
+  // Fast path
+  try {
+    const { data, error } = await supabase.rpc('find_user_id_by_email', { p_email: normalized });
+    if (!error) {
+      return data || null;
+    }
+    // PGRST202 = function not found in the schema cache (migration not run yet).
+    // PGRST204 = function not in cache. Fall back silently but warn once.
+    const fallbackCodes = new Set(['PGRST202', 'PGRST204', '42883', '404']);
+    if (!fallbackCodes.has(String(error.code || ''))) {
+      console.error('findUserIdByEmail RPC failed:', error.message, error.code, error.hint);
+      return null;
+    }
+    if (!warnedMissingRpc) {
+      console.warn(
+        '[supabaseClient] find_user_id_by_email RPC not installed — ' +
+        'using slow listUsers fallback. Run backend/src/database/find-user-by-email-rpc.sql.'
+      );
+      warnedMissingRpc = true;
+    }
+  } catch (err) {
+    console.error('findUserIdByEmail RPC threw:', err.message);
+    // continue to fallback
+  }
+
+  // Slow-path fallback
   for (let page = 1; page <= 20; page++) {
     const { data, error } = await supabase.auth.admin.listUsers({ page, perPage: 50 });
     if (error) {
