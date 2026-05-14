@@ -1,5 +1,5 @@
 // Admin Controller
-// Overview, users, user-detail + actions, revenue, usage analytics, settings.
+// Overview, users, user-detail + actions, usage analytics, settings.
 
 const supabase = require('../services/supabaseClient');
 const { readSettings, updateSettings } = require('../services/settingsService');
@@ -389,89 +389,6 @@ const deleteUser = async (req, res) => {
   }
 };
 
-// ─── REVENUE ──────────────────────────────────────────────────
-// All paying customers + gifted passes + promo redemptions.
-// Drives the Revenue page; one round-trip.
-
-const getRevenue = async (req, res) => {
-  try {
-    const [subsRes, giftsRes, promosRes, promoUsageRes] = await Promise.all([
-      supabase
-        .from('subscriptions')
-        .select('user_id, plan, status, billing_interval, current_period_start, current_period_end, provider, created_at, updated_at')
-        .neq('plan', 'free')
-        .order('updated_at', { ascending: false }),
-      supabase
-        .from('gifted_passes')
-        .select('id, buyer_user_id, recipient_email, redeemed, redeemed_at, pass_code, created_at')
-        .order('created_at', { ascending: false })
-        .limit(200),
-      supabase
-        .from('promo_codes')
-        .select('id, code, discount_type, discount_amount, times_used'),
-      supabase
-        .from('promo_code_usage')
-        .select('used_at, user_id, promo_code:promo_codes(code, discount_type, discount_amount)')
-        .order('used_at', { ascending: false })
-        .limit(100),
-    ]);
-
-    const subs = subsRes.data || [];
-
-    // Hydrate emails for the lists shown in the UI.
-    const userIds = new Set();
-    subs.forEach((s) => userIds.add(s.user_id));
-    (giftsRes.data || []).forEach((g) => g.buyer_user_id && userIds.add(g.buyer_user_id));
-    (promoUsageRes.data || []).forEach((p) => p.user_id && userIds.add(p.user_id));
-
-    const emailMap = await fetchEmailsForIds(Array.from(userIds));
-
-    let mrr = 0;
-    const planBreakdown = { starter: 0, pro: 0, pro_voice: 0, canceled: 0 };
-    subs.forEach((s) => {
-      if (s.status === 'canceled') { planBreakdown.canceled += 1; return; }
-      const plan = s.plan === 'pro_plus' ? 'pro_voice' : s.plan;
-      if (planBreakdown[plan] !== undefined) planBreakdown[plan] += 1;
-      if (s.status === 'active' && isMrrPlan(s.plan, s.billing_interval)) {
-        mrr += PLAN_PRICE[s.plan] || 0;
-      }
-    });
-
-    const promoTotals = (promosRes.data || []).map((p) => ({
-      ...p,
-      times_used: p.times_used || 0,
-    }));
-    const promoUsesTotal = promoTotals.reduce((s, p) => s + p.times_used, 0);
-
-    res.json({
-      mrr,
-      planBreakdown,
-      subscriptions: subs.map((s) => ({ ...s, email: emailMap[s.user_id] || '—' })),
-      gifts: (giftsRes.data || []).map((g) => ({
-        ...g,
-        buyer_email: g.buyer_user_id ? (emailMap[g.buyer_user_id] || '—') : '—',
-      })),
-      promos: promoTotals,
-      recentPromoUses: (promoUsageRes.data || []).map((p) => ({
-        ...p,
-        email: emailMap[p.user_id] || '—',
-      })),
-      promoUsesTotal,
-    });
-  } catch (err) {
-    console.error('Admin revenue error:', err.message);
-    res.status(500).json({ error: 'Failed to load revenue' });
-  }
-};
-
-const fetchEmailsForIds = async (ids) => {
-  if (!ids.length) return {};
-  const all = await listAllAuthUsers();
-  const map = {};
-  all.forEach((u) => { if (ids.includes(u.id)) map[u.id] = u.email; });
-  return map;
-};
-
 // ─── USAGE ANALYTICS ──────────────────────────────────────────
 
 const getUsageAnalytics = async (req, res) => {
@@ -570,8 +487,6 @@ module.exports = {
   banUser,
   unbanUser,
   deleteUser,
-  // revenue
-  getRevenue,
   // usage
   getUsageAnalytics,
   // settings

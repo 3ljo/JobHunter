@@ -14,8 +14,6 @@ const {
   banUser,
   unbanUser,
   deleteUser,
-  // revenue
-  getRevenue,
   // usage
   getUsageAnalytics,
   // settings
@@ -45,9 +43,6 @@ router.post('/users/:id/reset-password', resetUserPassword);
 router.post('/users/:id/ban', banUser);
 router.post('/users/:id/unban', unbanUser);
 router.delete('/users/:id', deleteUser);
-
-// revenue
-router.get('/revenue', getRevenue);
 
 // usage + settings
 router.get('/usage', getUsageAnalytics);

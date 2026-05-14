@@ -575,9 +575,6 @@ export const unbanAdminUser = (id: string) =>
 export const deleteAdminUser = (id: string) =>
   api.delete(`/api/admin/users/${id}`);
 
-export const getAdminRevenue = () =>
-  api.get('/api/admin/revenue');
-
 export const getAdminUsage = (days = 30) =>
   api.get(`/api/admin/usage?days=${days}`);
 
