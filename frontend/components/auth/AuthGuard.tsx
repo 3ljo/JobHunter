@@ -5,30 +5,23 @@ import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/authStore';
 import { getMe } from '@/lib/api';
 
+// AuthGuard now relies entirely on the httpOnly session cookie. It
+// can't see the token; it can only ask the backend who we are. If
+// /api/auth/me succeeds, we're logged in. If it 401s, we're not —
+// kick to /login.
 export default function AuthGuard({ children }: { children: React.ReactNode }) {
   const router = useRouter();
-  const { user, token, isAuthenticated } = useAuthStore();
+  const { user, isAuthenticated } = useAuthStore();
   const initialized = useRef(false);
 
   useEffect(() => {
     if (initialized.current) return;
     initialized.current = true;
 
-    const { user: currentUser, initializeAuth, setUser, logout } = useAuthStore.getState();
+    const { user: currentUser, setUser, logout } = useAuthStore.getState();
 
-    // Already authenticated (e.g. just logged in and navigated here)
     if (currentUser) return;
 
-    // Load token from localStorage
-    initializeAuth();
-
-    const storedToken = useAuthStore.getState().token;
-    if (!storedToken) {
-      router.replace('/login');
-      return;
-    }
-
-    // Validate token with backend
     getMe()
       .then((res) => setUser(res.data.user))
       .catch(() => {
@@ -37,17 +30,10 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
       });
   }, [router]);
 
-  // Already authenticated from login flow — render immediately
   if (isAuthenticated && user) {
     return <>{children}</>;
   }
 
-  // No token at all — will redirect
-  if (!token && initialized.current) {
-    return null;
-  }
-
-  // Loading state — show AIvent preloader
   return (
     <div
       style={{

@@ -5,8 +5,9 @@ CREATE TABLE IF NOT EXISTS subscriptions (
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL UNIQUE,
   stripe_customer_id TEXT UNIQUE,
   stripe_subscription_id TEXT UNIQUE,
-  plan TEXT DEFAULT 'free' CHECK (plan IN ('free', 'pro', 'pro_plus')),
-  billing_interval TEXT DEFAULT 'month' CHECK (billing_interval IN ('month', 'year')),
+  -- `pro_plus` retained for legacy rows — runtime treats it as `pro_voice`.
+  plan TEXT DEFAULT 'free' CHECK (plan IN ('free', 'starter', 'pro', 'pro_voice', 'pro_plus')),
+  billing_interval TEXT DEFAULT 'month' CHECK (billing_interval IN ('month', 'year', 'once')),
   status TEXT DEFAULT 'active' CHECK (status IN ('active', 'trialing', 'past_due', 'canceled', 'unpaid', 'incomplete')),
   current_period_start TIMESTAMP WITH TIME ZONE,
   current_period_end TIMESTAMP WITH TIME ZONE,

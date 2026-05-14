@@ -104,12 +104,24 @@ const createPromo = async (req, res) => {
 
     if (error) {
       if (error.code === '23505') return res.status(400).json({ error: 'A promo code with this name already exists' });
+      // 42501 = insufficient_privilege, which is what Postgres returns
+      // for a row-level-security rejection. Surface an admin-friendly
+      // message telling them exactly which migration to run, instead
+      // of leaking the raw PostgreSQL error to the client.
+      if (error.code === '42501' || /row-level security/i.test(error.message || '')) {
+        console.error('promo create RLS violation:', error.message);
+        return res.status(500).json({
+          error: 'Database policy blocked this write. Run backend/src/database/fix-promo-rls.sql in the Supabase SQL editor, then retry.',
+          code: 'rls_blocked',
+        });
+      }
       throw error;
     }
 
     return res.status(201).json({ promo: data });
   } catch (err) {
-    return res.status(500).json({ error: err.message });
+    console.error('createPromo error:', err.message);
+    return res.status(500).json({ error: 'Could not create promo code' });
   }
 };
 

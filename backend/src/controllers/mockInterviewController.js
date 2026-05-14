@@ -74,6 +74,15 @@ const startInterview = async (req, res) => {
     const diff = DIFFICULTY_VALUES.includes(difficulty) ? difficulty : 'standard';
     const cvText = await fetchCvText(cv_id, req.user.id);
 
+    // Increment the quota BEFORE calling the expensive AI endpoint so
+    // two concurrent requests can't both pass the rate-limiter's
+    // check-then-act and each burn a Realtime-API session. A failed
+    // AI call still consumes quota — intentional: we pay for the
+    // attempt regardless, and this is an unlimited-retry abuse vector
+    // otherwise. Users who hit a genuine provider outage can contact
+    // support; a single rogue account can't trivially double up.
+    await incrementUsage(req.user.id, 'mock_interview');
+
     let questions;
     try {
       questions = await generateQuestions(
@@ -102,18 +111,16 @@ const startInterview = async (req, res) => {
 
     if (error) {
       console.error('Failed to create interview row:', error);
-      const msg = error.message || '';
-      // Friendly hint when the table is missing from the DB.
-      if (/relation.*does not exist|mock_interviews/i.test(msg)) {
+      // Only suggest running the migration when Postgres actually reports the
+      // relation as missing (undefined_table = 42P01). Matching the table name
+      // anywhere in the message falsely fires on unrelated insert errors.
+      if (error.code === '42P01') {
         return res.status(500).json({
           error: 'mock_interviews table is missing in Supabase. Run backend/src/database/mock-interview-schema.sql in the Supabase SQL editor, then try again.',
         });
       }
-      return res.status(500).json({ error: `Database insert failed: ${msg}` });
+      return res.status(500).json({ error: `Database insert failed: ${error.message || 'unknown error'}` });
     }
-
-    // Session created — count this as one mock interview against the daily quota.
-    await incrementUsage(req.user.id, 'mock_interview');
 
     return res.status(200).json({ id: data.id, questions });
   } catch (err) {

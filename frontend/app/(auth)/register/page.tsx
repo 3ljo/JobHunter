@@ -1,20 +1,24 @@
 'use client';
 
 import { useState, Suspense } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { registerUser, loginUser, validateReferralCode } from '@/lib/api';
-import { useAuthStore } from '@/store/authStore';
+import { registerUser, resendVerification } from '@/lib/api';
+import { friendlyError } from '@/lib/errorMessages';
 import toast from 'react-hot-toast';
-import { Mail, Lock, ShieldCheck, Check, Eye, EyeOff, Gift } from 'lucide-react';
+import { Mail, Lock, ShieldCheck, Check, X as XIcon, Eye, EyeOff, MailCheck } from 'lucide-react';
+
+// 8-char minimum is enforced server-side AND client-side. The
+// strength meter awards at length thresholds the user can actually
+// reach (8, 12, 16+) plus character-class diversity.
+const MIN_LENGTH = 8;
 
 function getPasswordStrength(password: string): number {
   let score = 0;
-  if (password.length >= 6) score += 25;
-  if (password.length >= 10) score += 25;
-  if (/[A-Z]/.test(password)) score += 25;
+  if (password.length >= MIN_LENGTH) score += 25;
+  if (password.length >= 12) score += 25;
+  if (/[A-Z]/.test(password) && /[a-z]/.test(password)) score += 25;
   if (/[0-9!@#$%^&*]/.test(password)) score += 25;
   return score;
 }
@@ -49,59 +53,66 @@ export default function RegisterPage() {
 }
 
 function RegisterForm() {
-  const router = useRouter();
-  const { setToken, setUser } = useAuthStore();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [resending, setResending] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
-  const [showReferral, setShowReferral] = useState(false);
-  const [referralCode, setReferralCode] = useState('');
-  const [referralValid, setReferralValid] = useState<boolean | null>(null);
-  const searchParams = useSearchParams();
-
-  // Pre-fill referral code from URL (e.g. /register?ref=REF-ABC123)
-  useState(() => {
-    const ref = searchParams.get('ref');
-    if (ref) {
-      setReferralCode(ref);
-      setShowReferral(true);
-      validateReferralCode(ref)
-        .then(() => setReferralValid(true))
-        .catch(() => setReferralValid(false));
-    }
-  });
 
   const strength = getPasswordStrength(password);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!agreedToTerms) {
+      toast.error('Please accept the Terms and Privacy Policy to continue');
+      return;
+    }
     if (password !== confirmPassword) {
       toast.error('Passwords do not match');
       return;
     }
-    if (password.length < 6) {
-      toast.error('Password must be at least 6 characters');
+    if (password.length < MIN_LENGTH) {
+      toast.error(`Password must be at least ${MIN_LENGTH} characters`);
       return;
     }
     setLoading(true);
     try {
-      await registerUser(email, password, referralCode || undefined);
-      const loginRes = await loginUser(email, password);
-      setToken(loginRes.data.session.access_token);
-      setUser(loginRes.data.user);
-      toast.success('Account created successfully');
-      router.push('/cv');
+      await registerUser(email, password);
+      // Backend always returns the same generic message regardless of
+      // whether the email is new or already registered (enumeration
+      // resistance). The UX is the same in both cases: tell the user
+      // to check their inbox; if they have an existing account, the
+      // backend silently sends them a recovery email so they can get
+      // back in.
+      setSubmitted(true);
     } catch (err: any) {
-      toast.error(err.response?.data?.error || 'Failed to create account');
+      // The only errors that should land here are validation
+      // failures (malformed email, password breach hit, etc.) and
+      // rate-limit responses.
+      toast.error(friendlyError(err, 'register'));
     } finally {
       setLoading(false);
     }
   };
 
+  const handleResend = async () => {
+    setResending(true);
+    try {
+      await resendVerification(email);
+      toast.success('If your email needs verification, a new link is on its way.');
+    } catch (err: any) {
+      toast.error(friendlyError(err, 'verify'));
+    } finally {
+      setResending(false);
+    }
+  };
+
   const passwordsMatch = confirmPassword.length > 0 && password === confirmPassword;
+  const passwordsMismatch = confirmPassword.length >= MIN_LENGTH && password !== confirmPassword;
 
   return (
     <div className="relative flex min-h-screen overflow-hidden" style={{ background: '#101435' }}>
@@ -141,6 +152,39 @@ function RegisterForm() {
             <img src="/aivent/logo.png" alt="AIvent" style={{ height: '64px', width: 'auto' }} />
           </div>
 
+          {submitted ? (
+            <div className="text-center">
+              <div
+                className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl"
+                style={{ background: 'rgba(16,185,129,0.10)', border: '1px solid rgba(16,185,129,0.20)' }}
+              >
+                <MailCheck className="h-8 w-8 text-emerald-400" />
+              </div>
+              <h2 className="text-white tracking-tight mb-3" style={{ fontSize: 'clamp(28px, 3vw, 36px)', fontWeight: 800 }}>
+                Check your email
+              </h2>
+              <p className="text-white/50 text-sm mb-8" style={{ fontWeight: 400 }}>
+                If <span className="font-600 text-white">{email}</span> is new, we sent a verification link.
+                If an account already exists, we sent a recovery link instead.
+              </p>
+              <button
+                onClick={handleResend}
+                disabled={resending}
+                className="btn-aivent btn-line fx-slide"
+                data-hover={resending ? 'SENDING...' : 'RESEND EMAIL'}
+                style={{ borderRadius: '12px' }}
+              >
+                <span>{resending ? 'Sending...' : 'Resend email'}</span>
+              </button>
+              <p className="mt-8 text-center text-sm text-white/40" style={{ fontWeight: 400 }}>
+                Already verified?{' '}
+                <Link href="/login" className="font-600 transition-colors hover:text-white" style={{ color: 'oklch(0.59 0.245 291)' }}>
+                  Sign in
+                </Link>
+              </p>
+            </div>
+          ) : (
+          <>
           <div className="mb-8">
             <span className="aivent-subtitle" style={{ marginBottom: '12px', display: 'block' }}>Get Started</span>
             <h2 className="text-white tracking-tight mb-2" style={{ fontSize: 'clamp(28px, 3vw, 36px)', fontWeight: 800 }}>
@@ -180,7 +224,7 @@ function RegisterForm() {
                 <Input
                   id="password"
                   type={showPassword ? 'text' : 'password'}
-                  placeholder="At least 6 characters"
+                  placeholder="At least 8 characters"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="h-12 rounded-xl border-white/10 bg-white/[0.04] pl-10 pr-10 text-sm font-500 text-white placeholder:text-white/25 transition-all focus:border-violet-500/50 focus:ring-2 focus:ring-violet-500/20"
@@ -227,13 +271,24 @@ function RegisterForm() {
                   placeholder="Confirm your password"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
-                  className="h-12 rounded-xl border-white/10 bg-white/[0.04] pl-10 pr-16 text-sm font-500 text-white placeholder:text-white/25 transition-all focus:border-violet-500/50 focus:ring-2 focus:ring-violet-500/20"
-                  style={{ backdropFilter: 'blur(10px)' }}
+                  className="h-12 rounded-xl bg-white/[0.04] pl-10 pr-16 text-sm font-500 text-white placeholder:text-white/25 transition-all focus:ring-2"
+                  style={{
+                    backdropFilter: 'blur(10px)',
+                    borderColor: passwordsMismatch
+                      ? 'rgba(239,68,68,0.55)'
+                      : 'rgba(255,255,255,0.1)',
+                    boxShadow: passwordsMismatch
+                      ? '0 0 0 1px rgba(239,68,68,0.35)'
+                      : undefined,
+                  }}
                   required
                 />
                 <div className="absolute right-3.5 top-1/2 -translate-y-1/2 flex items-center gap-1.5">
                   {passwordsMatch && (
                     <Check className="h-4 w-4 text-emerald-400" />
+                  )}
+                  {passwordsMismatch && (
+                    <XIcon className="h-4 w-4 text-red-400" />
                   )}
                   <button
                     type="button"
@@ -245,71 +300,41 @@ function RegisterForm() {
                   </button>
                 </div>
               </div>
-            </div>
-
-            {/* Referral code — collapsible */}
-            <div>
-              {!showReferral ? (
-                <button
-                  type="button"
-                  onClick={() => setShowReferral(true)}
-                  className="flex items-center gap-2 text-xs font-600 transition-colors hover:text-white"
-                  style={{ color: 'oklch(0.59 0.245 291)' }}
-                >
-                  <Gift className="h-3.5 w-3.5" />
-                  Have a referral code?
-                </button>
-              ) : (
-                <div className="space-y-1.5">
-                  <Label htmlFor="referral" className="text-xs font-700 uppercase tracking-widest text-white/50">
-                    Referral Code
-                  </Label>
-                  <div className="group relative">
-                    <Gift className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-white/30 transition-colors group-focus-within:text-violet-400" />
-                    <Input
-                      id="referral"
-                      type="text"
-                      placeholder="e.g. REF-ABC123"
-                      value={referralCode}
-                      onChange={(e) => {
-                        setReferralCode(e.target.value.toUpperCase());
-                        setReferralValid(null);
-                      }}
-                      onBlur={async () => {
-                        if (referralCode.trim()) {
-                          try {
-                            await validateReferralCode(referralCode.trim());
-                            setReferralValid(true);
-                          } catch {
-                            setReferralValid(false);
-                          }
-                        }
-                      }}
-                      className="h-12 rounded-xl border-white/10 bg-white/[0.04] pl-10 pr-10 text-sm font-500 text-white placeholder:text-white/25 transition-all focus:border-violet-500/50 focus:ring-2 focus:ring-violet-500/20"
-                      style={{ backdropFilter: 'blur(10px)' }}
-                    />
-                    {referralValid === true && (
-                      <Check className="absolute right-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-emerald-400" />
-                    )}
-                    {referralValid === false && (
-                      <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-red-400 text-xs font-600">Invalid</span>
-                    )}
-                  </div>
-                  {referralValid === true && (
-                    <p className="text-xs font-500" style={{ color: '#34d399' }}>
-                      You will get 30% off your first paid month!
-                    </p>
-                  )}
-                </div>
+              {passwordsMismatch && (
+                <p className="text-[11px] text-red-400 pt-1" style={{ fontWeight: 500 }}>
+                  Passwords don't match.
+                </p>
               )}
             </div>
+
+            <label className="flex items-start gap-2.5 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={agreedToTerms}
+                onChange={(e) => setAgreedToTerms(e.target.checked)}
+                className="mt-0.5 h-4 w-4 shrink-0 rounded"
+                style={{ accentColor: '#a78bfa' }}
+                required
+              />
+              <span className="text-[12px] leading-relaxed text-white/60" style={{ fontWeight: 400 }}>
+                I agree to the{' '}
+                <Link href="/terms" target="_blank" className="font-600 underline transition-colors hover:text-white" style={{ color: 'oklch(0.59 0.245 291)' }}>
+                  Terms of Service
+                </Link>
+                {' '}and{' '}
+                <Link href="/privacy" target="_blank" className="font-600 underline transition-colors hover:text-white" style={{ color: 'oklch(0.59 0.245 291)' }}>
+                  Privacy Policy
+                </Link>
+                .
+              </span>
+            </label>
 
             <button
               type="submit"
               className="btn-aivent fx-slide w-full mt-2"
               data-hover={loading ? 'CREATING...' : 'CREATE ACCOUNT'}
-              disabled={loading}
-              style={{ height: '48px', borderRadius: '12px', width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+              disabled={loading || !agreedToTerms}
+              style={{ height: '48px', borderRadius: '12px', width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: agreedToTerms ? 1 : 0.55 }}
             >
               <span>{loading ? 'Creating account...' : 'Create Account'}</span>
             </button>
@@ -321,6 +346,8 @@ function RegisterForm() {
               Sign in
             </Link>
           </p>
+          </>
+          )}
         </div>
       </div>
 
@@ -349,7 +376,7 @@ function RegisterForm() {
             <span style={{ color: 'oklch(0.59 0.245 291)' }}>Starts Here</span>
           </h1>
           <p className="text-white/55 text-base leading-relaxed mb-10" style={{ fontWeight: 400 }}>
-            Join thousands of job seekers using AI-powered insights to craft the perfect CV and land interviews faster.
+            AI-powered insights to score your CV against any job, fix the gaps, and write a cover letter that lands interviews.
           </p>
 
           {/* Feature image */}

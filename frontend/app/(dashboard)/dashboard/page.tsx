@@ -1,10 +1,10 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { useAuthStore } from '@/store/authStore';
-import { getTrackerStats, getAllTrackerJobs, getCVHistory } from '@/lib/api';
-import { TrackerStats, TrackerJob } from '@/types';
+import { useAccountStore } from '@/store/accountStore';
+import { useDashboardStore } from '@/store/dashboardStore';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import UsageSummaryCard from '@/components/usage/UsageSummaryCard';
 import { ArrowRight } from 'lucide-react';
@@ -12,9 +12,11 @@ import { ArrowRight } from 'lucide-react';
 /* ─── config ──────────────────────────────────────────────────────── */
 const TOOLS = [
   { href: '/cv',           label: 'CV Analyzer',     desc: 'ATS scoring & keyword gap analysis for any job.',        img: '/aivent/misc/s3.webp' },
+  { href: '/create-cv',    label: 'Create CV',       desc: 'Build a CV from scratch — fill the form, preview live, tune with AI, download.', img: '/aivent/misc/s2.webp' },
   { href: '/cover-letter', label: 'Cover Letter',    desc: 'AI-tailored cover letters generated in seconds.',         img: '/aivent/misc/s4.webp' },
-  { href: '/interview',    label: 'Mock Interview',  desc: 'Voice-based AI interview practice with scored feedback.', img: '/aivent/misc/s7.webp', badge: 'PRO+' },
-  { href: '/tracker',      label: 'Job Tracker',     desc: 'Kanban & table view for every application you send.',    img: '/aivent/misc/s5.webp' },
+  { href: '/interview',    label: 'Mock Interview',  desc: 'Voice-based AI interview practice with scored feedback.', img: '/aivent/misc/mock-interview.png' },
+  { href: '/job-hunter',   label: 'Job Hunter',      desc: 'Live jobs across Remotive, Adzuna, Jooble — search by role and country.', img: '/aivent/misc/job-hunter.png' },
+  { href: '/tracker',      label: 'Job Tracker',     desc: 'Kanban & table view for every application you send.',    img: '/aivent/misc/job-tracker.png' },
   { href: '/cv-history',   label: 'CV History',      desc: 'Full history of every analysis with score progression.', img: '/aivent/misc/s6.webp' },
 ] as const;
 
@@ -29,26 +31,21 @@ const STATUS_MAP: Record<string, { label: string; color: string; bg: string }> =
 /* ─── page ────────────────────────────────────────────────────────── */
 export default function DashboardPage() {
   const { user } = useAuthStore();
+  const { stats, jobs: allJobs, cvs, loaded, load } = useDashboardStore();
+  const { profile, loaded: accountLoaded, load: loadAccount } = useAccountStore();
 
-  const [stats,  setStats]  = useState<TrackerStats | null>(null);
-  const [jobs,   setJobs]   = useState<TrackerJob[]>([]);
-  const [cvCount, setCvCount] = useState(0);
-  const [loading, setLoading] = useState(true);
+  useEffect(() => { load(); loadAccount(); }, [load, loadAccount]);
 
-  useEffect(() => {
-    Promise.all([getTrackerStats(), getAllTrackerJobs(), getCVHistory()])
-      .then(([s, j, c]) => {
-        setStats(s.data.stats);
-        setJobs(j.data.jobs.slice(0, 5));
-        setCvCount(c.data.cvs.length);
-      })
-      .catch(() => {})
-      .finally(() => setLoading(false));
-  }, []);
+  const jobs = useMemo(() => allJobs.slice(0, 5), [allJobs]);
+  const cvCount = cvs.length;
 
-  if (loading) return <LoadingSpinner className="mt-32" />;
+  // Wait on both stores so the greeting doesn't flicker email → name on reload.
+  if (!loaded || !accountLoaded) return <LoadingSpinner className="mt-32" />;
 
-  const firstName = user?.email?.split('@')[0] ?? 'there';
+  const firstName =
+    profile?.full_name?.trim().split(/\s+/)[0]
+    || user?.email?.split('@')[0]
+    || 'there';
   const hasJobs   = jobs.length > 0;
 
   const statBoxes = [
@@ -138,7 +135,7 @@ export default function DashboardPage() {
           TODAY'S USAGE — per-plan daily quota across AI features
       ══════════════════════════════════════════════════════════ */}
       <section className="pt-10 sm:pt-14 px-4 sm:px-6" style={{ background: '#101435', position: 'relative', zIndex: 1 }}>
-        <div className="mx-auto max-w-5xl">
+        <div className="mx-auto max-w-5xl space-y-4">
           <UsageSummaryCard />
         </div>
       </section>
@@ -187,22 +184,6 @@ export default function DashboardPage() {
                 <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity duration-300" style={{ zIndex: 3 }}>
                   <ArrowRight className="h-4 w-4 text-white/70" />
                 </div>
-                {/* PRO+ ribbon */}
-                {'badge' in tool && tool.badge && (
-                  <div className="absolute top-3 left-3" style={{ zIndex: 3 }}>
-                    <span
-                      className="text-[9px] font-black px-2 py-0.5 rounded"
-                      style={{
-                        background: 'rgba(192,132,252,0.2)',
-                        color: '#e9d5ff',
-                        border: '1px solid rgba(192,132,252,0.4)',
-                        backdropFilter: 'blur(6px)',
-                      }}
-                    >
-                      {tool.badge}
-                    </span>
-                  </div>
-                )}
                 {/* text */}
                 <div className="absolute bottom-0 left-0 right-0 p-3 sm:p-5" style={{ zIndex: 3 }}>
                   <h4 className="text-white font-bold text-sm sm:text-lg mb-0.5 sm:mb-1 tracking-tight">{tool.label}</h4>

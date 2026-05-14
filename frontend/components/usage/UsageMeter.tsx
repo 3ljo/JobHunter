@@ -5,8 +5,13 @@ import { useSubscriptionStore } from '@/store/subscriptionStore';
 
 type FeatureKey = 'cv' | 'cover_letter' | 'mock_interview';
 
-const planLabel = (plan?: string | null) =>
-  plan === 'pro_plus' ? 'Pro+' : plan === 'pro' ? 'Pro' : 'Free';
+const planLabel = (plan?: string | null) => {
+  // `pro_plus` is a legacy alias for `pro_voice`.
+  if (plan === 'pro_voice' || plan === 'pro_plus') return 'Pro+';
+  if (plan === 'pro') return 'Pro';
+  if (plan === 'starter') return '7-Day Pass';
+  return 'Free';
+};
 
 const formatResetTime = (iso: string) => {
   try {

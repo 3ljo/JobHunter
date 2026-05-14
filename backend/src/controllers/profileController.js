@@ -3,20 +3,23 @@
 
 const supabase = require('../services/supabaseClient');
 
-// Get the authenticated user's profile
+// Get the authenticated user's profile. Returns { profile: null } when no row
+// exists yet — a row is only created the first time the user saves Settings,
+// so OAuth signups and never-edited accounts legitimately have no profile.
+// The frontend (accountStore, dashboard greeting) already handles null.
 const getProfile = async (req, res) => {
   try {
     const { data, error } = await supabase
       .from('profiles')
       .select('*')
       .eq('id', req.user.id)
-      .single();
+      .maybeSingle();
 
-    if (error || !data) {
-      return res.status(404).json({ error: 'Profile not found' });
+    if (error) {
+      return res.status(500).json({ error: error.message });
     }
 
-    return res.status(200).json({ profile: data });
+    return res.status(200).json({ profile: data ?? null });
   } catch (err) {
     return res.status(500).json({ error: err.message });
   }

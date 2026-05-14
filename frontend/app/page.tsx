@@ -1,11 +1,13 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 
-import { ChevronDown, Menu, X, Tag, X as XIcon } from 'lucide-react';
+import { ChevronDown, Menu, X, Tag, Sparkles } from 'lucide-react';
 import axios from 'axios';
-import LanguageSwitcher from '@/components/layout/LanguageSwitcher';
+
+const PROMO_BANNER_DISMISSED_KEY = 'cvc_promo_banner_dismissed_at';
 
 /* ── Scroll reveal ── */
 function useScrollReveal() {
@@ -66,16 +68,26 @@ export default function Home() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [promoBanner, setPromoBanner] = useState<{ code: string; discount_type: string; discount_amount: number; expires_at: string | null } | null>(null);
   const [bannerDismissed, setBannerDismissed] = useState(false);
+  const [billingInterval, setBillingInterval] = useState<'month' | 'quarter' | 'year'>('month');
   const navScrolled = useNavbarScroll();
   useScrollReveal();
 
   useEffect(() => {
     setIsLoggedIn(!!localStorage.getItem('auth_token'));
+    // Restore prior banner dismissal so we don't nag returning visitors.
+    if (localStorage.getItem(PROMO_BANNER_DISMISSED_KEY)) {
+      setBannerDismissed(true);
+    }
     // Fetch active promo banner
     axios.get(`${process.env.NEXT_PUBLIC_API_URL}/api/promo/banner`)
       .then((res) => { if (res.data.banner) setPromoBanner(res.data.banner); })
       .catch(() => {});
   }, []);
+
+  const dismissPromoBanner = () => {
+    setBannerDismissed(true);
+    try { localStorage.setItem(PROMO_BANNER_DISMISSED_KEY, String(Date.now())); } catch {}
+  };
 
   /* ── Active section tracking ── */
   useEffect(() => {
@@ -102,54 +114,43 @@ export default function Home() {
   ];
 
   /* ── Data ── */
+  // Mirrors the dashboard's TOOLS list so the landing page advertises
+  // exactly what users get inside. Update both lists together.
   const features = [
     {
-      img: 'https://images.unsplash.com/photo-1586281380349-632531db7ed4?w=700&h=450&fit=crop&q=80',
-      title: 'AI CV Analysis',
-      desc: 'ATS scoring, keyword gap analysis, and instant optimization suggestions for any job.',
+      img: '/aivent/misc/s3.webp',
+      title: 'CV Analyzer',
+      desc: 'ATS scoring and keyword gap analysis for any job description.',
     },
     {
-      img: 'https://images.unsplash.com/photo-1565688534245-05d6b5be184a?w=700&h=450&fit=crop&q=80',
-      title: 'Smart Job Matching',
-      desc: 'Our AI scores your profile against any job description and highlights exactly what is missing.',
+      img: '/aivent/misc/s2.webp',
+      title: 'Create CV',
+      desc: 'Build a CV from scratch — fill the form, preview live, tune with AI, export PDF/DOCX.',
     },
     {
-      img: 'https://images.unsplash.com/photo-1450101499163-c8848c66ca85?w=700&h=450&fit=crop&q=80',
-      title: 'Cover Letter AI',
-      desc: 'Tailored, professional cover letters in seconds — formal, balanced, or friendly tone.',
+      img: '/aivent/misc/s4.webp',
+      title: 'Cover Letter',
+      desc: 'AI-tailored cover letters in seconds — formal, balanced, or friendly tone.',
     },
     {
-      img: 'https://images.unsplash.com/photo-1507679799987-c73779587ccf?w=700&h=450&fit=crop&q=80',
-      title: 'Job Application Tracker',
-      desc: 'Visual kanban board to manage every application from saved to offer in one place.',
+      img: '/aivent/misc/mock-interview.png',
+      title: 'Mock Interview',
+      desc: 'Voice-based AI interview practice with scored, per-question feedback.',
     },
     {
-      img: 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=700&h=450&fit=crop&q=80',
-      title: 'CV History & Analytics',
-      desc: 'Full history of every analysis with score progression charts over time.',
+      img: '/aivent/misc/job-hunter.png',
+      title: 'Job Hunter',
+      desc: 'Live jobs across Remotive, Adzuna, and Jooble — searchable by role and country.',
     },
     {
-      img: 'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?w=700&h=450&fit=crop&q=80',
-      title: 'ATS Optimization',
-      desc: 'Beat automated resume filters with keyword-tuned CVs crafted for each specific role.',
-    },
-  ];
-
-  const testimonials = [
-    {
-      img: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=600&h=700&fit=crop&q=80',
-      name: 'James Mitchell',
-      title: 'Software Engineer · Landed at Google',
+      img: '/aivent/misc/job-tracker.png',
+      title: 'Job Tracker',
+      desc: 'Kanban and table views to manage every application from saved to offer.',
     },
     {
-      img: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=600&h=700&fit=crop&q=80',
-      name: 'Sarah Okonkwo',
-      title: 'Product Manager · Hired at Meta',
-    },
-    {
-      img: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=600&h=700&fit=crop&q=80',
-      name: 'Carlos Vasquez',
-      title: 'Data Scientist · Joined Stripe',
+      img: '/aivent/misc/s6.webp',
+      title: 'CV History',
+      desc: 'Full history of every analysis with score progression over time.',
     },
   ];
 
@@ -158,46 +159,100 @@ export default function Home() {
     '/logos/reed.svg', '/logos/totaljobs.svg', '/logos/careerbuilder.svg', '/logos/stepstone.svg', '/logos/simplyhired.svg',
   ];
 
-  const pricing = [
+  // Build the deep-link a logged-in visitor should hit when they click a
+  // pricing tier on the landing page. Free goes back to the dashboard,
+  // paid plans land directly in their checkout flow. Logged-out visitors
+  // always start at /register first.
+  const planHref = (key: 'free' | 'starter' | 'pro' | 'pro_voice', cadence: 'month' | 'quarter' | 'year' = 'month') => {
+    if (!isLoggedIn) return '/register';
+    if (key === 'free') return '/cv';
+    if (key === 'starter') return '/checkout?plan=starter&interval=once';
+    return `/checkout?plan=${key}&interval=${cadence}`;
+  };
+
+  // Subscription cards mirror the same prices as the in-app pricing page.
+  // Free + 7-Day Pass ignore the toggle (one-time / always free).
+  type PricingCard = {
+    key: 'free' | 'starter' | 'pro' | 'pro_voice';
+    bg: string;
+    plan: string;
+    monthly: number;
+    quarterly?: number;
+    yearly?: number;
+    tagline: string;
+    features: string[];
+    cta: string;
+    highlight: boolean;
+    premium: boolean;
+    badge: string;
+    oneTime: boolean;
+  };
+  const pricing: PricingCard[] = [
     {
+      key: 'free' as const,
       bg: '/aivent/misc/l3.webp',
       plan: 'Free',
-      price: '$0',
-      period: '/month',
-      features: ['3 CV analyses per day', '5 cover letters per day', 'ATS score & keyword report', 'PDF downloads'],
+      monthly: 0,
+      tagline: 'Try the core tools',
+      features: ['1 CV analysis', '2 cover letters', 'ATS score & keyword report', 'PDF downloads', 'Tracker — up to 15 jobs'],
       cta: 'Get Started Free',
-      href: isLoggedIn ? '/pricing' : '/register',
       highlight: false,
+      premium: false,
+      badge: '',
+      oneTime: true,
     },
     {
+      key: 'starter' as const,
+      bg: '/aivent/misc/l3.webp',
+      plan: '7-Day Pass',
+      monthly: 9,
+      tagline: 'No auto-renew',
+      features: ['Unlimited CV analyses (7 days)', 'Unlimited cover letters (7 days)', 'Full ATS audit & optimization', 'AI quick edits', 'Unlimited job tracker', 'Pay once — no subscription'],
+      cta: 'Get Pass',
+      highlight: false,
+      premium: false,
+      badge: 'Pay once',
+      oneTime: true,
+    },
+    {
+      key: 'pro' as const,
       bg: '/aivent/misc/l4.webp',
       plan: 'Pro',
-      price: '$9.99',
-      period: '/month',
-      features: ['25 CV analyses per day', 'Unlimited cover letters', 'Full ATS audit & optimization', 'AI quick edits', 'Priority AI processing', 'Full CV history & analytics'],
+      monthly: 19,
+      quarterly: 45,
+      yearly: 149,
+      tagline: 'For active job seekers',
+      features: ['Unlimited CV analyses', 'Unlimited cover letters', 'Full ATS audit & optimization', 'AI quick edits', 'Priority AI processing', 'Full CV history & analytics', 'Unlimited job tracker'],
       cta: isLoggedIn ? 'Upgrade to Pro' : 'Start Pro',
-      href: isLoggedIn ? '/pricing' : '/register',
       highlight: true,
+      premium: false,
+      badge: 'Most Popular',
+      oneTime: false,
     },
     {
+      key: 'pro_voice' as const,
       bg: '/aivent/misc/l5.webp',
       plan: 'Pro+',
-      price: '$14.99',
-      period: '/month',
-      features: ['Unlimited CV analyses', 'Unlimited cover letters', 'Full ATS audit & optimization', 'AI quick edits', 'Job application tracker', 'Priority AI processing', 'Full CV history & analytics', 'Advanced voice matching'],
+      monthly: 39,
+      quarterly: 99,
+      yearly: 299,
+      tagline: 'AI voice coach + full job hunter',
+      features: ['Everything in Pro', 'Job Hunter — AI matching across 12+ boards', 'Voice Mock Interview — 8 sessions / month', 'Voice feedback report', 'Interview prep library', 'LinkedIn-ready CV export', 'Priority AI processing'],
       cta: isLoggedIn ? 'Upgrade to Pro+' : 'Start Pro+',
-      href: isLoggedIn ? '/pricing' : '/register',
       highlight: false,
+      premium: true,
+      badge: 'Premium',
+      oneTime: false,
     },
   ];
 
   const faqItems = [
     { q: 'What is CvClimber?', a: 'CvClimber is an AI-powered job search platform that analyzes your CV against any job description, generates tailored cover letters, and helps you track all your applications in one place.' },
     { q: 'How does the CV analysis work?', a: 'Upload your CV and paste a job description. Our AI scores your CV for ATS compatibility, identifies missing keywords, and gives you actionable suggestions to improve your score instantly.' },
-    { q: 'Is CvClimber free to use?', a: 'Yes — create a free account and start analyzing your CV right away. No credit card required. Pro and Teams plans unlock unlimited usage.' },
+    { q: 'Is CvClimber free to use?', a: 'Yes — create a free account and start analyzing your CV right away. No credit card required. A $9 one-time 7-day pass or the Pro subscription unlocks unlimited usage.' },
     { q: 'What file formats does it support?', a: 'You can paste your CV text directly or upload a document. The AI processes the content and matches it against your target job description.' },
     { q: 'How does the cover letter generator work?', a: 'After your CV is analyzed, click "Generate Cover Letter". Choose your tone — balanced, formal, or friendly — and our AI crafts a personalized letter in seconds.' },
-    { q: 'Is my data secure?', a: 'Yes. Your CV data is stored securely with Supabase and is only used to power your analysis. We never share your data with third parties.' },
+    { q: 'Is my data secure?', a: 'Yes. Your CV data is encrypted in transit and at rest, used only to power your own analysis, and never shared or sold to third parties.' },
   ];
 
   /* ── Render ── */
@@ -242,7 +297,7 @@ export default function Home() {
             </Link>
           </div>
           <button
-            onClick={() => setBannerDismissed(true)}
+            onClick={dismissPromoBanner}
             className="absolute right-4 top-1/2 -translate-y-1/2 text-white/60 hover:text-white transition-colors"
           >
             <X className="h-4 w-4" />
@@ -300,7 +355,6 @@ export default function Home() {
 
           {/* Right side */}
           <div className="flex items-center gap-3">
-            <LanguageSwitcher />
             {isLoggedIn ? (
               <Link
                 href="/cv"
@@ -378,7 +432,7 @@ export default function Home() {
 
       {/* ══ HERO — Demo 6 split layout ══ */}
       <section id="hero" className="relative overflow-hidden pt-20 sm:pt-[110px]" style={{ paddingBottom: 0 }}>
-        <div className="absolute inset-0" style={{ backgroundImage: 'url(/aivent/background/8.webp)', backgroundSize: 'cover', backgroundPosition: 'center', backgroundAttachment: 'fixed' }} />
+        <div className="absolute inset-0" style={{ backgroundImage: 'url(/aivent/background/8.webp)', backgroundSize: 'cover', backgroundPosition: 'center' }} />
         <div className="absolute inset-0" style={{ background: 'rgba(16,20,53,0.60)' }} />
         <div className="absolute bottom-0 left-0 right-0" style={{ height: '35%', background: 'linear-gradient(0deg,#101435 0%,transparent 100%)' }} />
 
@@ -387,26 +441,30 @@ export default function Home() {
 
             {/* Left — landingrobot.png hero robot image */}
             <div className="wow fadeInUp order-first lg:order-none text-center lg:text-left" data-wow-delay=".3s">
-              <img
+              <Image
                 src="/aivent/misc/landingrobot.png"
-                alt="AI Job Search"
-                className="w-full mx-auto max-h-[280px] sm:max-h-[400px] lg:max-h-[560px]"
+                alt="CvClimber AI assistant illustration"
+                width={720}
+                height={720}
+                priority
+                sizes="(max-width: 1024px) 90vw, 45vw"
+                className="w-full mx-auto max-h-[280px] sm:max-h-[400px] lg:max-h-[560px] h-auto"
                 style={{ objectFit: 'contain' }}
               />
             </div>
 
             {/* Right — headline + CTA */}
             <div>
-              <span className="aivent-subtitle s2 wow fadeInUp" data-wow-delay=".0s">Welcome to CvClimber</span>
+              <span className="aivent-subtitle s2 wow fadeInUp" data-wow-delay=".0s">AI-powered CV review</span>
               <h1
                 className="wow fadeInUp text-white leading-[1.1] mb-6"
                 style={{ fontSize: 'clamp(30px,7vw,62px)', letterSpacing: '-0.02em', fontWeight: 800 }}
                 data-wow-delay=".2s"
               >
-                Land Your Dream Job with Artificial Intelligence
+                Score your CV against any job in 30 seconds. Beat the ATS.
               </h1>
               <p className="wow fadeInUp text-white/60 text-base leading-relaxed mb-8" style={{ fontWeight: 400, maxWidth: '32rem' }} data-wow-delay=".4s">
-                Upload your CV, paste any job description, and get an instant ATS score, keyword gap analysis, and a tailored cover letter. CvClimber gives every job seeker an unfair advantage.
+                Upload your CV, paste any job description, and get an instant ATS score, the exact keywords you're missing, and a rewritten CV plus cover letter ready to send.
               </p>
               <div className="flex flex-wrap items-center gap-4 wow fadeInUp" data-wow-delay=".6s">
                 {isLoggedIn
@@ -421,17 +479,21 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Glassmorphism stats bar */}
+        {/* Trust signals bar — honest, no fake metrics */}
         <div className="relative px-6" style={{ zIndex: 3 }}>
           <div className="mx-auto max-w-5xl">
             <div
-              className="hidden md:grid grid-cols-3 divide-x divide-white/10 rounded-t-xl px-8 py-5"
+              className="grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-white/10 rounded-t-xl px-8 py-5"
               style={{ background: 'rgba(0,0,0,0.22)', backdropFilter: 'blur(14px)', border: '1px solid rgba(255,255,255,0.08)', borderBottom: 'none' }}
             >
-              {[{ v: '10,000+', l: 'CVs Analyzed' }, { v: '85%', l: 'Average Score Improvement' }, { v: '3×', l: 'More Interview Callbacks' }].map((s) => (
-                <div key={s.l} className="text-center px-6">
-                  <h3 className="text-2xl text-white mb-0.5" style={{ fontWeight: 800 }}>{s.v}</h3>
-                  <p className="text-sm text-white/55" style={{ fontWeight: 500 }}>{s.l}</p>
+              {[
+                { v: 'Free forever plan', l: 'Try it before you pay' },
+                { v: 'No credit card', l: 'Sign up in 30 seconds' },
+                { v: 'Cancel anytime', l: 'No lock-in, no contract' },
+              ].map((s) => (
+                <div key={s.l} className="text-center px-6 py-3 md:py-0">
+                  <h3 className="text-base text-white mb-0.5" style={{ fontWeight: 700 }}>{s.v}</h3>
+                  <p className="text-sm text-white/55" style={{ fontWeight: 400 }}>{s.l}</p>
                 </div>
               ))}
             </div>
@@ -440,14 +502,14 @@ export default function Home() {
       </section>
 
       {/* ══ ABOUT ══ */}
-      <section className="py-14 sm:py-28 px-4 sm:px-6" style={{ background: '#101435', position: 'relative', zIndex: 1 }}>
+      <section id="about" className="py-14 sm:py-28 px-4 sm:px-6" style={{ background: '#101435', position: 'relative', zIndex: 1 }}>
         <div className="mx-auto max-w-6xl">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
             <div>
               <span className="aivent-subtitle wow fadeInUp" data-wow-delay=".2s">About CvClimber</span>
               <h2 className="wow fadeInUp text-white tracking-tight mb-6" style={{ fontSize: 'clamp(32px,4vw,48px)', fontWeight: 800 }} data-wow-delay=".4s">A Global AI Platform for Job Seekers</h2>
               <p className="wow fadeInUp text-white/55 text-base leading-relaxed mb-8" style={{ fontWeight: 400 }} data-wow-delay=".6s">
-                Join thousands of job seekers using cutting-edge AI to perfect their CVs, craft winning cover letters, and land interviews faster. CvClimber gives you the AI-powered edge in every application.
+                CvClimber uses AI to score your CV against any job description, fix the gaps the ATS would flag, and write a cover letter that matches. The same edge recruiters look for — applied automatically.
               </p>
               <ul className="ul-check">
                 <li className="wow fadeInUp" data-wow-delay=".7s">Instant ATS scoring against any job description</li>
@@ -457,7 +519,15 @@ export default function Home() {
               </ul>
             </div>
             <div className="flex justify-center wow scaleIn">
-              <img src="/aivent/misc/c1.webp" alt="CvClimber AI" className="rotate-slow" style={{ width: '80%', maxWidth: '420px' }} />
+              <Image
+                src="/aivent/misc/c1.webp"
+                alt="CvClimber AI"
+                width={420}
+                height={420}
+                sizes="(max-width: 768px) 80vw, 420px"
+                className="rotate-slow"
+                style={{ width: '80%', maxWidth: '420px', height: 'auto' }}
+              />
             </div>
           </div>
         </div>
@@ -537,7 +607,13 @@ export default function Home() {
             {features.map((f, i) => (
               <div key={f.title} className="feature-card relative rounded-xl overflow-hidden cursor-pointer wow scale-in-mask" style={{ minHeight: '300px' }}>
                 <div className="card-bg absolute inset-0 transition-colors duration-500" style={{ background: '#1A1E42' }}>
-                  <img src={f.img} alt={f.title} className="w-full h-full object-cover opacity-75" />
+                  <Image
+                    src={f.img}
+                    alt={f.title}
+                    fill
+                    sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                    className="object-cover opacity-75"
+                  />
                 </div>
                 <div className="absolute bottom-0 left-0 right-0 h-3/4" style={{ background: 'linear-gradient(0deg,#101435 0%,rgba(16,20,53,0) 100%)', zIndex: 1 }} />
                 <div className="radial-overlay absolute inset-0" style={{ zIndex: 2 }} />
@@ -557,7 +633,7 @@ export default function Home() {
         aria-label="quote"
         style={{ paddingTop: '140px', paddingBottom: '140px' }}
       >
-        <div className="absolute inset-0" style={{ backgroundImage: 'url(/aivent/background/1.webp)', backgroundSize: 'cover', backgroundPosition: 'center', backgroundAttachment: 'fixed' }} />
+        <div className="absolute inset-0" style={{ backgroundImage: 'url(/aivent/background/1.webp)', backgroundSize: 'cover', backgroundPosition: 'center' }} />
         {/* Overlays */}
         <div className="absolute inset-0" style={{ background: 'rgba(10,13,40,0.82)' }} />
         <div className="absolute top-0 left-0 right-0" style={{ height: '120px', background: 'linear-gradient(180deg,#101435 0%,transparent 100%)' }} />
@@ -567,49 +643,26 @@ export default function Home() {
           <div className="wow fadeInUp">
             <div className="text-6xl font-black mb-6" style={{ color: 'oklch(0.59 0.245 291)', lineHeight: 1 }}>"</div>
             <h3 className="text-white leading-relaxed mb-6" style={{ fontSize: 'clamp(20px,2.5vw,30px)', fontWeight: 600 }}>
-              AI is fundamentally reshaping how people find work. Those who embrace AI-powered tools in their job search will have an insurmountable advantage over those who don't.
+              Most CVs never reach a human — they get filtered out by an ATS before anyone reads them. CvClimber rewrites yours so it makes it through.
             </h3>
-            <span className="text-white/45 text-sm uppercase tracking-widest" style={{ fontWeight: 500 }}>— The Future of Work Report, 2026</span>
           </div>
         </div>
       </section>
 
-      {/* ══ SUCCESS STORIES ══ */}
-      <section className="py-16 sm:py-32 px-4 sm:px-6" style={{ background: '#101435', position: 'relative', zIndex: 1 }}>
-        <div className="mx-auto max-w-6xl">
-          <div className="text-center mb-16">
-            <span className="aivent-subtitle" data-reveal>Success Stories</span>
-            <h2 className="text-white tracking-tight wow fadeInUp" data-wow-delay=".1s" style={{ fontSize: 'clamp(32px,4vw,48px)', fontWeight: 800 }}>Meet Our Top Users</h2>
-            <p className="text-white/55 text-lg mt-4 max-w-2xl mx-auto wow fadeInUp" style={{ fontWeight: 400 }} data-wow-delay=".2s">Real job seekers who used CvClimber to land roles at the world's top companies.</p>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {testimonials.map((t, i) => (
-              <div key={t.name} className="speaker-card relative rounded-xl overflow-hidden wow scale-in-mask" style={{ minHeight: '380px' }}>
-                <img src={t.img} alt={t.name} className="w-full h-full object-cover absolute inset-0" style={{ minHeight: '380px' }} />
-                <div className="absolute inset-0" style={{ background: 'linear-gradient(0deg,rgba(16,20,53,0.9) 0%,rgba(16,20,53,0) 60%)', zIndex: 1 }} />
-                <div className="speaker-overlay absolute inset-0" style={{ zIndex: 2 }} />
-                <div className="absolute bottom-0 left-0 right-0 z-10 p-4 m-4 rounded-xl text-center" style={{ background: 'rgba(0,0,0,0.18)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.08)' }}>
-                  <h3 className="text-white text-lg mb-1" style={{ fontWeight: 700 }}>{t.name}</h3>
-                  <span className="text-white/55 text-sm" style={{ fontWeight: 400 }}>{t.title}</span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ══ COMPANY LOGOS ══ */}
+      {/* ══ JOB SOURCES ══ */}
       <section
-        className="relative overflow-hidden"
-        aria-label="logos"
-        style={{ paddingTop: '80px', paddingBottom: '80px' }}
+        className="relative overflow-hidden py-16 sm:py-20"
+        aria-label="job-sources"
+        style={{ background: '#101435' }}
       >
-        <div className="absolute inset-0" style={{ backgroundImage: 'url(/aivent/background/1.webp)', backgroundSize: 'cover', backgroundPosition: 'center', backgroundAttachment: 'fixed' }} />
-        <div className="absolute inset-0" style={{ background: 'rgba(10,13,40,0.82)' }} />
-        <div className="absolute top-0 left-0 right-0" style={{ height: '80px', background: 'linear-gradient(180deg,#101435 0%,transparent 100%)' }} />
-        <div className="absolute bottom-0 left-0 right-0" style={{ height: '80px', background: 'linear-gradient(0deg,#101435 0%,transparent 100%)' }} />
+        <div className="px-6 mb-10 text-center">
+          <span className="aivent-subtitle s2">Job Sources</span>
+          <h3 className="text-white/85 mt-2" style={{ fontSize: 'clamp(20px,2.5vw,28px)', fontWeight: 700 }}>
+            Live jobs pulled from the boards you already know
+          </h3>
+        </div>
 
-        <div className="relative overflow-hidden" style={{ zIndex: 4 }}>
+        <div className="relative overflow-hidden">
           <div className="animate-logo-scroll wow fadeInUp">
             {[...logos, ...logos].map((src, i) => (
               <div key={i} className="px-8 flex items-center justify-center" style={{ minWidth: '140px' }}>
@@ -657,16 +710,16 @@ export default function Home() {
                   <div className="absolute bottom-0 left-0 right-0" style={{ height: '50%', background: 'linear-gradient(0deg,rgba(16,20,53,0.8) 0%,transparent 100%)' }} />
                 </div>
                 <div className="rounded-xl text-center py-8 px-4 wow scale-in-mask" style={{ background: 'oklch(0.59 0.245 291)' }}>
-                  <h2 className="text-white mb-1" style={{ fontSize: '2.5rem', fontWeight: 800, lineHeight: 1 }}>10K+</h2>
-                  <div className="text-white/80 text-sm" style={{ fontWeight: 600 }}>CVs Analyzed</div>
+                  <h2 className="text-white mb-1" style={{ fontSize: '2rem', fontWeight: 800, lineHeight: 1.1 }}>Free</h2>
+                  <div className="text-white/80 text-sm" style={{ fontWeight: 600 }}>To get started</div>
                 </div>
               </div>
 
               {/* Column 2 — offset down */}
               <div className="flex flex-col gap-4 mt-10">
                 <div className="rounded-xl text-center py-8 px-4 wow scale-in-mask" style={{ background: 'oklch(0.42 0.18 285)' }}>
-                  <h2 className="text-white mb-1" style={{ fontSize: '2.5rem', fontWeight: 800, lineHeight: 1 }}>85%</h2>
-                  <div className="text-white/80 text-sm" style={{ fontWeight: 600 }}>Score Improvement</div>
+                  <h2 className="text-white mb-1" style={{ fontSize: '2rem', fontWeight: 800, lineHeight: 1.1 }}>Instant</h2>
+                  <div className="text-white/80 text-sm" style={{ fontWeight: 600 }}>ATS results in seconds</div>
                 </div>
                 <div className="relative overflow-hidden rounded-xl wow scale-in-mask">
                   <img src="/aivent/misc/s2.webp" alt="" className="w-full object-cover" style={{ borderRadius: '12px' }} />
@@ -683,46 +736,130 @@ export default function Home() {
       <section
         id="pricing"
         className="relative py-16 sm:py-32 px-4 sm:px-6"
-        style={{ backgroundImage: 'url(/aivent/background/7.webp)', backgroundSize: 'cover', backgroundPosition: 'center', backgroundAttachment: 'fixed' }}
+        style={{ backgroundImage: 'url(/aivent/background/7.webp)', backgroundSize: 'cover', backgroundPosition: 'center' }}
       >
         <div className="absolute inset-0" style={{ background: 'rgba(0,0,0,0.80)' }} />
         <div className="absolute top-0 left-0 right-0 h-1/4" style={{ background: 'linear-gradient(180deg,#1A1E42 0%,transparent 100%)' }} />
         <div className="absolute bottom-0 left-0 right-0 h-1/4" style={{ background: 'linear-gradient(0deg,#101435 0%,transparent 100%)' }} />
 
-        <div className="relative mx-auto max-w-6xl" style={{ zIndex: 2 }}>
-          <div className="text-center mb-16">
+        <div className="relative mx-auto max-w-7xl" style={{ zIndex: 2 }}>
+          <div className="text-center mb-10">
             <span className="aivent-subtitle s2" data-reveal>Pricing Plans</span>
             <h2 className="text-white tracking-tight wow fadeInUp" data-wow-delay=".1s" style={{ fontSize: 'clamp(32px,4vw,48px)', fontWeight: 800 }}>Choose Your Plan</h2>
-            <p className="text-white/55 text-lg mt-4 max-w-2xl mx-auto wow fadeInUp" style={{ fontWeight: 400 }} data-wow-delay=".2s">Start free. Upgrade when you need more power.</p>
+            <p className="text-white/55 text-lg mt-4 max-w-2xl mx-auto wow fadeInUp" style={{ fontWeight: 400 }} data-wow-delay=".2s">Start free. Grab a one-time 7-day pass. Or subscribe for the full search.</p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {pricing.map((p, i) => (
-              <div key={p.plan} data-reveal data-delay={String(i * 100)}>
-                <div className="d-ticket-card mb-0 rounded-b-none" style={{ backgroundImage: `url(${p.bg})`, border: p.highlight ? '2px solid oklch(0.59 0.245 291)' : '2px solid rgba(255,255,255,0.08)', borderBottom: 'none' }}>
-                  <div className="absolute inset-0" style={{ background: 'rgba(16,20,53,0.82)', borderRadius: '10px 10px 0 0' }} />
-                  <div className="relative" style={{ zIndex: 1 }}>
-                    <img src="/aivent/logo.png" alt="" style={{ height: '56px', marginBottom: '20px', opacity: 0.8 }} />
-                    <h2 className="text-white mb-1" style={{ fontSize: '1.875rem', fontWeight: 800 }}>{p.plan}</h2>
-                    <h4 className="text-white/80 mb-4" style={{ fontWeight: 600 }}>
-                      <span className="text-white" style={{ fontSize: '2.25rem', fontWeight: 800 }}>{p.price}</span>
-                      <span className="text-white/50 ml-1" style={{ fontSize: '1rem', fontWeight: 400 }}>{p.period}</span>
-                    </h4>
-                    {p.highlight && (
-                      <span className="inline-block px-3 py-1 rounded-full text-xs uppercase tracking-widest text-white" style={{ fontWeight: 700, background: 'oklch(0.59 0.245 291)' }}>Most Popular</span>
-                    )}
+          {/* Monthly / 3-Months / Yearly toggle — drives the per-card price math below */}
+          <div className="flex items-center justify-center gap-2 mb-12 flex-wrap">
+            <button
+              onClick={() => setBillingInterval('month')}
+              className={`btn-aivent fx-slide ${billingInterval === 'month' ? '' : 'btn-line'}`}
+              data-hover="MONTHLY"
+              style={{ minWidth: '120px' }}
+            >
+              <span>Monthly</span>
+            </button>
+            <button
+              onClick={() => setBillingInterval('quarter')}
+              className={`btn-aivent fx-slide ${billingInterval === 'quarter' ? '' : 'btn-line'}`}
+              data-hover="3 MONTHS"
+              style={{ minWidth: '150px' }}
+            >
+              <span>3 Months</span>
+            </button>
+            <button
+              onClick={() => setBillingInterval('year')}
+              className={`btn-aivent fx-slide ${billingInterval === 'year' ? '' : 'btn-line'}`}
+              data-hover="YEARLY — SAVE 35%"
+              style={{ minWidth: '200px' }}
+            >
+              <span>Yearly — Save 35%</span>
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
+            {pricing.map((p, i) => {
+              // Pro+ gets the gold treatment so it doesn't sit ignored
+              // in the 4th slot — it's our highest-margin SKU.
+              const accent = p.premium
+                ? '#fbbf24'                      // amber-400
+                : p.highlight
+                  ? 'oklch(0.59 0.245 291)'      // brand violet for "Most Popular"
+                  : 'rgba(255,255,255,0.08)';
+              const borderStyle = (p.highlight || p.premium) ? `2px solid ${accent}` : `2px solid ${accent}`;
+              const cardShadow = p.premium ? '0 12px 40px rgba(251,191,36,0.18)' : undefined;
+
+              // Free + 7-Day Pass ignore the toggle. Free is always $0; the
+              // pass is always $9 one-time. Subscriptions read off the
+              // selected interval and fall back to 3× monthly if quarterly
+              // isn't explicitly set (matches the in-app pricing page).
+              let priceLabel: string;
+              let periodLabel: string;
+              let perMonthLabel: string | null = null;
+              if (p.oneTime) {
+                priceLabel = p.monthly === 0 ? '$0' : `$${p.monthly}`;
+                periodLabel = p.monthly === 0 ? '' : 'one-time';
+              } else {
+                const quarterly = p.quarterly ?? p.monthly * 3;
+                const yearly = p.yearly ?? p.monthly * 12;
+                const amount =
+                  billingInterval === 'month' ? p.monthly
+                  : billingInterval === 'quarter' ? quarterly
+                  : yearly;
+                priceLabel = `$${amount}`;
+                periodLabel = billingInterval === 'month' ? '/month' : billingInterval === 'quarter' ? '/3mo' : '/year';
+                if (billingInterval === 'year') {
+                  perMonthLabel = `$${(yearly / 12).toFixed(2)}/mo · Save ${Math.round(((p.monthly * 12 - yearly) / (p.monthly * 12)) * 100)}%`;
+                } else if (billingInterval === 'quarter' && p.quarterly) {
+                  perMonthLabel = `$${(p.quarterly / 3).toFixed(2)}/mo · Save ${Math.round(((p.monthly * 3 - p.quarterly) / (p.monthly * 3)) * 100)}%`;
+                }
+              }
+
+              const href = planHref(p.key, p.oneTime ? 'month' : billingInterval);
+              return (
+                <div key={p.plan} data-reveal data-delay={String(i * 100)} style={{ boxShadow: cardShadow }}>
+                  <div className="d-ticket-card mb-0 rounded-b-none" style={{ backgroundImage: `url(${p.bg})`, border: borderStyle, borderBottom: 'none' }}>
+                    <div className="absolute inset-0" style={{ background: 'rgba(16,20,53,0.82)', borderRadius: '10px 10px 0 0' }} />
+                    <div className="relative" style={{ zIndex: 1 }}>
+                      <img src="/aivent/logo.png" alt="" style={{ height: '48px', marginBottom: '16px', opacity: 0.8 }} />
+                      <h2 className="text-white mb-1" style={{ fontSize: '1.625rem', fontWeight: 800 }}>{p.plan}</h2>
+                      {p.tagline && (
+                        <p className="text-white/50 text-xs mb-3" style={{ fontWeight: 500 }}>{p.tagline}</p>
+                      )}
+                      <h4 className="text-white/80 mb-2" style={{ fontWeight: 600 }}>
+                        <span className="text-white" style={{ fontSize: '2rem', fontWeight: 800 }}>{priceLabel}</span>
+                        {periodLabel && (
+                          <span className="text-white/50 ml-1" style={{ fontSize: '0.95rem', fontWeight: 400 }}>{periodLabel}</span>
+                        )}
+                      </h4>
+                      {perMonthLabel && (
+                        <p className="text-xs mb-2" style={{ color: '#34d399', fontWeight: 500 }}>{perMonthLabel}</p>
+                      )}
+                      {p.badge === 'Most Popular' && (
+                        <span className="inline-block px-3 py-1 rounded-full text-xs uppercase tracking-widest text-white" style={{ fontWeight: 700, background: 'oklch(0.59 0.245 291)' }}>Most Popular</span>
+                      )}
+                      {p.badge === 'Pay once' && (
+                        <span className="inline-block px-3 py-1 rounded-full text-xs uppercase tracking-widest" style={{ fontWeight: 700, background: 'rgba(52,211,153,0.18)', color: '#34d399' }}>Pay once</span>
+                      )}
+                      {p.badge === 'Premium' && (
+                        <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs uppercase tracking-widest" style={{ fontWeight: 800, background: 'rgba(251,191,36,0.18)', color: '#fbbf24', border: '1px solid rgba(251,191,36,0.45)' }}>
+                          <Sparkles className="h-3 w-3" />
+                          Premium
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="rounded-t-none rounded-b-xl px-5 py-5" style={{ background: '#1A1E42', border: borderStyle, borderTop: 'none' }}>
+                    <ul className="ul-check mb-5 space-y-2 text-sm">
+                      {p.features.map(f => <li key={f}>{f}</li>)}
+                    </ul>
+                    <Link href={href} className="btn-aivent fx-slide w-full text-center block" data-hover={p.cta.toUpperCase()}>
+                      <span>{p.cta}</span>
+                    </Link>
                   </div>
                 </div>
-                <div className="rounded-t-none rounded-b-xl px-6 py-6" style={{ background: '#1A1E42', border: p.highlight ? '2px solid oklch(0.59 0.245 291)' : '2px solid rgba(255,255,255,0.08)', borderTop: 'none' }}>
-                  <ul className="ul-check mb-6 space-y-2">
-                    {p.features.map(f => <li key={f}>{f}</li>)}
-                  </ul>
-                  <Link href={p.href} className="btn-aivent fx-slide w-full text-center block" data-hover={p.cta.toUpperCase()}>
-                    <span>{p.cta}</span>
-                  </Link>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       </section>
@@ -748,7 +885,7 @@ export default function Home() {
         aria-label="cta"
         style={{ paddingTop: '140px', paddingBottom: '140px' }}
       >
-        <div className="absolute inset-0" style={{ backgroundImage: 'url(/aivent/background/3.webp)', backgroundSize: 'cover', backgroundPosition: 'center', backgroundAttachment: 'fixed' }} />
+        <div className="absolute inset-0" style={{ backgroundImage: 'url(/aivent/background/3.webp)', backgroundSize: 'cover', backgroundPosition: 'center' }} />
         <div className="absolute inset-0" style={{ background: 'rgba(10,13,40,0.82)' }} />
         <div className="absolute top-0 left-0 right-0" style={{ height: '120px', background: 'linear-gradient(180deg,#101435 0%,transparent 100%)' }} />
         <div className="absolute bottom-0 left-0 right-0" style={{ height: '120px', background: 'linear-gradient(0deg,#101435 0%,transparent 100%)' }} />
@@ -757,7 +894,7 @@ export default function Home() {
           <span className="aivent-subtitle s2 wow fadeInUp" data-wow-delay=".0s">Start Today — It is Free</span>
           <h2 className="text-white tracking-tight mb-6 wow fadeInUp" style={{ fontSize: 'clamp(32px,4vw,52px)', fontWeight: 800 }} data-wow-delay=".2s">Join the Future of Job Search</h2>
           <p className="text-white/60 text-lg leading-relaxed mb-8 wow fadeInUp" style={{ fontWeight: 400 }} data-wow-delay=".4s">
-            Thousands of job seekers are already using AI to get more interviews. Create your free account and start today.
+            Stop guessing why your CV gets ignored. Get an ATS score, fix the gaps, and apply with confidence. Free to start — no card required.
           </p>
           <div className="wow fadeInUp" data-wow-delay=".6s">
             {isLoggedIn
@@ -794,7 +931,7 @@ export default function Home() {
                   { label: 'Pricing', href: '#pricing' },
                 ].map((l) => (
                   <li key={l.label}>
-                    <a href={l.href} className="text-white/35 hover:text-white/70 transition-colors text-sm" style={{ fontWeight: 400 }}>{l.label}</a>
+                    <a href={l.href} className="text-white/55 hover:text-white transition-colors text-sm" style={{ fontWeight: 400 }}>{l.label}</a>
                   </li>
                 ))}
               </ul>
@@ -808,11 +945,12 @@ export default function Home() {
                   { label: 'About', href: '#about' },
                   { label: 'FAQ', href: '#faq' },
                   { label: 'Contact', href: '/contact' },
-                  { label: 'Privacy Policy', href: '#' },
-                  { label: 'Terms of Service', href: '#' },
+                  { label: 'Privacy Policy', href: '/privacy' },
+                  { label: 'Terms of Service', href: '/terms' },
+                  { label: 'Refund Policy', href: '/refund' },
                 ].map((l) => (
                   <li key={l.label}>
-                    <a href={l.href} className="text-white/35 hover:text-white/70 transition-colors text-sm" style={{ fontWeight: 400 }}>{l.label}</a>
+                    <a href={l.href} className="text-white/55 hover:text-white transition-colors text-sm" style={{ fontWeight: 400 }}>{l.label}</a>
                   </li>
                 ))}
               </ul>
@@ -822,8 +960,8 @@ export default function Home() {
             <div>
               <h4 className="text-white/80 text-xs font-bold uppercase tracking-widest mb-5">Get Started</h4>
               <ul className="space-y-3">
-                <li><Link href="/login" className="text-white/35 hover:text-white/70 transition-colors text-sm">Sign In</Link></li>
-                <li><Link href="/register" className="text-white/35 hover:text-white/70 transition-colors text-sm">Create Account</Link></li>
+                <li><Link href="/login" className="text-white/55 hover:text-white transition-colors text-sm">Sign In</Link></li>
+                <li><Link href="/register" className="text-white/55 hover:text-white transition-colors text-sm">Create Account</Link></li>
               </ul>
               <div className="mt-6">
                 <Link href="/register" className="btn-aivent btn-line fx-slide text-xs !px-5 !py-2.5" data-hover="TRY FREE">
@@ -836,13 +974,11 @@ export default function Home() {
 
           {/* Bottom bar */}
           <div className="pt-6 flex flex-col sm:flex-row items-center justify-between gap-4" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
-            <p className="text-white/20 text-xs" style={{ fontWeight: 400 }}>
+            <p className="text-white/45 text-xs" style={{ fontWeight: 400 }}>
               &copy; {new Date().getFullYear()} CvClimber. All rights reserved.
             </p>
             <div className="flex items-center gap-5">
-              <a href="https://x.com" target="_blank" rel="noopener noreferrer" className="text-white/20 hover:text-white/50 transition-colors text-xs">X / Twitter</a>
-              <a href="https://linkedin.com" target="_blank" rel="noopener noreferrer" className="text-white/20 hover:text-white/50 transition-colors text-xs">LinkedIn</a>
-              <Link href="/contact" className="text-white/20 hover:text-white/50 transition-colors text-xs">Contact</Link>
+              <Link href="/contact" className="text-white/45 hover:text-white/80 transition-colors text-xs">Contact</Link>
             </div>
           </div>
         </div>

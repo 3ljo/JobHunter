@@ -97,17 +97,33 @@ const callAI = async (systemPrompt, userMessage, maxTokensOverride, meta = {}) =
 
       case 'openai': {
         const client = getOpenAIClient();
-        const response = await client.chat.completions.create({
+        // Enable JSON mode only when the prompt actually asks for JSON.
+        // OpenAI rejects json_object responses if the word "json" isn't in
+        // the messages, which would break plain-text features like cover
+        // letters.
+        const wantsJson = /json/i.test(systemPrompt) || /json/i.test(userMessage);
+        const stream = await client.chat.completions.create({
           model,
           max_tokens: tokens,
+          stream: true,
+          stream_options: { include_usage: true },
+          ...(wantsJson ? { response_format: { type: 'json_object' } } : {}),
           messages: [
             { role: 'system', content: systemPrompt },
             { role: 'user', content: userMessage },
           ],
         });
-        text = response.choices[0].message.content;
-        inputTokens = response.usage?.prompt_tokens || 0;
-        outputTokens = response.usage?.completion_tokens || 0;
+
+        let chunks = '';
+        for await (const part of stream) {
+          const delta = part.choices?.[0]?.delta?.content;
+          if (delta) chunks += delta;
+          if (part.usage) {
+            inputTokens = part.usage.prompt_tokens || 0;
+            outputTokens = part.usage.completion_tokens || 0;
+          }
+        }
+        text = chunks;
         break;
       }
 

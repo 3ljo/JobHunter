@@ -21,10 +21,11 @@ export default function InterviewPage() {
     if (!subscription) fetchSubscription();
   }, [subscription, fetchSubscription]);
 
-  const isProPlus = subscription?.plan === 'pro_plus';
+  // Voice mock interview is Pro Voice only. `pro_plus` is the legacy alias.
+  const isProVoice = subscription?.plan === 'pro_voice' || subscription?.plan === 'pro_plus';
   const miUsed  = usage?.mock_interview.used  ?? 0;
-  const miLimit = usage?.mock_interview.limit ?? 5;
-  const miOverLimit = isProPlus && miLimit < 999999 && miUsed >= miLimit;
+  const miLimit = usage?.mock_interview.limit ?? 8;
+  const miOverLimit = isProVoice && miLimit < 999999 && miUsed >= miLimit;
 
   return (
     <div
@@ -73,7 +74,7 @@ export default function InterviewPage() {
           </div>
 
           <div className="relative mx-auto max-w-4xl px-0 sm:px-0">
-            {!isProPlus ? <ProPlusGate /> : (
+            {!isProVoice ? <ProVoiceGate /> : (
               <>
                 {phase === 'setup' && (miOverLimit ? (
                   <LimitReachedCard feature="mock_interview" />
@@ -122,13 +123,13 @@ const GATE_FEATURES = [
 ] as const;
 
 const PLAN_BENEFITS = [
-  { icon: Mic2,         text: '5 voice interviews per day' },
+  { icon: Mic2,         text: '8 voice interviews per month' },
   { icon: FileText,     text: 'Unlimited CV analyses' },
   { icon: MessageSquare, text: 'Unlimited cover letters' },
   { icon: Headphones,   text: 'Priority AI processing' },
 ];
 
-function ProPlusGate() {
+function ProVoiceGate() {
   return (
     <div className="mx-auto max-w-3xl">
       {/* Hero card */}
@@ -171,8 +172,8 @@ function ProPlusGate() {
             Train for the real interview
           </h2>
           <p className="text-sm sm:text-base text-white/55 mt-2 max-w-lg mx-auto">
-            Upgrade to Pro+ to unlock voice mock interviews — scored, debriefed, and tailored to
-            every role you apply for.
+            Upgrade to Pro+ to unlock voice mock interviews — scored, debriefed, and tailored
+            to every role you apply for.
           </p>
         </div>
 
@@ -243,7 +244,7 @@ function ProPlusGate() {
               className="text-[10px] font-bold px-1.5 py-0.5 rounded ml-1"
               style={{ background: 'rgba(255,255,255,0.18)' }}
             >
-              $14.99/mo
+              $39/mo
             </span>
           </Link>
 

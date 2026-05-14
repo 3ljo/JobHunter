@@ -1,8 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { getAdminSettings, updateAdminSettings } from '@/lib/api';
-import { Cpu, Save, CheckCircle } from 'lucide-react';
+import { getAdminSettings, updateAdminSettings, getAdminOverview } from '@/lib/api';
+import { Cpu, Save, CheckCircle, XCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 interface AppSettings {
@@ -22,52 +22,52 @@ const PROVIDERS = [
     id: 'gemini',
     name: 'Google Gemini',
     color: '#34d399',
-    description: 'Cheapest option. Free tier available (1,500 req/day).',
+    description: 'Cheapest. Free tier (1,500 req/day).',
+    keyEnv: 'gemini_key',
     models: ['gemini-2.0-flash', 'gemini-1.5-pro', 'gemini-1.5-flash'],
   },
   {
     id: 'openai',
-    name: 'OpenAI ChatGPT',
+    name: 'OpenAI',
     color: '#60a5fa',
-    description: 'Great balance of quality and cost.',
-    models: ['gpt-4o-mini', 'gpt-4o', 'gpt-4-turbo', 'gpt-3.5-turbo'],
+    description: 'Balanced quality + cost.',
+    keyEnv: 'openai_key',
+    models: ['gpt-4o-mini', 'gpt-4o', 'gpt-4.1-nano', 'gpt-4-turbo'],
   },
   {
     id: 'anthropic',
-    name: 'Anthropic Claude',
+    name: 'Anthropic',
     color: '#c084fc',
     description: 'Highest quality, most expensive.',
+    keyEnv: 'anthropic_key',
     models: ['claude-sonnet-4-20250514', 'claude-haiku-4-5-20251001'],
   },
 ];
 
+type HealthMap = Record<string, boolean>;
+
 export default function BosiSettings() {
   const [settings, setSettings] = useState<AppSettings | null>(null);
   const [costTable, setCostTable] = useState<Record<string, { input: number; output: number }>>({});
+  const [health, setHealth] = useState<HealthMap>({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState(false);
+  const [dirty, setDirty] = useState(false);
 
   useEffect(() => {
-    getAdminSettings()
-      .then((res) => {
-        setSettings(res.data.settings);
-        setCostTable(res.data.costTable);
+    Promise.all([getAdminSettings(), getAdminOverview()])
+      .then(([s, o]) => {
+        setSettings(s.data.settings);
+        setCostTable(s.data.costTable || {});
+        setHealth(o.data.health || {});
       })
       .catch(() => toast.error('Failed to load settings'))
       .finally(() => setLoading(false));
   }, []);
 
-  const handleProviderSwitch = (provider: string) => {
-    if (!settings) return;
-    setSettings({ ...settings, ai_provider: provider });
-    setSaved(false);
-  };
-
-  const handleModelChange = (provider: string, model: string) => {
-    if (!settings) return;
-    setSettings({ ...settings, [`ai_model_${provider}`]: model });
-    setSaved(false);
+  const patch = (p: Partial<AppSettings>) => {
+    setSettings((s) => (s ? { ...s, ...p } : s));
+    setDirty(true);
   };
 
   const handleSave = async () => {
@@ -75,10 +75,10 @@ export default function BosiSettings() {
     setSaving(true);
     try {
       await updateAdminSettings(settings);
-      setSaved(true);
-      toast.success('Settings saved!');
+      toast.success('Settings saved');
+      setDirty(false);
     } catch {
-      toast.error('Failed to save settings');
+      toast.error('Failed to save');
     } finally {
       setSaving(false);
     }
@@ -92,198 +92,126 @@ export default function BosiSettings() {
     );
   }
 
-  if (!settings) return <p className="text-white/60">Failed to load settings</p>;
+  if (!settings) return <p className="text-white/55">Failed to load.</p>;
 
   const activeProvider = PROVIDERS.find((p) => p.id === settings.ai_provider);
+  const activeModelKey = `ai_model_${settings.ai_provider}` as keyof AppSettings;
+  const activeModel = settings[activeModelKey] as string;
+  const activeRates = costTable[activeModel];
 
   return (
-    <div className="space-y-8 max-w-3xl">
+    <div className="space-y-8 max-w-3xl pb-20">
 
-      {/* Provider Selection */}
-      <div>
-        <h3 className="text-white/70 text-xs uppercase tracking-widest font-semibold mb-4 flex items-center gap-2">
-          <Cpu className="h-3.5 w-3.5" /> AI Provider
-        </h3>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          {PROVIDERS.map((provider) => {
-            const active = settings.ai_provider === provider.id;
+      {/* AI Provider */}
+      <Section title="AI Provider" icon={Cpu}>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          {PROVIDERS.map((p) => {
+            const active = settings.ai_provider === p.id;
+            const keyOk = !!health[p.keyEnv];
             return (
               <button
-                key={provider.id}
-                onClick={() => handleProviderSwitch(provider.id)}
-                className="rounded-xl p-5 text-left transition-all duration-200"
+                key={p.id}
+                onClick={() => patch({ ai_provider: p.id })}
+                className="rounded-xl p-4 text-left transition-all"
                 style={{
-                  background: active ? `${provider.color}10` : '#1a1e42',
-                  border: active ? `2px solid ${provider.color}` : '2px solid rgba(255,255,255,0.10)',
-                  transform: active ? 'scale(1.02)' : 'scale(1)',
+                  background: active ? `${p.color}10` : '#1a1e42',
+                  border: active ? `2px solid ${p.color}` : '2px solid rgba(255,255,255,0.10)',
                 }}
               >
-                <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-2">
-                    <div className="h-3 w-3 rounded-full" style={{ background: provider.color }} />
-                    <span className="text-white text-sm font-bold">{provider.name}</span>
+                    <span className="h-2.5 w-2.5 rounded-full" style={{ background: p.color }} />
+                    <span className="text-white text-sm font-bold">{p.name}</span>
                   </div>
-                  {active && <CheckCircle className="h-4 w-4" style={{ color: provider.color }} />}
+                  {active && <CheckCircle className="h-4 w-4" style={{ color: p.color }} />}
                 </div>
-                <p className="text-white/60 text-xs leading-relaxed">{provider.description}</p>
+                <p className="text-white/55 text-[11px] mb-2 leading-snug">{p.description}</p>
+                <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest">
+                  {keyOk
+                    ? <CheckCircle className="h-3 w-3 text-emerald-400" />
+                    : <XCircle className="h-3 w-3 text-red-400" />}
+                  <span style={{ color: keyOk ? '#34d399' : '#f87171' }}>
+                    {keyOk ? 'API key set' : 'KEY MISSING'}
+                  </span>
+                </div>
               </button>
             );
           })}
         </div>
-      </div>
+      </Section>
 
-      {/* Model Selection per Provider */}
-      <div>
-        <h3 className="text-white/70 text-xs uppercase tracking-widest font-semibold mb-4">
-          Model Configuration
-        </h3>
-        <div className="space-y-4">
-          {PROVIDERS.map((provider) => {
-            const modelKey = `ai_model_${provider.id}` as keyof AppSettings;
-            const currentModel = settings[modelKey] as string;
-            const isActive = settings.ai_provider === provider.id;
-
-            return (
-              <div
-                key={provider.id}
-                className="rounded-xl p-4"
-                style={{
-                  background: '#1a1e42',
-                  border: isActive ? `1px solid ${provider.color}44` : '1px solid rgba(255,255,255,0.10)',
-                  opacity: isActive ? 1 : 0.5,
-                }}
-              >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <div className="h-2 w-2 rounded-full" style={{ background: provider.color }} />
-                    <p className="text-white/70 text-sm font-semibold">{provider.name} Model</p>
-                    {isActive && (
-                      <span className="text-[9px] font-bold uppercase tracking-widest px-2 py-0.5 rounded" style={{ color: provider.color, background: `${provider.color}18` }}>
-                        Active
-                      </span>
-                    )}
-                  </div>
-                  <select
-                    value={currentModel}
-                    onChange={(e) => handleModelChange(provider.id, e.target.value)}
-                    className="px-3 py-1.5 rounded-lg text-xs text-white/70 outline-none cursor-pointer"
-                    style={{
-                      background: '#141736',
-                      border: '1px solid rgba(255,255,255,0.1)',
-                    }}
-                  >
-                    {provider.models.map((m) => (
-                      <option key={m} value={m}>{m}</option>
-                    ))}
-                  </select>
-                </div>
-                {/* Cost info */}
-                {costTable[currentModel] && (
-                  <div className="mt-2 flex gap-4 text-[10px] text-white/55">
-                    <span>Input: ${costTable[currentModel].input}/1M tokens</span>
-                    <span>Output: ${costTable[currentModel].output}/1M tokens</span>
-                  </div>
-                )}
-              </div>
-            );
-          })}
+      {/* Active model — only show the one that matters */}
+      <Section title={`Model — ${activeProvider?.name}`}>
+        <div className="rounded-xl p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3" style={{ background: '#1a1e42', border: '1px solid rgba(255,255,255,0.10)' }}>
+          <div>
+            <p className="text-white/70 text-xs">Pick which model the active provider uses for AI calls.</p>
+            {activeRates && (
+              <p className="text-white/45 text-[10px] mt-1">
+                Input ${activeRates.input}/1M tokens · Output ${activeRates.output}/1M tokens
+              </p>
+            )}
+          </div>
+          <select
+            value={activeModel}
+            onChange={(e) => patch({ [activeModelKey]: e.target.value } as Partial<AppSettings>)}
+            className="px-3 py-2 rounded-lg text-sm text-white outline-none cursor-pointer min-w-[220px]"
+            style={{ background: '#141736', border: '1px solid rgba(255,255,255,0.1)', colorScheme: 'dark' }}
+          >
+            {activeProvider?.models.map((m) => <option key={m} value={m}>{m}</option>)}
+          </select>
         </div>
-      </div>
+      </Section>
 
-      {/* General Settings */}
-      <div>
-        <h3 className="text-white/70 text-xs uppercase tracking-widest font-semibold mb-4">
-          General Settings
-        </h3>
-        <div className="space-y-4">
-          <div
-            className="rounded-xl p-4 flex items-center justify-between"
-            style={{ background: '#1a1e42', border: '1px solid rgba(255,255,255,0.10)' }}
-          >
-            <div>
-              <p className="text-white/70 text-sm font-semibold">Max Tokens per AI Call</p>
-              <p className="text-white/55 text-xs">Controls max response length for all AI calls</p>
-            </div>
-            <input
-              type="number"
-              value={settings.max_tokens}
-              onChange={(e) => { setSettings({ ...settings, max_tokens: parseInt(e.target.value) || 4000 }); setSaved(false); }}
-              className="w-24 px-3 py-1.5 rounded-lg text-xs text-white/70 text-right outline-none"
-              style={{ background: '#141736', border: '1px solid rgba(255,255,255,0.1)' }}
-            />
-          </div>
-
-          <div
-            className="rounded-xl p-4 flex items-center justify-between"
-            style={{ background: '#1a1e42', border: '1px solid rgba(255,255,255,0.10)' }}
-          >
-            <div>
-              <p className="text-white/70 text-sm font-semibold">CV Analyses / User / Day</p>
-              <p className="text-white/55 text-xs">Rate limit for free users</p>
-            </div>
-            <input
-              type="number"
-              value={settings.rate_limit_cv_per_day}
-              onChange={(e) => { setSettings({ ...settings, rate_limit_cv_per_day: parseInt(e.target.value) || 10 }); setSaved(false); }}
-              className="w-24 px-3 py-1.5 rounded-lg text-xs text-white/70 text-right outline-none"
-              style={{ background: '#141736', border: '1px solid rgba(255,255,255,0.1)' }}
-            />
-          </div>
-
-          <div
-            className="rounded-xl p-4 flex items-center justify-between"
-            style={{ background: '#1a1e42', border: '1px solid rgba(255,255,255,0.10)' }}
-          >
-            <div>
-              <p className="text-white/70 text-sm font-semibold">Cover Letters / User / Day</p>
-              <p className="text-white/55 text-xs">Rate limit for free users</p>
-            </div>
-            <input
-              type="number"
-              value={settings.rate_limit_cl_per_day}
-              onChange={(e) => { setSettings({ ...settings, rate_limit_cl_per_day: parseInt(e.target.value) || 20 }); setSaved(false); }}
-              className="w-24 px-3 py-1.5 rounded-lg text-xs text-white/70 text-right outline-none"
-              style={{ background: '#141736', border: '1px solid rgba(255,255,255,0.1)' }}
-            />
-          </div>
+      {/* Limits */}
+      <Section title="Limits & Quotas">
+        <div className="space-y-2">
+          <NumberRow
+            label="Max tokens per AI call"
+            hint="Caps response length. 4000 is fine for most CV/CL flows."
+            value={settings.max_tokens}
+            onChange={(n) => patch({ max_tokens: n || 4000 })}
+            width="w-28"
+          />
+          <NumberRow
+            label="CV analyses / free user / day"
+            hint="Daily quota for free-tier accounts."
+            value={settings.rate_limit_cv_per_day}
+            onChange={(n) => patch({ rate_limit_cv_per_day: n || 10 })}
+          />
+          <NumberRow
+            label="Cover letters / free user / day"
+            hint="Daily quota for free-tier accounts."
+            value={settings.rate_limit_cl_per_day}
+            onChange={(n) => patch({ rate_limit_cl_per_day: n || 20 })}
+          />
         </div>
-      </div>
+      </Section>
 
-      {/* USDT Payment Settings */}
-      <div>
-        <h3 className="text-white/70 text-xs uppercase tracking-widest font-semibold mb-4">
-          USDT Payment
-        </h3>
-        <div className="space-y-4">
-          <div
-            className="rounded-xl p-4"
-            style={{ background: '#1a1e42', border: '1px solid rgba(255,255,255,0.10)' }}
-          >
-            <p className="text-white/70 text-sm font-semibold mb-1">Wallet Address</p>
-            <p className="text-white/55 text-xs mb-2">USDT address shown to customers at checkout</p>
+      {/* USDT — used by /api/subscription/usdt-config */}
+      <Section title="USDT Checkout">
+        <div className="space-y-3">
+          <div className="rounded-xl p-4" style={{ background: '#1a1e42', border: '1px solid rgba(255,255,255,0.10)' }}>
+            <p className="text-white/70 text-sm font-semibold mb-1">Wallet address</p>
+            <p className="text-white/45 text-[11px] mb-2">Shown to customers on the USDT checkout page.</p>
             <input
               type="text"
               value={settings.usdt_wallet_address || ''}
-              onChange={(e) => { setSettings({ ...settings, usdt_wallet_address: e.target.value }); setSaved(false); }}
-              placeholder="e.g. TXqZ1r..."
+              onChange={(e) => patch({ usdt_wallet_address: e.target.value })}
+              placeholder="e.g. TXqZ1r…"
               className="w-full px-3 py-2 rounded-lg text-sm text-white font-mono placeholder:text-white/25 outline-none"
               style={{ background: '#141736', border: '1px solid rgba(255,255,255,0.1)' }}
             />
           </div>
-
-          <div
-            className="rounded-xl p-4 flex items-center justify-between"
-            style={{ background: '#1a1e42', border: '1px solid rgba(255,255,255,0.10)' }}
-          >
+          <div className="rounded-xl p-4 flex items-center justify-between" style={{ background: '#1a1e42', border: '1px solid rgba(255,255,255,0.10)' }}>
             <div>
-              <p className="text-white/70 text-sm font-semibold">Network / Chain</p>
-              <p className="text-white/55 text-xs">Which blockchain network to receive USDT on</p>
+              <p className="text-white/70 text-sm font-semibold">Network / chain</p>
+              <p className="text-white/45 text-[11px]">Which chain customers must send USDT on.</p>
             </div>
             <select
               value={settings.usdt_network || 'TRC-20'}
-              onChange={(e) => { setSettings({ ...settings, usdt_network: e.target.value }); setSaved(false); }}
-              className="px-3 py-1.5 rounded-lg text-xs text-white/70 outline-none cursor-pointer"
-              style={{ background: '#141736', border: '1px solid rgba(255,255,255,0.1)' }}
+              onChange={(e) => patch({ usdt_network: e.target.value })}
+              className="px-3 py-2 rounded-lg text-xs text-white outline-none cursor-pointer"
+              style={{ background: '#141736', border: '1px solid rgba(255,255,255,0.1)', colorScheme: 'dark' }}
             >
               <option value="TRC-20">TRC-20 (Tron)</option>
               <option value="ERC-20">ERC-20 (Ethereum)</option>
@@ -293,23 +221,67 @@ export default function BosiSettings() {
             </select>
           </div>
         </div>
-      </div>
+      </Section>
 
-      {/* Save Button */}
-      <button
-        onClick={handleSave}
-        disabled={saving || saved}
-        className="flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-bold transition-all duration-200"
+      {/* Sticky save */}
+      <div
+        className="sticky bottom-4 mt-8 flex items-center justify-between rounded-xl px-5 py-3"
         style={{
-          background: saved ? 'rgba(52,211,153,0.15)' : 'rgba(118,77,240,0.2)',
-          color: saved ? '#34d399' : '#a78bfa',
-          border: saved ? '1px solid rgba(52,211,153,0.3)' : '1px solid rgba(118,77,240,0.3)',
-          opacity: saving ? 0.6 : 1,
+          background: 'rgba(15,18,37,0.92)',
+          backdropFilter: 'blur(8px)',
+          border: `1px solid ${dirty ? 'rgba(118,77,240,0.4)' : 'rgba(255,255,255,0.10)'}`,
         }}
       >
-        {saved ? <CheckCircle className="h-4 w-4" /> : <Save className="h-4 w-4" />}
-        {saving ? 'Saving...' : saved ? 'Saved' : 'Save Settings'}
-      </button>
+        <p className="text-xs" style={{ color: dirty ? '#a78bfa' : 'rgba(255,255,255,0.45)' }}>
+          {dirty ? 'Unsaved changes' : 'All changes saved'}
+        </p>
+        <button
+          onClick={handleSave}
+          disabled={saving || !dirty}
+          className="flex items-center gap-2 px-5 py-2 rounded-lg text-sm font-bold text-white transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+          style={{
+            background: 'linear-gradient(180deg, oklch(0.62 0.24 291), oklch(0.48 0.22 291))',
+            boxShadow: dirty ? '0 2px 16px rgba(118,77,240,0.3)' : 'none',
+          }}
+        >
+          <Save className="h-4 w-4" />
+          {saving ? 'Saving…' : 'Save'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function Section({ title, icon: Icon, children }: { title: string; icon?: any; children: React.ReactNode }) {
+  return (
+    <div>
+      <h3 className="text-white/70 text-[10px] uppercase tracking-widest font-bold mb-3 flex items-center gap-2">
+        {Icon && <Icon className="h-3.5 w-3.5" />}
+        {title}
+      </h3>
+      {children}
+    </div>
+  );
+}
+
+function NumberRow({
+  label, hint, value, onChange, width = 'w-24',
+}: {
+  label: string; hint?: string; value: number; onChange: (n: number) => void; width?: string;
+}) {
+  return (
+    <div className="rounded-xl p-4 flex items-center justify-between gap-3" style={{ background: '#1a1e42', border: '1px solid rgba(255,255,255,0.10)' }}>
+      <div className="min-w-0">
+        <p className="text-white/70 text-sm font-semibold">{label}</p>
+        {hint && <p className="text-white/45 text-[11px]">{hint}</p>}
+      </div>
+      <input
+        type="number"
+        value={value}
+        onChange={(e) => onChange(parseInt(e.target.value) || 0)}
+        className={`${width} px-3 py-1.5 rounded-lg text-sm text-white text-right outline-none tabular-nums`}
+        style={{ background: '#141736', border: '1px solid rgba(255,255,255,0.1)' }}
+      />
     </div>
   );
 }

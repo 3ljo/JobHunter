@@ -6,6 +6,8 @@ const { rateLimitCL } = require('../middleware/rateLimit');
 
 router.post('/generate', requireAuth, rateLimitCL, generateCoverLetter);
 router.post('/generate-from-pdf', requireAuth, rateLimitCL, generateFromPdf);
-router.post('/refine', requireAuth, refineCoverLetter);
+// Refine also counts against the CL quota — prevents burning unlimited
+// AI by repeatedly refining a single generated letter.
+router.post('/refine', requireAuth, rateLimitCL, refineCoverLetter);
 
 module.exports = router;

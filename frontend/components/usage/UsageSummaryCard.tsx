@@ -14,13 +14,18 @@ type Row = {
 };
 
 const ROWS: Row[] = [
-  { feature: 'cv',             label: 'CV Analyses',     href: '/cv',           icon: FileText,        color: '#a78bfa' },
-  { feature: 'cover_letter',   label: 'Cover Letters',   href: '/cover-letter', icon: MessageSquare,   color: '#60a5fa' },
-  { feature: 'mock_interview', label: 'Mock Interviews', href: '/interview',    icon: Mic2,            color: '#fbbf24' },
+  { feature: 'cv',             label: 'CVs (Analyze + Create)', href: '/cv',           icon: FileText,        color: '#a78bfa' },
+  { feature: 'cover_letter',   label: 'Cover Letters',           href: '/cover-letter', icon: MessageSquare,   color: '#60a5fa' },
+  { feature: 'mock_interview', label: 'Mock Interviews',         href: '/interview',    icon: Mic2,            color: '#fbbf24' },
 ];
 
-const planLabel = (plan?: string | null) =>
-  plan === 'pro_plus' ? 'Pro+' : plan === 'pro' ? 'Pro' : 'Free';
+const planLabel = (plan?: string | null) => {
+  // `pro_plus` is a legacy alias for `pro_voice`.
+  if (plan === 'pro_voice' || plan === 'pro_plus') return 'Pro+';
+  if (plan === 'pro') return 'Pro';
+  if (plan === 'starter') return '7-Day Pass';
+  return 'Free';
+};
 
 const formatResetTime = (iso?: string | null) => {
   if (!iso) return '--:--';

@@ -12,8 +12,8 @@ const {
   BorderStyle,
 } = require('docx');
 
-// Generate a clean, ATS-compliant DOCX from final CV JSON
-const generateCVDocx = async (finalCV, outputPath) => {
+// Build the docx Document object from final CV JSON (in-memory only).
+const buildCVDocxDocument = (finalCV) => {
   const sections = [];
 
   // ── Name heading ──
@@ -160,10 +160,11 @@ const generateCVDocx = async (finalCV, outputPath) => {
     sections.push(createSectionHeading('Education'));
 
     for (const edu of finalCV.education) {
-      const eduText = [edu.degree, edu.institution, edu.year].filter(Boolean).join(' — ');
+      const place = [edu.city, edu.country].filter(Boolean).join(', ');
+      const eduText = [edu.degree, edu.institution, place, edu.year].filter(Boolean).join(' — ');
       sections.push(
         new Paragraph({
-          spacing: { after: 100 },
+          spacing: { after: edu.url ? 40 : 100 },
           children: [
             new TextRun({
               text: eduText,
@@ -173,6 +174,21 @@ const generateCVDocx = async (finalCV, outputPath) => {
           ],
         })
       );
+      if (edu.url) {
+        sections.push(
+          new Paragraph({
+            spacing: { after: 100 },
+            children: [
+              new TextRun({
+                text: edu.url,
+                size: 20,
+                color: '1d4ed8',
+                font: 'Calibri',
+              }),
+            ],
+          })
+        );
+      }
     }
   }
 
@@ -181,24 +197,42 @@ const generateCVDocx = async (finalCV, outputPath) => {
     sections.push(createSectionHeading('Certifications'));
 
     for (const cert of finalCV.certifications) {
-      const certText = typeof cert === 'string' ? cert : cert.name || JSON.stringify(cert);
+      const isString = typeof cert === 'string';
+      const headline = isString
+        ? cert
+        : [cert.name, cert.issuer, cert.year].filter(Boolean).join(' — ') || JSON.stringify(cert);
+      const url = !isString && cert.url ? String(cert.url) : '';
       sections.push(
         new Paragraph({
-          spacing: { after: 100 },
+          spacing: { after: url ? 40 : 100 },
           children: [
             new TextRun({
-              text: certText,
+              text: headline,
               size: 22,
               font: 'Calibri',
             }),
           ],
         })
       );
+      if (url) {
+        sections.push(
+          new Paragraph({
+            spacing: { after: 100 },
+            children: [
+              new TextRun({
+                text: url,
+                size: 20,
+                color: '1d4ed8',
+                font: 'Calibri',
+              }),
+            ],
+          })
+        );
+      }
     }
   }
 
-  // Build and save the document
-  const doc = new Document({
+  return new Document({
     sections: [
       {
         properties: {},
@@ -206,11 +240,96 @@ const generateCVDocx = async (finalCV, outputPath) => {
       },
     ],
   });
+};
 
-  const buffer = await Packer.toBuffer(doc);
+// Generate a DOCX as an in-memory Buffer (used by the download endpoint).
+const generateCVDocxBuffer = async (finalCV) => {
+  const doc = buildCVDocxDocument(finalCV);
+  return Packer.toBuffer(doc);
+};
+
+// Generate a DOCX file on disk (kept for any future scripted use).
+const generateCVDocx = async (finalCV, outputPath) => {
+  const buffer = await generateCVDocxBuffer(finalCV);
   fs.writeFileSync(outputPath, buffer);
-
   return outputPath;
+};
+
+// Generate a plain-text rendering of the final CV. ATS-friendly,
+// good for pasting into job-board text fields.
+const generateCVTxt = (finalCV) => {
+  const lines = [];
+  const push = (s = '') => lines.push(s);
+  const rule = () => push('-'.repeat(60));
+
+  if (finalCV.full_name) push(finalCV.full_name);
+  const contactParts = [
+    finalCV.email,
+    finalCV.phone,
+    finalCV.location,
+    finalCV.linkedin,
+  ].filter(Boolean);
+  if (contactParts.length) push(contactParts.join(' | '));
+  rule();
+  push();
+
+  if (finalCV.summary) {
+    push('PROFESSIONAL SUMMARY');
+    push(finalCV.summary);
+    push();
+  }
+
+  if (Array.isArray(finalCV.experience) && finalCV.experience.length > 0) {
+    push('WORK EXPERIENCE');
+    for (const role of finalCV.experience) {
+      const header = [role.title, role.company].filter(Boolean).join(' — ');
+      if (header) push(header);
+      if (role.duration) push(role.duration);
+      if (Array.isArray(role.bullets)) {
+        for (const b of role.bullets) push(`  • ${b}`);
+      }
+      push();
+    }
+  }
+
+  if (Array.isArray(finalCV.skills) && finalCV.skills.length > 0) {
+    push('SKILLS');
+    push(finalCV.skills.join(', '));
+    push();
+  }
+
+  if (Array.isArray(finalCV.education) && finalCV.education.length > 0) {
+    push('EDUCATION');
+    for (const edu of finalCV.education) {
+      const place = [edu.city, edu.country].filter(Boolean).join(', ');
+      const text = [edu.degree, edu.institution, place, edu.year].filter(Boolean).join(' — ');
+      if (text) push(text);
+      if (edu.url) push(`  ${edu.url}`);
+    }
+    push();
+  }
+
+  if (Array.isArray(finalCV.certifications) && finalCV.certifications.length > 0) {
+    push('CERTIFICATIONS');
+    for (const cert of finalCV.certifications) {
+      if (typeof cert === 'string') {
+        push(cert);
+        continue;
+      }
+      const headline = [cert?.name, cert?.issuer, cert?.year].filter(Boolean).join(' — ');
+      if (headline) push(headline);
+      if (cert?.url) push(`  ${cert.url}`);
+    }
+    push();
+  }
+
+  if (Array.isArray(finalCV.languages) && finalCV.languages.length > 0) {
+    push('LANGUAGES');
+    push(finalCV.languages.map(l => (l?.level ? `${l.name} (${l.level})` : l?.name)).filter(Boolean).join(', '));
+    push();
+  }
+
+  return lines.join('\r\n');
 };
 
 // Helper to create a standard section heading
@@ -230,4 +349,4 @@ function createSectionHeading(text) {
   });
 }
 
-module.exports = { generateCVDocx };
+module.exports = { generateCVDocx, generateCVDocxBuffer, generateCVTxt };

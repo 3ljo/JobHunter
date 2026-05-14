@@ -12,20 +12,30 @@ const FEATURE_COPY: Record<FeatureKey, { noun: string; verb: string }> = {
   mock_interview: { noun: 'mock interviews', verb: 'started' },
 };
 
-const planLabel = (plan?: string | null) =>
-  plan === 'pro_plus' ? 'Pro+' : plan === 'pro' ? 'Pro' : 'Free';
+const planLabel = (plan?: string | null) => {
+  // `pro_plus` is a legacy alias for `pro_voice`.
+  if (plan === 'pro_voice' || plan === 'pro_plus') return 'Pro+';
+  if (plan === 'pro') return 'Pro';
+  if (plan === 'starter') return '7-Day Pass';
+  return 'Free';
+};
 
 // Upgrade CTA changes per feature + current plan.
 const upgradeCopy = (feature: FeatureKey, plan?: string | null) => {
+  const isProVoice = plan === 'pro_voice' || plan === 'pro_plus';
   if (feature === 'cv') {
-    if (plan === 'pro') return { label: 'Upgrade to Pro+ for unlimited', target: 'pro_plus' };
-    return { label: 'Upgrade to Pro for 25/day', target: 'pro' };
+    if (plan === 'free') return { label: 'Upgrade to Pro for unlimited', target: 'pro' };
+    return { label: '', target: '' }; // Pro / Pro Voice already get unlimited CV
   }
   if (feature === 'cover_letter') {
     if (plan === 'free') return { label: 'Upgrade to Pro for unlimited', target: 'pro' };
-    return { label: 'Upgrade to Pro+ for unlimited', target: 'pro_plus' };
+    return { label: '', target: '' }; // Pro / Pro Voice already get unlimited cover letters
   }
-  // mock_interview is Pro+ only — if we're rendering this card, user is already Pro+.
+  // mock_interview: free/Pro → upsell to Pro Voice; Pro Voice is top tier.
+  if (feature === 'mock_interview') {
+    if (isProVoice) return { label: '', target: '' };
+    return { label: 'Upgrade to Pro+ for voice interviews', target: 'pro_voice' };
+  }
   return { label: '', target: '' };
 };
 
@@ -55,7 +65,9 @@ export default function LimitReachedCard({ feature }: { feature: FeatureKey }) {
   const copy = FEATURE_COPY[feature];
   const hrs = hoursUntil(usage?.resetsAt);
   const resetTime = formatResetTime(usage?.resetsAt);
-  const isHighestPlan = plan === 'pro_plus' || feature === 'mock_interview';
+  const isProVoice = plan === 'pro_voice' || plan === 'pro_plus';
+  // Top of the ladder — no upgrade CTA to show.
+  const isHighestPlan = isProVoice;
   const upgrade = upgradeCopy(feature, plan);
 
   return (
@@ -85,10 +97,12 @@ export default function LimitReachedCard({ feature }: { feature: FeatureKey }) {
           className="font-bold"
           style={{
             color:
-              plan === 'pro_plus'
+              isProVoice
                 ? '#c084fc'
                 : plan === 'pro'
                 ? '#a78bfa'
+                : plan === 'starter'
+                ? '#34d399'
                 : 'rgba(255,255,255,0.8)',
           }}
         >
@@ -116,7 +130,15 @@ export default function LimitReachedCard({ feature }: { feature: FeatureKey }) {
         <>
           <button
             type="button"
-            onClick={() => router.push('/pricing')}
+            onClick={() => {
+              // Skip the pricing page when we already know the right
+              // plan to upsell — drop the user straight into checkout.
+              if (upgrade.target === 'pro' || upgrade.target === 'pro_voice') {
+                router.push(`/checkout?plan=${upgrade.target}&interval=month`);
+              } else {
+                router.push('/pricing');
+              }
+            }}
             className="w-full flex items-center justify-center gap-2 rounded-xl py-3 text-sm font-black transition-all"
             style={{
               background: 'linear-gradient(135deg,#764DF0,#5b21b6)',
@@ -128,7 +150,7 @@ export default function LimitReachedCard({ feature }: { feature: FeatureKey }) {
             <Sparkles className="h-4 w-4" />
             {upgrade.label}
           </button>
-          <p className="text-center text-[11px] text-white/35 mt-3">
+          <p className="text-center text-[11px] text-white/45 mt-3">
             Upgrades take effect immediately
           </p>
         </>

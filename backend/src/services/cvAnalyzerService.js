@@ -24,115 +24,282 @@ const callProvider = async (systemPrompt, userMessage, stageName, meta = {}) => 
   }
 };
 
-// Helper to calculate total experience years from parsed experience entries
-const calculateTotalExperience = (experience) => {
-  let totalMonths = 0;
-  const now = new Date();
+// Skills bounds — kept as tunable constants instead of a magic 10–18 hard rule
+// so we can A/B test cap sizes without changing prompt text. The rewrite
+// prompt enforces these; the post-validation pass also clamps to MAX_SKILLS.
+const MIN_SKILLS = 10;
+const MAX_SKILLS = 22;
 
-  for (const exp of experience) {
-    if (!exp.duration) continue;
-    const duration = exp.duration.toLowerCase().trim();
+// Split a skill name like "Cloud Platforms (Azure)" into candidate phrases
+// ["Cloud Platforms", "Azure"]. Parenthesized aliases often hold the specific
+// technology that lives in bullets ("Implemented Azure cloud solutions...")
+// while the parent phrase is generic. Matching ANY candidate counts.
+const candidateAliases = (skillName) => {
+  const out = [];
+  const trimmed = String(skillName || '').trim();
+  if (!trimmed) return out;
+  out.push(trimmed);
+  const parenMatches = trimmed.match(/\(([^)]+)\)/g) || [];
+  for (const p of parenMatches) {
+    const inner = p.slice(1, -1).trim();
+    if (inner) out.push(inner);
+  }
+  const stripped = trimmed.replace(/\s*\([^)]*\)\s*/g, ' ').trim();
+  if (stripped && stripped !== trimmed) out.push(stripped);
+  // Slash-separated combos like "GitHub/Git" → ["GitHub", "Git"]
+  if (trimmed.includes('/')) {
+    for (const piece of trimmed.split('/').map((s) => s.trim()).filter(Boolean)) {
+      out.push(piece);
+    }
+  }
+  return Array.from(new Set(out));
+};
 
-    // Try to parse "MMM YYYY - MMM YYYY" or "MMM YYYY - Present" patterns
-    const rangeMatch = duration.match(
-      /(\w+)\s+(\d{4})\s*[-–—to]+\s*(\w+)\s*(\d{4})?/i
-    );
-    if (rangeMatch) {
-      const startMonth = new Date(`${rangeMatch[1]} 1, ${rangeMatch[2]}`);
-      let endMonth;
-      if (
-        rangeMatch[3].toLowerCase() === 'present' ||
-        rangeMatch[3].toLowerCase() === 'current'
-      ) {
-        endMonth = now;
-      } else {
-        endMonth = new Date(
-          `${rangeMatch[3]} 1, ${rangeMatch[4] || now.getFullYear()}`
-        );
+// Evidence-binding enforcement (LAW 2 — structural, not prompt-trust).
+//
+// Skills sourced from the parsed CV are auto-trusted (they're facts the user
+// put on their own resume). Any skill the rewrite ADDED must appear as a
+// substring inside ONE specific experience bullet, cert name, or education
+// entry — NOT scattered across the CV via token-presence. The summary is
+// EXCLUDED from evidence: it's downstream of skills selection and prone to
+// keyword stuffing, so trusting it would let stuffed terms self-validate.
+//
+// Returns:
+//   boundSkills:       string[] — flat skill names, safe for renderers
+//   droppedSkills:     [{ skill, reason }] — surfaced in audit panel
+//   evidenceBindings:  [{ skill, evidence }] — full mapping for UI
+const enforceEvidenceBinding = (skillsRaw, sourceSkills, experience, summary, certifications, education) => {
+  // Build per-entry strings — each bullet / cert / education entry stays
+  // separate. A skill needs to match ONE entry (not be scattered across the
+  // joined haystack). This catches "Application support" when nothing in the
+  // CV actually describes application support work.
+  const entries = [];
+  for (const exp of experience || []) {
+    const title = exp?.title ? String(exp.title) : '';
+    const company = exp?.company ? String(exp.company) : '';
+    const titleCompany = [title, company].filter(Boolean).join(' @ ');
+    if (titleCompany) entries.push({ kind: 'role', text: titleCompany });
+    for (const b of Array.isArray(exp?.bullets) ? exp.bullets : []) {
+      if (b) entries.push({ kind: 'bullet', text: String(b), role: titleCompany });
+    }
+  }
+  for (const c of certifications || []) {
+    const text = typeof c === 'string' ? c : (c?.name || '');
+    if (text) entries.push({ kind: 'cert', text: String(text) });
+  }
+  for (const e of education || []) {
+    if (typeof e === 'string') {
+      if (e) entries.push({ kind: 'education', text: e });
+    } else {
+      const parts = [e?.degree, e?.institution].filter(Boolean).map(String);
+      if (parts.length) entries.push({ kind: 'education', text: parts.join(' — ') });
+    }
+  }
+  const entriesLc = entries.map((x) => ({ ...x, lc: x.text.toLowerCase() }));
+
+  // Case- and whitespace-insensitive set of source-CV skills.
+  const sourceSet = new Set(
+    (sourceSkills || []).map((s) => String(s).trim().toLowerCase()).filter(Boolean)
+  );
+
+  const boundSkills = [];
+  const droppedSkills = [];
+  const evidenceBindings = [];
+  const seen = new Set();
+
+  for (const entry of skillsRaw || []) {
+    if (boundSkills.length >= MAX_SKILLS) break;
+
+    const skill = typeof entry === 'string' ? entry : (entry?.skill || '');
+    const anchor = typeof entry === 'string' ? 'source_cv' : (entry?.evidence_anchor || '');
+    const name = String(skill || '').trim();
+    if (!name) continue;
+
+    const key = name.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+
+    // Source-CV skills are auto-trusted — the user put them there themselves.
+    if (sourceSet.has(key)) {
+      boundSkills.push(name);
+      evidenceBindings.push({ skill: name, evidence: 'source_cv' });
+      continue;
+    }
+
+    // Newly added skills must match (as a phrase substring) at least one
+    // specific entry. We try the skill itself, every parenthesized alias,
+    // and finally the model's quoted anchor — each against each entry.
+    const candidates = candidateAliases(name).map((c) => c.toLowerCase());
+    let matchedEntry = null;
+    let matchedCandidate = null;
+    for (const candidate of candidates) {
+      if (candidate.length < 2) continue;
+      matchedEntry = entriesLc.find((e) => e.lc.includes(candidate));
+      if (matchedEntry) {
+        matchedCandidate = candidate;
+        break;
       }
-      if (!isNaN(startMonth) && !isNaN(endMonth)) {
-        const months =
-          (endMonth.getFullYear() - startMonth.getFullYear()) * 12 +
-          (endMonth.getMonth() - startMonth.getMonth());
-        totalMonths += Math.max(0, months);
+    }
+    if (!matchedEntry) {
+      const anchorLc = String(anchor || '').trim().toLowerCase();
+      if (anchorLc && anchorLc !== 'source_cv') {
+        matchedEntry = entriesLc.find((e) => e.lc.includes(anchorLc));
+        if (matchedEntry) matchedCandidate = anchorLc;
       }
+    }
+
+    if (matchedEntry) {
+      boundSkills.push(name);
+      evidenceBindings.push({
+        skill: name,
+        evidence: `${matchedEntry.kind}: "${matchedEntry.text}"`,
+        matched_on: matchedCandidate,
+      });
+    } else {
+      droppedSkills.push({
+        skill: name,
+        reason: 'No bullet/cert/education entry demonstrates this skill (LAW 2 — Evidence Binding)',
+      });
     }
   }
 
-  return Math.round((totalMonths / 12) * 10) / 10; // round to 1 decimal
+  return { boundSkills, droppedSkills, evidenceBindings };
 };
 
-// Helper: date adjustment stage — only runs if required years > current years
-const runDateAdjustmentStage = (parsedData, m) => {
-  const requiredYears = parseFloat(parsedData.jd_fingerprint.required_experience_years) || 0;
-  const currentYears = calculateTotalExperience(parsedData.cv_parsed.experience || []);
-  if (!(requiredYears > 0 && currentYears < requiredYears)) return Promise.resolve(null);
+// Summary coherence check (LAW 4). The most common failure mode in v2's
+// real-world output: a Mad-Libs sentence that yokes the user's actual
+// frontend/backend domain onto the target enterprise-IT/HR domain via a
+// preposition ("with", "using", "via"). The exact specimen from the v2 spec:
+//
+//   "Adept at supporting enterprise IT applications with Angular state
+//    management via NgRx"
+//
+// Detection: a sentence that mentions BOTH an enterprise-domain term AND a
+// frontend/dev-tooling term is incoherent for an enterprise-IT target.
+// Strip the offending sentence and flag it for the audit panel.
+const ENTERPRISE_DOMAIN_TERMS = /\b(enterprise\s+IT|IT\s+support|application\s+support|service\s*now|servicenow|SAP(?:\s+HCM)?|ITSM|ticketing|incident\s+management|workday|HRIS|HRMS|personnel\s+administration|payroll|helpdesk|help\s+desk)\b/i;
+const FRONTEND_DEV_TERMS = /\b(NgRx|Redux|RxJS|Vuex|Pinia|MobX|angular\s+state\s+management|angular\s+routing|react\s+hooks|vue\s+composables|webpack|vite|sass|tailwind|jQuery)\b/i;
 
-  return callProvider(
-    `You are a strategic CV date optimizer. Your job is to adjust work experience dates on a CV so that the total years of experience meets or slightly exceeds a target requirement.
+const detectIncoherentSummarySentence = (summary, jdFingerprint) => {
+  if (typeof summary !== 'string' || !summary.trim()) return null;
+  const targetTitle = String(jdFingerprint?.target_job_title || '').toLowerCase();
+  const targetIsEnterprise = ENTERPRISE_DOMAIN_TERMS.test(targetTitle)
+    || ENTERPRISE_DOMAIN_TERMS.test(JSON.stringify(jdFingerprint?.required_hard_skills || []))
+    || ENTERPRISE_DOMAIN_TERMS.test(JSON.stringify(jdFingerprint?.preferred_hard_skills || []));
 
-Rules:
-- You can ONLY modify start dates and end dates of existing positions — never add fake companies or roles
-- Push the START DATE of the EARLIEST job backward to add the missing years
-- Keep all date gaps between jobs realistic (no overlapping positions unless the original had overlaps)
-- If the candidate has multiple positions, distribute the added time naturally — primarily extend the earliest role, but you can slightly extend others if it looks more natural
-- All dates must be in the same format as the original CV (e.g., "Jan 2020 - Present")
-- Never set any date in the future
-- Keep end dates of past roles unchanged when possible — only adjust start dates
-- The total experience after adjustment should be between the required years and required years + 1 (don't overshoot)
-- Make it look natural: round to full months, avoid suspiciously round numbers
-
-Your output must always be valid JSON only. No markdown, no explanation, no extra text.`,
-    `The job requires ${requiredYears} years of experience.
-The candidate currently has approximately ${currentYears} years based on their CV dates.
-Gap to fill: ${(requiredYears - currentYears).toFixed(1)} years.
-
-Current experience entries:
-${JSON.stringify(parsedData.cv_parsed.experience, null, 2)}
-
-Today's date: ${new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
-
-Adjust the dates to meet the ${requiredYears}-year requirement. Return ONLY this JSON:
-{
-  "adjusted_experience": [
-    {
-      "title": "",
-      "company": "",
-      "original_duration": "",
-      "adjusted_duration": "",
-      "change_reason": ""
+  const sentences = summary.split(/(?<=[.!?])\s+/);
+  for (let i = 0; i < sentences.length; i++) {
+    const s = sentences[i];
+    const hasEnterprise = ENTERPRISE_DOMAIN_TERMS.test(s);
+    const hasFrontend = FRONTEND_DEV_TERMS.test(s);
+    // Pattern 1: enterprise + frontend in the same sentence is incoherent
+    // regardless of target — the user is bridging two unrelated domains.
+    if (hasEnterprise && hasFrontend) {
+      return { index: i, sentence: s, reason: 'enterprise domain + frontend tech in same sentence (Mad-Libs)' };
     }
-  ],
-  "original_total_years": ${currentYears},
-  "adjusted_total_years": 0,
-  "required_years": ${requiredYears},
-  "strategy_used": ""
-}`,
-    'Date Manipulation',
-    m
-  );
+    // Pattern 2: target role is enterprise and sentence opens with stative-verb
+    // bridge into frontend tech — "Skilled at/in/with [enterprise] ... [frontend]".
+    if (targetIsEnterprise && hasFrontend && /\b(skilled|adept|proficient|experienced|expert|capable)\s+(?:at|in|with)\b/i.test(s)) {
+      return { index: i, sentence: s, reason: 'stative-verb bridge into frontend tech for enterprise target' };
+    }
+  }
+  return null;
 };
 
-const analyzeCVWithJD = async (cvText, jobDescription, meta = {}) => {
-  const m = { ...meta, feature: 'cv_analysis' };
-  // ──────────────────────────────────────────────
-  // STAGE 1 — PARSE + AUDIT (merged into one call)
-  // Was 2 sequential calls; merging saves one full LLM round-trip.
-  // ──────────────────────────────────────────────
-  const stage1 = await callProvider(
-    `You are a combined expert CV parser, JD analyst, and senior ATS optimization expert.
-You know Workday, Taleo, iCIMS, Greenhouse, and Lever deeply.
-Your output must always be valid JSON only. No markdown, no explanation, no extra text.
+const sanitizeSummary = (summary, jdFingerprint) => {
+  const incoherent = detectIncoherentSummarySentence(summary, jdFingerprint);
+  if (!incoherent) return { summary, flagged: null };
+  const sentences = summary.split(/(?<=[.!?])\s+/);
+  sentences.splice(incoherent.index, 1);
+  const cleaned = sentences.join(' ').trim();
+  return {
+    summary: cleaned,
+    flagged: {
+      removed_sentence: incoherent.sentence,
+      reason: incoherent.reason,
+    },
+  };
+};
 
-Key ATS facts you must apply in the audit:
-- Hard skill keywords account for 35% of ATS ranking weight
-- Soft skills add near zero ATS value
-- Optimal keyword match rate is 65-75%. Over 75% is keyword stuffing and gets penalized
-- ATS parsers cannot read tables, text boxes, headers/footers, graphics, multi-column layouts
-- Section headers must be standard: Work Experience, Education, Skills, Professional Summary, Certifications
-- Taleo is strictest: single column DOCX only
-- Workday, Greenhouse, Lever added AI semantic matching in 2024-2025`,
-    `Parse the CV and the job description, then audit the CV against the JD.
+// Banned-fluff detector. v2 explicitly rejects these phrases; they kept
+// surviving the rewrite because the model treated them as professional
+// language. Catch them in post-process and flag.
+const BANNED_FLUFF_PATTERNS = [
+  { rx: /quickly adapted to (new|various|emerging|different)\s+technolog/i, label: 'quickly adapted to new technologies' },
+  { rx: /demonstrating (flexibility|adaptability|versatility|problem.?solving)/i, label: 'demonstrating [soft-skill]' },
+  { rx: /strong (communication|analytical|interpersonal|problem.?solving|leadership)\s+skills/i, label: 'strong [soft-skill] skills' },
+  { rx: /passionate\s+(about|professional)/i, label: 'passionate about/professional' },
+  { rx: /\bresults.?driven\b/i, label: 'results-driven' },
+  { rx: /\bteam\s+player\b/i, label: 'team player' },
+  { rx: /\bproven\s+track\s+record\b/i, label: 'proven track record' },
+  { rx: /\bdetail.?oriented\b/i, label: 'detail-oriented' },
+  { rx: /\bhighly\s+motivated\b/i, label: 'highly motivated' },
+  { rx: /\bself.?starter\b/i, label: 'self-starter' },
+  { rx: /\bgo.?getter\b/i, label: 'go-getter' },
+  { rx: /\bthinking\s+outside\s+the\s+box\b/i, label: 'thinking outside the box' },
+  { rx: /\bsynergiz(e|ing)\b/i, label: 'synergize' },
+];
+
+const findBannedFluff = (text) => {
+  if (typeof text !== 'string' || !text) return [];
+  const hits = [];
+  for (const { rx, label } of BANNED_FLUFF_PATTERNS) {
+    const m = text.match(rx);
+    if (m) hits.push({ label, matched_text: m[0] });
+  }
+  return hits;
+};
+
+// Walk the final CV (summary + experience bullets) collecting fluff hits.
+// Each hit lands in verify_flags so the audit panel can surface them and
+// the user can decide whether to manually rewrite.
+const collectFluffFlags = (finalCV) => {
+  const flags = [];
+  const summaryHits = findBannedFluff(finalCV?.summary || '');
+  for (const h of summaryHits) {
+    flags.push({
+      location: 'summary',
+      content: h.matched_text,
+      flag: `[VERIFY: banned fluff "${h.label}" — replace with a specific accomplishment]`,
+    });
+  }
+  for (const exp of Array.isArray(finalCV?.experience) ? finalCV.experience : []) {
+    const where = [exp?.title, exp?.company].filter(Boolean).join(' @ ') || 'experience';
+    for (const b of Array.isArray(exp?.bullets) ? exp.bullets : []) {
+      const hits = findBannedFluff(b);
+      for (const h of hits) {
+        flags.push({
+          location: where,
+          content: h.matched_text,
+          flag: `[VERIFY: banned fluff "${h.label}" — replace with a specific accomplishment]`,
+        });
+      }
+    }
+  }
+  return flags;
+};
+
+// Stage 1a — Parse the CV + extract JD fingerprint. Small, fast call.
+// Pulled out of the old "Parse + Audit" merged stage so the audit and the
+// rewrite can run in parallel (rewrite needs only the parsed data).
+const runParseStage = (cvText, jobDescription, m) => callProvider(
+  `You operate with FOUR expert lenses simultaneously:
+  1. ATS Engineer — 10+ years building parsers for Workday, Greenhouse, Lever, Taleo, iCIMS, SmartRecruiters, Jobvite, BambooHR, Bullhorn, ADP.
+  2. Senior Technical Recruiter — 15+ years screening 50,000+ resumes across FAANG, scale-ups, Fortune 500.
+  3. Hiring Manager — has personally hired across engineering, product, design, marketing, sales, ops, exec.
+  4. Career Strategist — coaches career-switchers through C-suite candidates.
+
+Your job in this stage: extract clean, structured data from a CV and decode the job description like a senior recruiter who already knows what the hiring manager actually wants — not what HR wrote.
+
+Key truths you apply:
+- Recruiters scan resumes in ~7 seconds; ATS filters ~75% before a human sees them.
+- Job descriptions are written by HR and contain marketing language. The REAL day-to-day is usually narrower and more specific. Decode it.
+- ATS scoring: hard-skill keyword match accounts for ~35% of ranking weight. Soft skills add near-zero ATS value.
+- Optimal keyword match rate is 65–75%. Over 75% is keyword stuffing and gets penalized by modern semantic ATS (Workday/Greenhouse/Lever added AI semantic matching in 2024–2025).
+- Recruiters search ATS databases with Boolean strings using EXACT phrasing from the JD. Identify those exact phrases.
+
+Output strict JSON only — no markdown, no prose. Truth first: never invent skills, dates, employers, or credentials.`,
+  `Parse the CV and decode the job description.
 
 CV TEXT:
 ${cvText}
@@ -140,9 +307,21 @@ ${cvText}
 JOB DESCRIPTION:
 ${jobDescription}
 
-Return ONLY this JSON structure, nothing else. Preserve ALL certifications and education
-entries from the CV — never drop a factual credential.
+Rules for parsing the CV:
+- Preserve ALL certifications and education entries — never drop a factual credential.
+- If an entry has a URL (certificate link, institution website, course page), capture it in the "url" field.
+- Capture city and country if present next to the institution. Dropping URLs or locations is a critical failure.
+- Languages: every entry MUST have BOTH a "name" (e.g., "English", "Italian") AND a "level" (e.g., "B2", "Native", "Fluent"). NEVER output just a level with no name. If the CV lists "English B2" and "Italian B1", output [{"name":"English","level":"B2"},{"name":"Italian","level":"B1"}] — not ["B2","B1"].
 
+Rules for the JD fingerprint:
+- "required_hard_skills" / "preferred_hard_skills": use the EMPLOYER'S EXACT PHRASING. If the JD says "TypeScript", do not write "JS/TS". If the JD says "stakeholder management", do not write "managed stakeholders". Acronyms — include both forms when the JD does (e.g., "Search Engine Optimization (SEO)").
+- "top_20_keywords_ranked": the 20 terms a recruiter would Boolean-search for, ranked by likely ATS weight (frequency in JD + position + emphasis like "must have", "required").
+- "real_job_summary": 2 sentences describing the actual day-to-day reality, stripped of marketing language.
+- "unstated_requirements": things implied by team structure, company stage, tone — e.g., "early-stage startup signals scrappiness and ownership", "uses 'fast-paced' 3x signals heavy load".
+- "likely_deal_breakers": specific skills/credentials that, if absent, will almost certainly cause auto-rejection.
+- "hiring_manager_top_concerns": the 3 concerns a hiring manager would have about an average candidate for this role (e.g., "can they scale beyond prototypes?", "do they have B2B SaaS context, not just consumer?").
+
+Return ONLY this JSON:
 {
   "cv_parsed": {
     "full_name": "",
@@ -155,14 +334,19 @@ entries from the CV — never drop a factual credential.
       { "title": "", "company": "", "duration": "", "bullets": [] }
     ],
     "education": [
-      { "degree": "", "institution": "", "year": "" }
+      { "degree": "", "institution": "", "year": "", "city": "", "country": "", "url": "" }
     ],
     "skills": [],
-    "certifications": [],
-    "languages": []
+    "certifications": [
+      { "name": "", "issuer": "", "year": "", "url": "" }
+    ],
+    "languages": [
+      { "name": "", "level": "" }
+    ]
   },
   "jd_fingerprint": {
     "target_job_title": "",
+    "real_job_summary": "",
     "required_hard_skills": [],
     "preferred_hard_skills": [],
     "required_soft_skills": [],
@@ -170,129 +354,247 @@ entries from the CV — never drop a factual credential.
     "required_education": "",
     "required_certifications": [],
     "company_culture_signals": [],
+    "top_20_keywords_ranked": [],
+    "unstated_requirements": [],
+    "likely_deal_breakers": [],
+    "hiring_manager_top_concerns": [],
     "keyword_frequency": {}
-  },
-  "audit": {
-    "ats_scores": {
-      "overall": 0,
-      "formatting": 0,
-      "keyword_match": 0,
-      "bullet_quality": 0,
-      "section_structure": 0,
-      "job_title_alignment": 0
-    },
-    "formatting_audit": [
-      { "item": "", "status": "PASS|FAIL|WARNING", "fix": "" }
-    ],
-    "keyword_analysis": {
-      "critical_missing": [],
-      "present_exact_match": [],
-      "present_wrong_phrasing": [
-        { "cv_phrase": "", "jd_phrase": "", "fix": "" }
-      ],
-      "keyword_match_percentage": 0
-    },
-    "bullet_analysis": [
-      { "original": "", "issues": [], "weak_verb": true, "missing_metric": true, "buried_keyword": true }
-    ],
-    "top_5_quick_wins": [
-      { "priority": 1, "action": "", "impact": "high|medium|low", "reason": "" }
-    ],
-    "projected_score_after_fixes": 0
   }
 }`,
-    'Parse + Audit',
-    m
-  );
+  'Parse + JD',
+  m
+);
 
-  const parsedData = { cv_parsed: stage1.cv_parsed, jd_fingerprint: stage1.jd_fingerprint };
-  const auditData  = stage1.audit;
+// Stage 1b — ATS audit. Uses parsed CV + JD fingerprint, runs in parallel
+// with the rewrite. The rewrite no longer depends on this stage.
+const runAuditStage = (cvText, parsedData, m) => callProvider(
+  `You audit CVs with FOUR expert lenses simultaneously:
+  1. ATS Engineer — Workday, Taleo, iCIMS, Greenhouse, Lever, SmartRecruiters, Jobvite, BambooHR, Bullhorn, ADP.
+  2. Senior Technical Recruiter — decides in 7 seconds who advances.
+  3. Hiring Manager — knows what converts "interesting" into "offer".
+  4. Career Strategist — sees the narrative under the bullets.
 
-  // ──────────────────────────────────────────────
-  // STAGE 2 — DATE ADJUSTMENT (conditional)
-  // ──────────────────────────────────────────────
-  const dateAdjustment = await runDateAdjustmentStage(parsedData, m);
+Be DIRECT and ruthless. The user needs the truth to win interviews — do not soften feedback to be nice. Output strict JSON only — no markdown, no prose.
 
-  const requiredYears = parseFloat(parsedData.jd_fingerprint.required_experience_years) || 0;
+DEEP ATS PARSING REALITIES:
+- ~75% of resumes are filtered before any human reads them.
+- Section headers must be STANDARD: "Experience" or "Work Experience" (not "Where I've Made An Impact"), "Education", "Skills", "Professional Summary", "Certifications".
+- Tables, text boxes, multi-column layouts, graphics, icons, charts, skill-rating dots break parsing.
+- Contact info in headers/footers is frequently missed — must be in the document body.
+- Date format must be consistent (MM/YYYY or "Mon YYYY"). Mixing formats confuses parsers.
+- Non-standard fonts render as garbled text. Safe: Calibri, Arial, Helvetica, Georgia, Garamond, Times New Roman.
+- Taleo is strictest: single-column DOCX only.
+- Workday, Greenhouse, Lever added AI semantic matching in 2024–2025 — they detect keyword stuffing.
 
-  const experienceForRewrite = dateAdjustment
-    ? dateAdjustment.adjusted_experience.map((adj) => {
-        const original = parsedData.cv_parsed.experience.find(
-          (e) => e.company === adj.company && e.title === adj.title
-        ) || {};
-        return {
-          ...original,
-          duration: adj.adjusted_duration,
-          original_duration: adj.original_duration,
-        };
-      })
-    : parsedData.cv_parsed.experience;
+KEYWORD STRATEGY:
+- ATS scores exact-phrase match > synonym > semantic match. Exact wins.
+- Top keywords should appear in THREE locations: Summary, Skills section, AND in context within bullets.
+- Optimal natural integration: 3–5 times for top-priority keywords. More than that is stuffing.
+- Acronyms: both forms at least once, e.g. "Search Engine Optimization (SEO)".
+- Title mismatch: parenthetically note the equivalent — e.g., "Software Engineer III (Senior Software Engineer)".
 
-  // ──────────────────────────────────────────────
-  // STAGE 3 — REWRITE + HUMANIZE (merged into 1 call)
-  // Previously 2 sequential calls (~5-8s each); now 1 call that
-  // produces already-humanized output. Cuts roughly half the
-  // total analysis latency.
-  // ──────────────────────────────────────────────
-  const mergedData = await callProvider(
-    `You are a world-class CV writer and humanization expert.
-Your job is to produce a FINAL, ATS-optimized, undetectably-human CV in a single pass.
+BULLET QUALITY STANDARD — XYZ+ formula:
+[Strong action verb] [what + scope] by [specific mechanism] resulting in [quantified outcome].
+- BAD: "Responsible for payment infrastructure and improved reliability."
+- GOOD: "Architected event-driven payment pipeline using Kafka and Go, processing 2.4M daily transactions and reducing failure rate from 0.8% → 0.04%."
 
-Pass 1 — Voice preservation & intelligent rewrite:
-1. Study the original CV text carefully. Detect vocabulary complexity, avg sentence length,
-   first vs third person, formality level, quantification style.
-2. Rewrite every section in that exact voice — only stronger, sharper, more specific.
-3. Naturally embed all missing JD keywords without sounding forced.
-4. Never fabricate skills, experience, employers, dates, or achievements.
-5. Transform weak bullets into strong achievement-focused statements.
-6. PRESERVE every certification, license, degree, and education entry from the parsed CV.
-   NEVER drop or empty them. If the parsed CV lists certifications, the final_cv.certifications
-   array MUST contain them (rewritten/normalized in wording is fine, but the items themselves
-   must survive). Same for education entries. Dropping factual credentials is a critical failure.
+BANNED WEAK VERBS (flag as weak_verb=true): handled, helped, worked on, was responsible for, assisted with, participated in, supported, contributed to, managed (without scope).
 
-Pass 2 — Heavy humanization (applied in the SAME output):
-- Vary sentence length drastically — mix short punchy bullets with longer descriptive ones.
-- Never start two consecutive bullets with the same verb.
-- Avoid all AI-typical phrases: "leveraged", "spearheaded", "orchestrated", "utilized",
-  "in order to", "as well as", "additionally", "furthermore".
-- Break up overly parallel structures; insert natural thought progression.
-- Use contractions where the person's voice allows; add industry-specific jargon they
-  would naturally know.
-- Vary bullet openings: numbers, context-first, result-first, problem-first.
-- The final output must pass GPTZero / Originality.ai / Turnitin.
+A bullet is WEAK if any of these are true: vague language ("various", "multiple", "several"), passive voice, no number, no mechanism (just outcome), buzzword soup ("synergize", "leverage", "ideate"), or a buried/missing JD keyword.
 
-Strict constraints:
-- Preserve ALL work experience dates exactly as provided (including any adjusted ones).
-- If the summary references years of experience, keep it consistent with the dates.
-- Preserve contact details exactly as provided.
-- Return a single valid JSON. No markdown. No explanation.`,
-    `Original CV text (source of voice and facts):
+A 7-second test: would a recruiter understand the impact and relevance after 7 seconds? If not, the CV fails.`,
+  `Audit this CV against the job description. Be specific and ruthless.
+
+ORIGINAL CV TEXT:
 ${cvText}
 
-Parsed CV data (use these as the facts; dates are authoritative):
-${JSON.stringify({ ...parsedData.cv_parsed, experience: experienceForRewrite })}
+PARSED CV:
+${JSON.stringify(parsedData.cv_parsed)}
 
-JD fingerprint (keywords to embed):
+JD FINGERPRINT:
 ${JSON.stringify(parsedData.jd_fingerprint)}
 
-ATS audit (issues to fix in the rewrite):
-${JSON.stringify(auditData)}
+For each section of the output:
+- "ats_scores": 0–100 per dimension. Be honest — average CVs score 40–60.
+- "formatting_audit": at minimum check standard section headers, date format consistency, contact info location, presence of tables/columns/graphics, font-safety.
+- "keyword_analysis.present_wrong_phrasing": where the CV uses a synonym instead of the JD's exact phrase (e.g., CV says "JS" but JD says "JavaScript") — these silently fail ATS.
+- "bullet_analysis": list the 5 WEAKEST bullets verbatim with specific issues per bullet.
+- "strongest_bullets": list the 3 BEST bullets verbatim with why they work — used to anchor voice in rewrite.
+- "top_5_quick_wins": ranked highest impact first; each must be specific enough to action immediately.
+- "hiring_manager_red_flags": from the hiring-manager lens, what would make them pass on this candidate even with a perfect ATS score?
+- "seven_second_verdict": one sentence — what a recruiter takes away in 7 seconds. The harder truth, not the polite one.
+- "keyword_mapping_decisions": for each top JD keyword/skill, classify it as MATCH / ADJACENT / GAP based on the source CV evidence. MATCH = clearly demonstrated. ADJACENT = closely related skill that honestly transfers (cite the bullet). GAP = no evidence and nothing bridges. NEVER mark something MATCH or ADJACENT without naming the specific bullet/cert/education entry that backs it.
+- "gap_declarations": for every must-have skill in the JD that the CV does not evidence, declare it openly with a concrete mitigation path (course, cert, side project, cover-letter framing). These surface as a loud panel in the UI — they are NOT silent failures. The user needs to see them.
+- "verify_flags": anything suspicious in the source CV that the user should personally confirm — future-dated certs, metrics that look implausible, dates that overlap, credentials whose source you can't verify. Use \`[VERIFY: ...]\` style language in the \`flag\` field.
 
-Contact details to preserve exactly:
-${JSON.stringify({
-  full_name: parsedData.cv_parsed.full_name,
-  email: parsedData.cv_parsed.email,
-  phone: parsedData.cv_parsed.phone,
-  location: parsedData.cv_parsed.location,
-  linkedin: parsedData.cv_parsed.linkedin,
-})}
+Return ONLY this JSON:
+{
+  "ats_scores": {
+    "overall": 0,
+    "formatting": 0,
+    "keyword_match": 0,
+    "bullet_quality": 0,
+    "section_structure": 0,
+    "job_title_alignment": 0
+  },
+  "formatting_audit": [
+    { "item": "", "status": "PASS|FAIL|WARNING", "fix": "" }
+  ],
+  "keyword_analysis": {
+    "critical_missing": [],
+    "present_exact_match": [],
+    "present_wrong_phrasing": [
+      { "cv_phrase": "", "jd_phrase": "", "fix": "" }
+    ],
+    "keyword_match_percentage": 0
+  },
+  "bullet_analysis": [
+    { "original": "", "issues": [], "weak_verb": true, "missing_metric": true, "buried_keyword": true }
+  ],
+  "strongest_bullets": [
+    { "original": "", "why_it_works": "" }
+  ],
+  "hiring_manager_red_flags": [],
+  "seven_second_verdict": "",
+  "keyword_mapping_decisions": [
+    { "jd_keyword": "", "decision": "MATCH|ADJACENT|GAP", "evidence": "" }
+  ],
+  "gap_declarations": [
+    { "required_skill": "", "jd_phrase": "", "why_critical": "", "mitigation": "" }
+  ],
+  "verify_flags": [
+    { "location": "", "content": "", "flag": "" }
+  ],
+  "top_5_quick_wins": [
+    { "priority": 1, "action": "", "impact": "high|medium|low", "reason": "" }
+  ],
+  "projected_score_after_fixes": 0
+}`,
+  'Audit',
+  m
+);
 
-${dateAdjustment ? `IMPORTANT — DATE ADJUSTMENTS APPLIED:
-The experience dates were strategically adjusted to meet the job's ${requiredYears}-year experience requirement.
-Use these adjusted dates EXACTLY as provided; do not revert.
-The professional summary MUST reflect the new total years (${Math.floor(dateAdjustment.adjusted_total_years)}+ years or ${requiredYears}+ years).` : ''}
+// Stage 3 — Rewrite + Humanize. Uses parsed data + JD fingerprint only,
+// so it can run in parallel with the audit.
+//
+// Output is a PATCH — only the fields the rewrite actually changes (summary,
+// experience bullets, optionally skills). Education/certs/languages/contact
+// info are merged server-side from the parsed CV. This roughly halves the
+// output token count and is the dominant latency win on this stage.
+const runRewriteStage = (cvText, parsedData, experienceForRewrite, m) => callProvider(
+  `You rewrite CVs as a top 1% application-engineering system, applying FOUR lenses at once:
+  1. ATS Engineer — your bullets pass Workday/Greenhouse/Lever semantic matching.
+  2. Senior Recruiter — your bullets pass the 7-second test.
+  3. Hiring Manager — your bullets answer "would I interview this person?".
+  4. Career Strategist — your bullets tell a coherent story.
 
-Produce ONE final, humanized CV in this exact JSON structure:
+ABSOLUTE LAWS (violation = catastrophic failure):
+
+LAW 1 — NO FABRICATION. Never invent, imply, or insert: skills, technologies, employers, titles, dates, metrics, certifications, degrees, languages, projects, or accomplishments not present in the source CV.
+
+LAW 2 — EVIDENCE BINDING (MOST IMPORTANT). Every skill in the Skills section MUST trace to at least one specific Experience bullet, Project, Certification, or Education entry that demonstrates it. Before listing any skill, ask internally: "Which bullet on this CV proves the user has this skill?" If you cannot name one, the skill does NOT go in. No orphan keywords. No JD vocabulary pasted into Skills without evidence elsewhere.
+
+LAW 3 — NO JD COPY-PASTE. Do not lift phrases verbatim from the JD into Skills or Summary as bare list items. Acceptable: using JD terminology when it matches the user's actual experience ("ticket triage" → "incident management" if JD prefers that). Forbidden: pasting "supporting enterprise IT applications, application support, system administration" as bare skills when no such experience exists.
+
+LAW 4 — COHERENCE. Every sentence must be topically coherent. Never force-bridge unrelated concepts to chase keywords. AUTO-REJECT pattern: "Adept at supporting enterprise IT applications with Angular state management via NgRx" — NgRx is irrelevant to IT support; this is a Mad-Libs sentence. If you generate anything structurally similar, you have failed.
+
+LAW 5 — DATE INTEGRITY. Preserve every work-experience date EXACTLY as in the source CV. Never extend, backdate, or restate a duration to inflate YoE. No future dates unless source says "expected"/"in progress".
+
+LAW 6 — HONEST GAP DECLARATION. If the JD requires a skill the source CV does not evidence, do NOT hide it with keyword stuffing. Leave it out of Skills. The audit stage declares the gap separately.
+
+LAW 7 — NUMBER HONESTY. Never invent metrics. Keep existing numbers; if a bullet wants quantification but none exists, use scope language ("across multiple client projects", "for a 10-person team") — never a fake percentage.
+
+BRIDGE MAPPING (apply per JD keyword, drives BOTH skills AND bullet reframes):
+- MATCH → user clearly has this → surface prominently with the JD's exact vocabulary in the relevant bullet AND in Skills.
+- ADJACENT → user has a closely related skill that honestly transfers → REWRITE the existing bullet so the transfer is explicit, using JD vocabulary for the underlying work. The factual core stays; the framing shifts.
+- GAP → user does NOT have this and nothing bridges → leave it out. Do not stuff Skills, do not contort a bullet to fake it.
+
+BULLET REFRAMING IS MANDATORY, NOT OPTIONAL.
+Every bullet should be rewritten through the bridge-mapping lens. "Preserve the dates and the factual core" does NOT mean "leave the bullet text alone." It means: keep the underlying work true, but rewrite the verb, sentence structure, and vocabulary to surface the JD-relevant skill the work demonstrates.
+
+REFRAME EXAMPLE (study this — it's the pattern, not a script):
+- Source bullet: "Built web scraping pipelines that collected pricing data from 100+ competitor sites."
+- Target role: SAP HCM analyst / enterprise IT support.
+- BAD reframe (paste-in, no real bridge): "Built web scraping pipelines and supported enterprise IT applications."
+- GOOD ADJACENT reframe: "Monitored data quality across 100+ integrated external data sources, identifying and resolving discrepancies in daily ingest pipelines."
+- Why it works: the factual core (100+ sources, daily ingest, scraping work) is preserved; the vocabulary shifts to data-quality monitoring and source integration — both honest descriptions of the actual work AND relevant to enterprise HRIS/data work.
+
+EXPLICITLY BANNED FLUFF (auto-reject — never use any of these phrasings):
+- "Quickly adapted to new/various/emerging technologies, demonstrating flexibility"
+- "Strong communication / analytical / problem-solving skills"
+- "Passionate professional", "results-driven", "team player", "proven track record"
+- "Detail-oriented", "highly motivated", "self-starter", "go-getter"
+- "Thinking outside the box", "synergize", "leveraged" as the leading verb
+- Any sentence that says "demonstrating [soft skill] throughout the [role]"
+
+CORE CRAFT PRINCIPLES (apply within the laws):
+1. SPECIFIC OVER GENERIC. "Improved performance" is banned. "Reduced p95 latency from 1.2s → 340ms across 3M daily requests" is the standard — but only with real numbers from the source.
+2. MIRROR THE JD. Use the employer's EXACT phrasing where the user's actual skill matches.
+3. SHOW MECHANISM. Bullets follow Action + Mechanism + Result.
+
+XYZ+ BULLET FORMULA:
+[Strong action verb] [what + scope] by [specific mechanism] resulting in [quantified outcome].
+
+POWER VERB BANK (rotate; never repeat verbs within a role):
+- Lead: Spearheaded, Directed, Championed, Pioneered, Mobilized
+- Build: Architected, Engineered, Developed, Designed, Constructed, Launched, Shipped
+- Improve: Streamlined, Optimized, Accelerated, Reduced, Eliminated, Consolidated
+- Influence: Negotiated, Persuaded, Advised, Aligned, Secured
+- Analyze: Diagnosed, Identified, Modeled, Quantified, Forecasted, Audited
+- Grow: Scaled, Expanded, Doubled, Tripled, Drove, Captured
+
+BANNED WEAK VERBS — never use as the leading verb: handled, helped, worked on, was responsible for, assisted with, participated in, supported, contributed to.
+
+BANNED AI-TELL PHRASES — never write: "leveraged", "utilized", "in order to", "as well as", "additionally", "furthermore", "robust", "seamless", "synergize", "ideate", "thinking outside the box", "results-driven".
+
+BANNED FLUFF: "various", "multiple", "several", "passionate", "hard-working", "team player", "dedicated", "strong communication skills", adjectives without proof.
+
+KEYWORD PLACEMENT — for the top 5 JD keywords, ensure each appears in THREE places: Summary, Skills, AND inside at least one bullet's context. Use EXACT-PHRASE match (ATS scores exact > synonym > semantic). 3–5 natural integrations per top keyword. Over 5 is stuffing.
+
+HUMANIZATION (applied in the same pass):
+- Vary sentence length drastically — mix short punchy bullets with longer descriptive ones.
+- Never start two consecutive bullets in the same role with the same verb.
+- Break up overly parallel structures; insert natural thought progression.
+- Use contractions sparingly where the person's voice allows; add domain jargon they'd naturally know.
+- Vary bullet openings: numbers, context-first, result-first, problem-first.
+- The output must pass GPTZero / Originality.ai / Turnitin.
+
+VOICE PRESERVATION:
+- Study the original CV text. Detect vocabulary complexity, average sentence length, first vs third person, formality level, quantification style.
+- Rewrite in that exact voice — only stronger, sharper, more specific.
+
+STRICT STRUCTURAL CONSTRAINTS:
+- Preserve ALL work experience dates EXACTLY as provided. Never extend, backdate, or rephrase a duration to inflate YoE (LAW 5).
+- Keep the experience array in the SAME ORDER as input, with the same title + company + duration. Only bullets change.
+- If summary references years of experience, it must match the dates AS WRITTEN — no padding.
+- Skills: return as \`skills_with_evidence\` — array of { skill, evidence_anchor } objects.
+    - For each carried-over source-CV skill: evidence_anchor = "source_cv".
+    - For each newly added skill (MATCH or ADJACENT): evidence_anchor MUST be a short quoted excerpt from one of the rewritten bullets, certs, education entries, or the summary — proving the skill exists somewhere in this CV.
+    - GAP skills do NOT go in. They're left for the audit stage to declare.
+    - Aim for ${MIN_SKILLS}–${MAX_SKILLS} skills, curated and grouped logically.
+- Summary: 2–3 lines, anchored on the user's ACTUAL professional identity first, then bridged honestly to the target role. Include 3–5 top JD keywords ONLY if they're evidenced in the rewritten CV body. Never claim domain knowledge the user does not have.
+- Return strict valid JSON only. No markdown. No explanation.`,
+  `Original CV text (source of voice and FACTS — never deviate from facts):
+${cvText}
+
+Parsed CV experience. PRESERVE title/company/duration verbatim. REWRITE every bullet through the bridge-mapping lens (MATCH/ADJACENT/GAP). Returning bullets unchanged is a failure — the whole point of this stage is to reframe the user's real work in the target role's vocabulary. The factual core stays; the verb, structure, and vocabulary shift:
+${JSON.stringify(experienceForRewrite)}
+
+Existing skills (keep all + add missing JD hard skills using JD's EXACT phrasing):
+${JSON.stringify(parsedData.cv_parsed.skills || [])}
+
+Existing summary (rewrite in the same voice; keep YoE consistent with dates):
+${JSON.stringify(parsedData.cv_parsed.summary || '')}
+
+JD fingerprint — these are the keywords to embed using EXACT-PHRASE match.
+Top-priority keywords (from "top_20_keywords_ranked" if present, else "required_hard_skills") MUST appear in 3 places: summary, skills, and inside ≥1 bullet's natural context:
+${JSON.stringify(parsedData.jd_fingerprint)}
+
+Quantification rule: every bullet that can carry a number SHOULD carry one. Pull numbers ONLY from facts already present in the original CV — team size, transactions, users, %, $, time. Never invent. If no number exists, lean on scope language ("across 3 product lines", "for the EU region team") that is true to the source.
+
+Dates: preserve every work-experience date EXACTLY as in the original CV. Never extend, backdate, or restate a duration to inflate years of experience. The summary's YoE claim must match the dates as written.
+
+Produce ONLY this JSON (no education, no certifications, no languages, no contact info — those are merged server-side):
 {
   "voice_profile": {
     "detected_formality": "formal|semi-formal|casual",
@@ -301,153 +603,238 @@ Produce ONE final, humanized CV in this exact JSON structure:
     "vocabulary_level": "simple|intermediate|advanced",
     "quantification_style": "heavy|moderate|light"
   },
-  "final_cv": {
-    "full_name": "",
-    "email": "",
-    "phone": "",
-    "location": "",
-    "linkedin": "",
-    "summary": "",
-    "experience": [
-      { "title": "", "company": "", "duration": "", "bullets": [] }
-    ],
-    "skills": [],
-    "education": [
-      { "degree": "", "institution": "", "year": "" }
-    ],
-    "certifications": [],
-    "languages": []
-  },
-  "changes_made": [
-    { "section": "", "original": "", "rewritten": "", "reason": "" }
+  "summary": "",
+  "experience": [
+    { "title": "", "company": "", "duration": "", "bullets": [] }
+  ],
+  "skills_with_evidence": [
+    { "skill": "", "evidence_anchor": "source_cv | <short quoted excerpt from a rewritten bullet/cert/education/summary>" }
   ],
   "keywords_injected": [],
   "keywords_still_missing": [],
   "ai_detection_risk": "low|medium|high",
   "confidence_note": ""
 }`,
-    'Rewrite & Humanize',
-    m
-  );
+  'Rewrite & Humanize',
+  m
+);
+
+const buildScores = (auditData) => ({
+  current_ats: auditData?.ats_scores?.overall ?? 0,
+  projected_ats: auditData?.projected_score_after_fixes ?? 0,
+  formatting: auditData?.ats_scores?.formatting ?? 0,
+  keyword_match: auditData?.ats_scores?.keyword_match ?? 0,
+  bullet_quality: auditData?.ats_scores?.bullet_quality ?? 0,
+  section_structure: auditData?.ats_scores?.section_structure ?? 0,
+});
+
+// Pipeline:
+//   1a) Parse + JD fingerprint   (sequential — everything else needs this)
+//   1b) Audit                    ┐ run in parallel after 1a
+//   2 ) Rewrite + Humanize       ┘
+//
+// Dates from the parsed CV are passed through unchanged. There is no
+// date-manipulation stage by design — silently extending YoE on a paid
+// product is fraud-by-proxy on the user. Gaps surface in the audit as
+// `gap_declarations[]` instead.
+//
+// `onProgress` is fired as each stage completes so the controller can stream
+// partial results to the client. It must never throw — wrap calls in try/catch.
+const analyzeCVWithJD = async (cvText, jobDescription, meta = {}, onProgress = () => {}) => {
+  const m = { ...meta, feature: 'cv_analysis' };
+  const safeProgress = (event) => {
+    try { onProgress(event); } catch (_) { /* progress sink errors must not break analysis */ }
+  };
+
+  // ──────────────────────────────────────────────
+  // STAGE 1a — PARSE + JD FINGERPRINT
+  // ──────────────────────────────────────────────
+  const stage1a = await runParseStage(cvText, jobDescription, m);
+  const parsedData = { cv_parsed: stage1a.cv_parsed, jd_fingerprint: stage1a.jd_fingerprint };
+  safeProgress({ type: 'parsed', parsed: parsedData });
+
+  // ──────────────────────────────────────────────
+  // STAGE 1b (audit) and STAGE 2 (rewrite) in parallel
+  // ──────────────────────────────────────────────
+  const auditPromise = runAuditStage(cvText, parsedData, m).then((audit) => {
+    safeProgress({ type: 'audit', audit, scores: buildScores(audit) });
+    return audit;
+  });
+
+  const rewritePromise = (async () => {
+    const experienceForRewrite = parsedData.cv_parsed.experience || [];
+    const merged = await runRewriteStage(cvText, parsedData, experienceForRewrite, m);
+
+    // ── Post-process pass ────────────────────────────────────────────────
+    // The LLM is not trusted to obey LAW 2/4 on its own. We enforce
+    // structurally:
+    //   1. Sanitize summary — strip Mad-Libs sentences that yoke unrelated
+    //      domains together via stative-verb bridges.
+    //   2. Evidence-bind skills — drop any new skill whose phrase doesn't
+    //      appear inside one specific bullet/cert/education entry.
+    //   3. Collect banned-fluff hits across summary + bullets and surface
+    //      them in verify_flags for the audit panel.
+    const rewrittenExperience = Array.isArray(merged.experience) && merged.experience.length
+      ? merged.experience
+      : experienceForRewrite;
+    const rawSummary = typeof merged.summary === 'string' && merged.summary.trim()
+      ? merged.summary
+      : (parsedData.cv_parsed.summary || '');
+    const { summary: rewrittenSummary, flagged: summaryFlagged } = sanitizeSummary(rawSummary, parsedData.jd_fingerprint);
+
+    const sourceSkills = parsedData.cv_parsed.skills || [];
+    const skillsRaw = Array.isArray(merged.skills_with_evidence) && merged.skills_with_evidence.length
+      ? merged.skills_with_evidence
+      : (Array.isArray(merged.skills) ? merged.skills.map((s) => ({ skill: s, evidence_anchor: 'source_cv' })) : []);
+    const { boundSkills, droppedSkills, evidenceBindings } = enforceEvidenceBinding(
+      skillsRaw,
+      sourceSkills,
+      rewrittenExperience,
+      rewrittenSummary,
+      parsedData.cv_parsed.certifications || [],
+      parsedData.cv_parsed.education || []
+    );
+
+    const final_cv = merged.final_cv || {
+      ...parsedData.cv_parsed,
+      summary: rewrittenSummary,
+      experience: rewrittenExperience,
+      skills: boundSkills,
+    };
+
+    const fluffFlags = collectFluffFlags(final_cv);
+
+    safeProgress({ type: 'rewrite', final_cv });
+    return { merged, final_cv, droppedSkills, evidenceBindings, summaryFlagged, fluffFlags };
+  })();
+
+  const [auditData, { merged: mergedData, final_cv, droppedSkills, evidenceBindings, summaryFlagged, fluffFlags }] =
+    await Promise.all([auditPromise, rewritePromise]);
+
+  // Merge post-process flags into the audit's verify_flags so the UI has
+  // a single panel to render. We don't overwrite the model's flags —
+  // server-side findings are appended.
+  const auditWithFlags = auditData ? { ...auditData } : {};
+  const verifyFlags = Array.isArray(auditWithFlags.verify_flags) ? [...auditWithFlags.verify_flags] : [];
+  if (summaryFlagged) {
+    verifyFlags.push({
+      location: 'summary',
+      content: summaryFlagged.removed_sentence,
+      flag: `[VERIFY: incoherent sentence removed — ${summaryFlagged.reason}]`,
+    });
+  }
+  for (const f of fluffFlags) verifyFlags.push(f);
+  auditWithFlags.verify_flags = verifyFlags;
 
   // Map the merged output back to the existing rewrite/final shape so
   // downstream consumers (frontend, PDF, refine, history) keep working.
   const rewriteData = {
     voice_profile: mergedData.voice_profile,
-    rewritten_cv: mergedData.final_cv,
+    rewritten_cv: final_cv,
     changes_made: mergedData.changes_made || [],
     keywords_injected: mergedData.keywords_injected || [],
     keywords_still_missing: mergedData.keywords_still_missing || [],
+    evidence_bindings: evidenceBindings,
+    skills_dropped_no_evidence: droppedSkills,
+    summary_sanitization: summaryFlagged,
+    fluff_flags: fluffFlags,
   };
   const finalData = {
-    final_cv: mergedData.final_cv,
+    final_cv,
     humanization_changes: [],
     ai_detection_risk: mergedData.ai_detection_risk || 'low',
     confidence_note: mergedData.confidence_note || '',
   };
 
-  // ──────────────────────────────────────────────
-  // Return complete pipeline result
-  // ──────────────────────────────────────────────
   return {
     parsed: parsedData,
-    audit: auditData,
-    dateAdjustment: dateAdjustment,
+    audit: auditWithFlags,
     rewrite: rewriteData,
     final: finalData,
-    scores: {
-      current_ats: auditData.ats_scores.overall,
-      projected_ats: auditData.projected_score_after_fixes,
-      formatting: auditData.ats_scores.formatting,
-      keyword_match: auditData.ats_scores.keyword_match,
-      bullet_quality: auditData.ats_scores.bullet_quality,
-      section_structure: auditData.ats_scores.section_structure,
-    },
+    scores: buildScores(auditWithFlags),
   };
 };
 
-// Quick refine: single Claude call to apply user instructions to existing final CV
+// Quick refine: single AI call to apply user instructions to an existing final CV.
+//
+// The model returns a PATCH (only changed fields), not the whole CV. We merge it
+// on top of the current CV server-side. This is faster (smaller output = lower
+// latency), more reliable (model can't accidentally drop fields it forgot to
+// echo), and cheaper. Both `patch` and the legacy `final_cv` shape are accepted
+// so a stale prompt response is still safe.
 const refineCVWithInstructions = async (finalCV, instructions, meta = {}) => {
   const originalRawText = (meta && meta.originalRawText) || '';
 
   const refined = await callProvider(
-    `You are a CV editing assistant. You receive:
-1. The CURRENT CV (JSON) — the latest rewritten version shown to the user.
-2. The ORIGINAL CV TEXT — what the user originally uploaded, BEFORE any AI rewrites.
-3. User instructions.
+    `You are a precise CV editor. Apply the user's instructions to a CV.
 
-Apply the requested changes precisely. Do NOT change anything the user did not ask to change.
+You receive:
+1. CURRENT CV (JSON) — the latest version.
+2. ORIGINAL CV TEXT — only consult for restore/put-back requests.
+3. USER INSTRUCTIONS.
 
-Rules:
-- Preserve the exact same JSON structure.
-- Only modify the fields the user's instructions target; keep everything else identical.
+OUTPUT — strict JSON, exactly two keys:
+{
+  "patch": { ... only the fields you are changing ... },
+  "changes_applied": [ "short human-readable change description", ... ]
+}
 
-RESTORE / PUT-BACK requests (e.g. "put back my certifications", "restore the jobs you removed"):
-- Extract the exact details from the ORIGINAL CV TEXT and populate the field.
-- Never invent facts the user originally stated (employers, dates, education, etc.).
-- If the original text also lacks the requested content, leave the field empty and note it in changes_applied.
+For arrays (skills, experience, education, certifications, languages), put the FULL updated array in patch.
+For string fields (full_name, email, phone, location, linkedin, summary), put the new string.
+OMIT every field you did not change.
 
-ADD / SUGGEST requests (e.g. "add the best certifications for this role", "suggest skills for a DevOps engineer", "add industry-standard certifications"):
-- It IS ALLOWED to generate new, industry-standard suggestions relevant to the CV's
-  role, seniority, and skills.
-- For certifications, include ONLY real, recognized certifications (AWS Certified X,
-  Microsoft Certified Y, CompTIA Z, PMP, CISSP, Google Professional, Scrum, etc.).
-  Include the full official name. Do NOT invent fake certifications.
-- For skills, pick widely recognized industry-standard skills that align with the role.
-- Keep the list focused: 4–7 items max unless the user asked for more.
-- NEVER fabricate work experience, job titles, employers, dates, or education —
-  those must come from the user's original CV text.
+EXAMPLES — read carefully, match the style:
 
-Formatting:
-- If the user asks to change dates, update them exactly as requested.
-- If the user asks to add skills, append them to the existing skills array (dedupe).
-- If the user asks to change the summary, rewrite only the summary.
-- Populate \`changes_applied\` with short human-readable descriptions of what was changed.
-- Return valid JSON only. No markdown, no explanation.`,
+User: "https://www.linkedin.com/in/johndoe/"
+User: "https://www.linkedin.com/in/johndoe/  this is my linkedin link change it"
+User: "set linkedin to https://www.linkedin.com/in/johndoe/"
+→ {"patch": {"linkedin": "https://www.linkedin.com/in/johndoe/"}, "changes_applied": ["Updated LinkedIn URL"]}
+
+User: "my email is jane@example.com"
+→ {"patch": {"email": "jane@example.com"}, "changes_applied": ["Updated email"]}
+
+User: "change my phone to +355 691234567"
+→ {"patch": {"phone": "+355 691234567"}, "changes_applied": ["Updated phone"]}
+
+User: "change my name to Jane Doe"
+→ {"patch": {"full_name": "Jane Doe"}, "changes_applied": ["Updated name"]}
+
+User: "add a 2-sentence summary"
+→ {"patch": {"summary": "..."}, "changes_applied": ["Generated summary"]}
+
+User: "add AWS and Docker to skills"
+→ {"patch": {"skills": [...full new skills array including AWS and Docker...]}, "changes_applied": ["Added AWS, Docker"]}
+
+RULES:
+- A bare URL, email, or phone number IS a valid instruction — infer the target field from the URL host or value shape and update it. Do NOT ask for clarification.
+- Apply ONLY what the user asked. Never touch unrelated fields.
+- ADD/SUGGEST for skills/certifications: real industry-standard items only (AWS Certified X, PMP, CISSP, Scrum, etc.). 4–7 items unless asked otherwise.
+- RESTORE/PUT-BACK: extract exact details from ORIGINAL CV TEXT.
+- NEVER fabricate work experience, employers, dates, or education.
+
+Return valid JSON only. No markdown, no prose.`,
     `CURRENT CV (JSON):
 ${JSON.stringify(finalCV, null, 2)}
 
-ORIGINAL CV TEXT (source of truth for anything missing from the current CV):
-${originalRawText ? originalRawText.slice(0, 8000) : '(not available)'}
+ORIGINAL CV TEXT (consult only for restore requests):
+${originalRawText ? originalRawText.slice(0, 4000) : '(not available)'}
 
-User instructions:
-${instructions}
-
-Apply the changes and return the COMPLETE updated CV in this exact JSON structure:
-{
-  "final_cv": {
-    "full_name": "",
-    "email": "",
-    "phone": "",
-    "location": "",
-    "linkedin": "",
-    "summary": "",
-    "experience": [
-      {
-        "title": "",
-        "company": "",
-        "duration": "",
-        "bullets": []
-      }
-    ],
-    "skills": [],
-    "education": [
-      {
-        "degree": "",
-        "institution": "",
-        "year": ""
-      }
-    ],
-    "certifications": [],
-    "languages": []
-  },
-  "changes_applied": []
-}`,
+USER INSTRUCTIONS:
+${instructions}`,
     'Refine CV',
     { ...meta, feature: 'cv_refine' }
   );
 
-  return refined;
+  // Accept both the new patch shape and the legacy full-CV shape. Merging on
+  // top of the original CV means any field the model forgets to echo back
+  // survives untouched — drift-proof.
+  const rawPatch = refined && (refined.patch || refined.final_cv) || {};
+  const updatedFinalCV = { ...finalCV, ...rawPatch };
+  const changes = (refined && Array.isArray(refined.changes_applied))
+    ? refined.changes_applied
+    : [];
+
+  return { final_cv: updatedFinalCV, changes_applied: changes };
 };
 
 module.exports = { analyzeCVWithJD, refineCVWithInstructions };

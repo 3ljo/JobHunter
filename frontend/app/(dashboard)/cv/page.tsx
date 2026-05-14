@@ -1,26 +1,49 @@
 'use client';
 
+import Image from 'next/image';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import CVUpload from '@/components/cv/CVUpload';
+import LiveAnalysisPreview from '@/components/cv/LiveAnalysisPreview';
 import CVPreview from '@/components/cv/CVPreview';
 import QuickEditBox from '@/components/cv/QuickEditBox';
 import ScoreRing from '@/components/cv/ScoreRing';
 import AnalysisSidebar from '@/components/cv/AnalysisSidebar';
-import TemplatePicker from '@/components/cv/TemplatePicker';
+import TemplatePicker, { TemplateThumbnail } from '@/components/cv/TemplatePicker';
 import PhotoUpload from '@/components/cv/PhotoUpload';
-import { TEMPLATES } from '@/components/cv/templates';
+import { TEMPLATES, type TemplateId } from '@/components/cv/templates';
 import UsageMeter from '@/components/usage/UsageMeter';
 import LimitReachedCard from '@/components/usage/LimitReachedCard';
-import { downloadCVPdf } from '@/lib/api';
+import { downloadCVPdf, type CVExportFormat } from '@/lib/api';
 import { useCVAnalysisStore } from '@/store/cvAnalysisStore';
 import { useCoverLetterStore } from '@/store/coverLetterStore';
 import { useSubscriptionStore } from '@/store/subscriptionStore';
+import { useAccountStore } from '@/store/accountStore';
+import ShareCardModal from '@/components/share/ShareCardModal';
 import toast from 'react-hot-toast';
 import {
   Download, RotateCcw, ArrowRight, TrendingUp, FileSignature,
-  Sparkles, Copy, Check, X, Send, Palette,
+  Sparkles, Copy, Check, X, Send, Palette, ChevronDown, ChevronUp,
+  Share2, FileText, FileType, FileCode,
 } from 'lucide-react';
+
+const FORMAT_OPTIONS: Array<{ key: CVExportFormat; label: string; ext: string; Icon: typeof FileText }> = [
+  { key: 'pdf',  label: 'PDF',  ext: 'pdf',  Icon: FileText },
+  { key: 'docx', label: 'Word', ext: 'docx', Icon: FileType },
+  { key: 'txt',  label: 'Text', ext: 'txt',  Icon: FileCode },
+];
+
+// Slugify a name into a safe default filename: "Eljo Shurdhi" -> "eljo_shurdhi_cv"
+const buildDefaultFilename = (name?: string | null): string => {
+  if (!name) return 'cv_optimized';
+  const slug = name
+    .toLowerCase()
+    .normalize('NFKD')
+    .replace(/[̀-ͯ]/g, '')
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '');
+  return slug ? `${slug}_cv` : 'cv_optimized';
+};
 
 const tones = [
   { key: 'balanced', label: 'Balanced' },
@@ -41,20 +64,53 @@ export default function CVPage() {
     result, setResult, reset: resetAnalysis,
     loading: analysisLoading, step: analysisStep, steps: analysisSteps,
     template, photo, setTemplate, setPhoto,
+    originalPdfDataUrl,
+    editsApplied, bumpEdits,
   } = useCVAnalysisStore();
 
+  const isOriginal = template === 'original';
+  const FALLBACK_TEMPLATE: TemplateId = 'harvard';
+
   const { subscription, usage, fetchSubscription } = useSubscriptionStore();
-  const isPro = subscription?.plan === 'pro' || subscription?.plan === 'pro_plus';
-  const cvLimit = usage?.cv.limit ?? (subscription?.plan === 'pro' ? 25 : subscription?.plan === 'pro_plus' ? 999999 : 3);
+  // Any paid plan (starter pass, Pro, Pro Voice, or legacy Pro+) unlocks paid features.
+  const isPro = subscription?.plan === 'pro'
+    || subscription?.plan === 'pro_voice'
+    || subscription?.plan === 'pro_plus'
+    || subscription?.plan === 'starter';
+  // Fallback: Pro / Pro Voice / Starter all grant unlimited CV analyses; Free gets 1.
+  const cvLimit = usage?.cv.limit ?? (isPro ? 999999 : 1);
   const cvOverLimit = cvLimit < 999999 && (usage?.cv.used ?? 0) >= cvLimit;
 
   // Fetch usage on mount if not already loaded
   useEffect(() => { if (!subscription) fetchSubscription(); }, [subscription, fetchSubscription]);
 
   const [downloading, setDownloading] = useState(false);
+  const [templatesExpanded, setTemplatesExpanded] = useState(false);
+  const [downloadDialogOpen, setDownloadDialogOpen] = useState(false);
+  const [dlFilename, setDlFilename] = useState('cv_optimized');
+  const [dlFormat, setDlFormat] = useState<CVExportFormat>('pdf');
+  // When viewing the original PDF, the user can choose to download that exact
+  // file (no AI edits) instead of the rendered template version.
+  const [dlUseOriginal, setDlUseOriginal] = useState(false);
+
+  // Share-card state — visible when ATS score ≥ 90.
+  const { profile } = useAccountStore();
+  const [shareOpen, setShareOpen] = useState(false);
+  const [shareImgUrl, setShareImgUrl] = useState('');
+  const [shareScore, setShareScore] = useState(0);
 
   const activeTemplateMeta = TEMPLATES[template];
   const showPhotoSlot = activeTemplateMeta?.supportsPhoto;
+
+  const openShareCard = (score: number) => {
+    const firstName = (profile?.full_name || '').split(' ')[0] || '';
+    const params = new URLSearchParams();
+    if (firstName) params.set('name', firstName);
+    params.set('score', String(score));
+    setShareImgUrl(`/api/og/score?${params.toString()}`);
+    setShareScore(score);
+    setShareOpen(true);
+  };
 
   const {
     inlineResult: clResult,
@@ -75,20 +131,87 @@ export default function CVPage() {
   const handleRefine = (updatedFinalCV: any) => {
     if (!result) return;
     setResult({ ...result, final: { ...result.final, final_cv: updatedFinalCV } });
+    bumpEdits();
+    // On "Original PDF" the preview is a static file and can't show the edits,
+    // so nudge the user to a template view where the changes are visible.
+    if (template === 'original') {
+      toast(
+        'Edit applied. Switch to an ATS template to see it rendered.',
+        { icon: '💡', duration: 5500 },
+      );
+    }
   };
 
-  const handleDownload = async () => {
+  const runDownload = async (
+    templateId: TemplateId,
+    format: CVExportFormat,
+    filename: string,
+  ) => {
     if (!result?.cv_record_id) return;
     setDownloading(true);
     try {
-      const photoForExport = showPhotoSlot ? photo : null;
-      await downloadCVPdf(result.cv_record_id, { template, photo: photoForExport });
-      toast.success('PDF downloaded');
+      const meta = TEMPLATES[templateId];
+      const photoForExport = meta?.supportsPhoto ? photo : null;
+      await downloadCVPdf(result.cv_record_id, {
+        template: templateId,
+        photo: photoForExport,
+        format,
+        filename,
+      });
+      toast.success(`${format.toUpperCase()} downloaded`);
     } catch {
-      toast.error('Failed to download PDF');
+      toast.error('Failed to download file');
     } finally {
       setDownloading(false);
     }
+  };
+
+  const handleDownload = () => {
+    if (!result?.cv_record_id) {
+      toast.error('This analysis didn\'t save to your history — re-run the analysis to enable downloads');
+      return;
+    }
+    // Always open the options modal — lets the user pick filename + format,
+    // and (when on original-PDF view) pick which version to download.
+    const finalCV = result.final?.final_cv;
+    const nameSource = finalCV?.full_name || profile?.full_name || '';
+    setDlFilename(buildDefaultFilename(nameSource));
+    setDlFormat('pdf');
+    setDlUseOriginal(false);
+    setDownloadDialogOpen(true);
+  };
+
+  const handleConfirmDownload = async () => {
+    const safeName = (dlFilename.trim() || 'cv_optimized')
+      .replace(/[\\/:*?"<>|]/g, '')
+      .replace(/\.[a-z0-9]+$/i, '')
+      .slice(0, 100) || 'cv_optimized';
+
+    // Path 1: download the cached original PDF as-is (only available on
+    // original-PDF view). Format is forced to PDF — it's a PDF file already.
+    if (isOriginal && dlUseOriginal) {
+      if (!originalPdfDataUrl) {
+        toast.error('Original file is not cached in this session');
+        return;
+      }
+      const a = document.createElement('a');
+      a.href = originalPdfDataUrl;
+      a.download = `${safeName}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setDownloadDialogOpen(false);
+      toast.success('Original file downloaded');
+      return;
+    }
+
+    // Path 2: AI-edited version. If the user is on original-PDF view we have
+    // to switch to a real template first — the original PDF can't be re-rendered
+    // with edits or re-encoded as DOCX/TXT.
+    const targetTemplate: TemplateId = isOriginal ? FALLBACK_TEMPLATE : template;
+    if (isOriginal) setTemplate(FALLBACK_TEMPLATE);
+    setDownloadDialogOpen(false);
+    await runDownload(targetTemplate, dlFormat, safeName);
   };
 
   const handleReset       = () => { resetAnalysis(); setShowCL(false); resetInline(); };
@@ -209,6 +332,9 @@ export default function CVPage() {
                     ))}
                   </div>
                 </div>
+
+                {/* Live preview — fills in as parsed → audit → rewrite events arrive */}
+                <LiveAnalysisPreview />
               </div>
             ) : (
               /* ── UPLOAD STATE: left-aligned with image bg ── */
@@ -259,6 +385,17 @@ export default function CVPage() {
   const scoreDelta = result.scores.projected_ats - result.scores.current_ats;
 
   return (
+    <>
+    <ShareCardModal
+      open={shareOpen}
+      onClose={() => setShareOpen(false)}
+      title={`${shareScore}% ATS — share your win`}
+      description="Download the card or post it to LinkedIn/X."
+      imageUrl={shareImgUrl}
+      downloadFilename={`cvclimber-ats-${shareScore}.png`}
+      shareText={`Just hit ${shareScore}% ATS compatibility on my CV 🎯\n\nCvClimber's AI does the keyword match, formatting check, and bullet-quality audit for me. Try it free:`}
+      shareUrl="https://cvclimber.lol"
+    />
     <div
       style={{
         width: '100vw',
@@ -272,16 +409,31 @@ export default function CVPage() {
         overflowX: 'hidden',
       }}
     >
-      {/* ── RESULTS HEADER — background/2.webp (different!) ────────── */}
+      {/* ── RESULTS HEADER — starfield bg, lighter overlay, decorative glow ── */}
       <section
         className="relative overflow-hidden pt-8 pb-10 sm:pt-14 sm:pb-20"
         style={{
-          backgroundImage: 'url(/aivent/background/2.webp)',
+          backgroundImage: 'url(/aivent/background/3.webp)',
           backgroundSize: 'cover',
           backgroundPosition: 'center',
         }}
       >
-        <div className="absolute inset-0" style={{ background: 'rgba(8,11,35,0.85)' }} />
+        {/* tinted overlay — kept lighter so the background image is actually visible */}
+        <div className="absolute inset-0" style={{ background: 'rgba(8,11,35,0.55)' }} />
+        {/* soft violet spotlight in the top-right so the robot area reads as a focal point */}
+        <div
+          className="absolute pointer-events-none hidden sm:block"
+          style={{
+            right: '-10%',
+            top: '-20%',
+            width: '55%',
+            height: '140%',
+            background:
+              'radial-gradient(circle at 60% 40%, rgba(118,77,240,0.38) 0%, rgba(118,77,240,0.12) 35%, transparent 65%)',
+            filter: 'blur(6px)',
+          }}
+        />
+        {/* bottom fade into page background */}
         <div className="absolute bottom-0 left-0 right-0"
           style={{ height: '50%', background: 'linear-gradient(0deg,#0d1130 0%,transparent 100%)' }} />
 
@@ -296,8 +448,50 @@ export default function CVPage() {
             </h1>
           </div>
 
-          {/* score card */}
-          <div className="mx-auto max-w-3xl rounded-2xl overflow-hidden" style={glass}>
+          {/* score card + robot mascot on the right (desktop only) */}
+          <div className="relative mx-auto max-w-3xl">
+            <div
+              aria-hidden
+              className="hidden lg:block pointer-events-none select-none"
+              style={{
+                position: 'absolute',
+                right: -230,
+                bottom: -40,
+                width: 280,
+                height: 340,
+                zIndex: 3,
+              }}
+            >
+              {/* soft glow disk behind the robot */}
+              <div
+                className="absolute"
+                style={{
+                  left: '10%',
+                  bottom: '10%',
+                  width: '80%',
+                  height: '70%',
+                  borderRadius: '50%',
+                  background:
+                    'radial-gradient(circle, rgba(167,139,250,0.38) 0%, rgba(118,77,240,0.22) 40%, transparent 70%)',
+                  filter: 'blur(8px)',
+                }}
+              />
+              <div
+                className="relative w-full h-full"
+                style={{ filter: 'drop-shadow(0 18px 32px rgba(118,77,240,0.55))' }}
+              >
+                <Image
+                  src="/aivent/misc/robot-idle.png"
+                  alt=""
+                  fill
+                  sizes="280px"
+                  priority={false}
+                  style={{ objectFit: 'contain', objectPosition: 'bottom right' }}
+                />
+              </div>
+            </div>
+
+          <div className="rounded-2xl overflow-hidden" style={glass}>
             <div style={{ height: '2px', background: 'linear-gradient(90deg,transparent,rgba(118,77,240,0.9),transparent)' }} />
             <div className="flex flex-col sm:flex-row items-center justify-between gap-5 sm:gap-6 px-4 sm:px-8 py-5 sm:py-6">
 
@@ -344,6 +538,18 @@ export default function CVPage() {
 
               {/* actions */}
               <div className="flex flex-wrap items-center justify-center gap-2 w-full sm:w-auto">
+                {result.scores.current_ats >= 90 && (
+                  <button
+                    onClick={() => openShareCard(result.scores.current_ats)}
+                    className="flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition-all duration-200"
+                    style={{ background: 'rgba(52,211,153,0.18)', border: '1px solid rgba(52,211,153,0.35)', color: '#34d399' }}
+                    onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(52,211,153,0.28)'; }}
+                    onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(52,211,153,0.18)'; }}
+                  >
+                    <Share2 className="h-4 w-4" />
+                    Share your win
+                  </button>
+                )}
                 <button
                   onClick={handleDownload}
                   disabled={downloading}
@@ -353,7 +559,7 @@ export default function CVPage() {
                   onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(118,77,240,0.18)'; }}
                 >
                   <Download className="h-4 w-4" />
-                  {downloading ? 'Downloading…' : 'PDF'}
+                  {downloading ? 'Downloading…' : 'Download'}
                 </button>
                 <button
                   onClick={() => setShowCL(true)}
@@ -377,6 +583,7 @@ export default function CVPage() {
                 </button>
               </div>
             </div>
+          </div>
           </div>
         </div>
       </section>
@@ -499,33 +706,93 @@ export default function CVPage() {
           {/* CV column */}
           <div className="min-w-0 space-y-3 sm:space-y-4">
 
-            {/* Template strip — always visible, compact */}
+            {/* Template strip — collapsible to save vertical room */}
             <div className="rounded-2xl overflow-hidden p-3 sm:p-4" style={glass}>
-              <div className="flex items-center gap-2 mb-2.5 sm:mb-3">
-                <Palette className="h-3.5 w-3.5 shrink-0" style={{ color: '#a78bfa' }} />
-                <p className="text-[10px] sm:text-[11px] font-bold uppercase tracking-widest text-white/55">
-                  Choose Template
-                </p>
-                <span
-                  className="text-[9px] font-bold px-1.5 py-0.5 rounded"
-                  style={{ background: 'rgba(52,211,153,0.12)', color: '#34d399', border: '1px solid rgba(52,211,153,0.22)' }}
-                >
-                  ATS-OPTIMIZED
-                </span>
-              </div>
+              <button
+                type="button"
+                onClick={() => setTemplatesExpanded((v) => !v)}
+                className="w-full flex items-center justify-between gap-2 text-left"
+                aria-expanded={templatesExpanded}
+              >
+                <div className="flex items-center gap-2 min-w-0">
+                  <Palette className="h-3.5 w-3.5 shrink-0" style={{ color: '#a78bfa' }} />
+                  <p className="text-[10px] sm:text-[11px] font-bold uppercase tracking-widest text-white/55 truncate">
+                    Template — {TEMPLATES[template].name}
+                  </p>
+                  <span
+                    className="text-[9px] font-bold px-1.5 py-0.5 rounded shrink-0"
+                    style={{ background: 'rgba(52,211,153,0.12)', color: '#34d399', border: '1px solid rgba(52,211,153,0.22)' }}
+                  >
+                    ATS-OPTIMIZED
+                  </span>
+                </div>
+                {templatesExpanded
+                  ? <ChevronUp className="h-4 w-4 shrink-0 text-white/55" />
+                  : <ChevronDown className="h-4 w-4 shrink-0 text-white/55" />}
+              </button>
 
-              <TemplatePicker
-                value={template}
-                onChange={(id) => {
-                  setTemplate(id);
-                  toast.success(`${TEMPLATES[id].name} applied`);
-                }}
-                isPro={isPro}
-                onUpgrade={() => {
-                  toast('Upgrade to Pro to unlock this template', { icon: '👑' });
-                  router.push('/pricing');
-                }}
-              />
+              {templatesExpanded ? (
+                <div className="mt-3">
+                  <TemplatePicker
+                    value={template}
+                    onChange={(id) => {
+                      setTemplate(id);
+                      toast.success(`${TEMPLATES[id].name} applied`);
+                    }}
+                    isPro={isPro}
+                    onUpgrade={() => {
+                      toast('Upgrade to Pro to unlock this template', { icon: '👑' });
+                      router.push('/pricing');
+                    }}
+                  />
+                </div>
+              ) : (
+                /* Collapsed — only the selected template card + a "show all" CTA */
+                <div className="mt-3 grid grid-cols-1 md:grid-cols-4 gap-2.5">
+                  <div
+                    className="relative rounded-lg p-2 sm:p-2.5 max-w-[220px] md:max-w-none"
+                    style={{
+                      background: 'rgba(118,77,240,0.14)',
+                      border: '1px solid rgba(118,77,240,0.55)',
+                      boxShadow: '0 0 0 3px rgba(118,77,240,0.10)',
+                    }}
+                  >
+                    <div className="relative">
+                      <TemplateThumbnail id={template} />
+                      <span
+                        className="absolute top-1 right-1 flex h-4 w-4 items-center justify-center rounded-full"
+                        style={{ background: '#764df0' }}
+                      >
+                        <Check className="h-2.5 w-2.5 text-white" />
+                      </span>
+                    </div>
+                    <div className="mt-2 min-w-0">
+                      <p className="text-[11px] sm:text-[12px] font-semibold text-white truncate">
+                        {TEMPLATES[template].name}
+                      </p>
+                      <div className="flex items-center gap-1.5 mt-0.5">
+                        <span className="text-[9px] font-bold" style={{ color: '#34d399' }}>
+                          ATS {TEMPLATES[template].atsScore}%
+                        </span>
+                        <span className="text-[9px] text-white/35 truncate">· {TEMPLATES[template].region}</span>
+                      </div>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setTemplatesExpanded(true)}
+                    className="md:col-span-3 rounded-lg flex items-center justify-center gap-2 text-xs font-bold text-white/70 hover:text-white"
+                    style={{
+                      background: 'rgba(255,255,255,0.03)',
+                      border: '1px dashed rgba(255,255,255,0.12)',
+                      minHeight: 56,
+                    }}
+                  >
+                    <ChevronDown className="h-3.5 w-3.5" />
+                    Show all {Object.values(TEMPLATES).filter((t) => t.id !== 'original').length} templates
+                  </button>
+                </div>
+              )}
 
               {showPhotoSlot && (
                 <div className="mt-3 pt-3 border-t" style={{ borderColor: 'rgba(255,255,255,0.06)' }}>
@@ -534,18 +801,72 @@ export default function CVPage() {
               )}
             </div>
 
-            {/* CV Preview — horizontal pages, sticky on large screens */}
+            {/* Edits pill — only meaningful while viewing Original PDF (edits
+                aren't reflected in the preview). Shows a nudge to switch. */}
+            {isOriginal && editsApplied > 0 && (
+              <div
+                className="flex flex-wrap items-center justify-between gap-2 rounded-xl px-3 sm:px-4 py-2.5"
+                style={{
+                  background:
+                    'linear-gradient(90deg, rgba(118,77,240,0.18), rgba(118,77,240,0.06))',
+                  border: '1px solid rgba(118,77,240,0.35)',
+                }}
+              >
+                <div className="flex items-center gap-2 min-w-0">
+                  <span
+                    className="inline-flex items-center justify-center rounded-full text-[10px] font-black"
+                    style={{
+                      width: 22,
+                      height: 22,
+                      background: '#764df0',
+                      color: '#fff',
+                      boxShadow: '0 0 0 3px rgba(118,77,240,0.25)',
+                    }}
+                  >
+                    {editsApplied}
+                  </span>
+                  <p className="text-[12px] sm:text-[13px] font-semibold" style={{ color: '#ddd6fe' }}>
+                    {editsApplied === 1 ? 'edit applied' : 'edits applied'} — not visible on the original PDF
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setTemplate(FALLBACK_TEMPLATE);
+                    toast.success(`Viewing in ${TEMPLATES[FALLBACK_TEMPLATE].name}`);
+                  }}
+                  className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[11px] font-bold whitespace-nowrap"
+                  style={{
+                    background: 'rgba(118,77,240,0.32)',
+                    border: '1px solid rgba(167,139,250,0.5)',
+                    color: '#f5f3ff',
+                  }}
+                >
+                  View in {TEMPLATES[FALLBACK_TEMPLATE].name}
+                  <ArrowRight className="h-3 w-3" />
+                </button>
+              </div>
+            )}
+
+            {/* CV Preview — horizontal pages, sticky on large screens.
+                For template === 'original', CVPreview renders the uploaded PDF. */}
             <div
               className="rounded-2xl overflow-hidden lg:sticky lg:top-20"
               style={glass}
             >
               <div style={{ height: '1px', background: 'linear-gradient(90deg,transparent,rgba(118,77,240,0.5),transparent)' }} />
               <div className="flex items-center justify-between px-3 sm:px-4 py-2 text-[10px] font-bold uppercase tracking-widest text-white/35">
-                <span>Preview</span>
-                <span className="hidden sm:inline">Swipe pages →</span>
-                <span className="sm:hidden">← Swipe →</span>
+                <span>{isOriginal ? 'Your Original CV' : 'Preview'}</span>
+                <span className="hidden sm:inline">
+                  {isOriginal ? 'Your uploaded file' : `${TEMPLATES[template].name}`}
+                </span>
               </div>
-              <CVPreview cv={finalCV} template={template} photo={showPhotoSlot ? photo : null} />
+              <CVPreview
+                cv={finalCV}
+                template={template}
+                photo={showPhotoSlot ? photo : null}
+                originalPdfDataUrl={originalPdfDataUrl}
+              />
             </div>
           </div>
 
@@ -556,7 +877,11 @@ export default function CVPage() {
               <AnalysisSidebar audit={result.audit} rewrite={result.rewrite} />
             </div>
             {isPro ? (
-              <QuickEditBox cvRecordId={result.cv_record_id} onRefine={handleRefine} />
+              <QuickEditBox
+                cvRecordId={result.cv_record_id}
+                onRefine={handleRefine}
+                onStaleRecord={resetAnalysis}
+              />
             ) : (
               <div
                 className="rounded-2xl p-4 sm:p-5 overflow-hidden"
@@ -599,6 +924,200 @@ export default function CVPage() {
           </div>
         </div>
       </div>
+
+      {/* Download options modal — pick filename + format, plus (when viewing
+          the original PDF) which version of the CV to export. */}
+      {downloadDialogOpen && (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center px-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="download-options-title"
+        >
+          <div
+            className="absolute inset-0"
+            style={{ background: 'rgba(4,6,20,0.72)', backdropFilter: 'blur(6px)' }}
+            onClick={() => !downloading && setDownloadDialogOpen(false)}
+          />
+          <div
+            className="relative w-full max-w-md rounded-2xl overflow-hidden"
+            style={{
+              background: 'rgba(15,10,40,0.95)',
+              border: '1px solid rgba(118,77,240,0.35)',
+              boxShadow: '0 24px 60px rgba(0,0,0,0.55)',
+            }}
+          >
+            <div style={{ height: '2px', background: 'linear-gradient(90deg,transparent,rgba(118,77,240,0.9),transparent)' }} />
+            <div className="px-6 pt-6 pb-4">
+              <div className="flex items-start gap-3">
+                <div
+                  className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl"
+                  style={{ background: 'rgba(118,77,240,0.18)', border: '1px solid rgba(118,77,240,0.35)' }}
+                >
+                  <Download className="h-5 w-5" style={{ color: '#c4b5fd' }} />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <h3
+                    id="download-options-title"
+                    className="text-base font-bold tracking-tight"
+                    style={{ color: '#f5f3ff' }}
+                  >
+                    Download options
+                  </h3>
+                  <p className="mt-1 text-[12px] leading-relaxed" style={{ color: 'rgba(255,255,255,0.55)' }}>
+                    Name the file and pick a format.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setDownloadDialogOpen(false)}
+                  disabled={downloading}
+                  className="flex h-7 w-7 items-center justify-center rounded-lg disabled:opacity-30"
+                  style={{ color: 'rgba(255,255,255,0.4)' }}
+                  aria-label="Close"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+
+            {/* Original-PDF version picker — only shown when on the original view. */}
+            {isOriginal && (
+              <div className="px-6 pb-4">
+                <p className="text-[10px] font-bold uppercase tracking-widest mb-2" style={{ color: 'rgba(255,255,255,0.4)' }}>
+                  Source
+                </p>
+                <div className="grid grid-cols-1 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setDlUseOriginal(false)}
+                    className="rounded-xl px-3 py-2.5 text-left transition-colors"
+                    style={
+                      !dlUseOriginal
+                        ? { background: 'rgba(118,77,240,0.22)', border: '1px solid rgba(167,139,250,0.5)', color: '#f5f3ff' }
+                        : { background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.7)' }
+                    }
+                  >
+                    <p className="text-[13px] font-bold">AI-edited version</p>
+                    <p className="text-[11px] mt-0.5" style={{ color: 'rgba(255,255,255,0.5)' }}>
+                      Re-rendered as {TEMPLATES[FALLBACK_TEMPLATE].name}
+                      {editsApplied > 0 ? ` with your ${editsApplied} ${editsApplied === 1 ? 'edit' : 'edits'}` : ''}.
+                    </p>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setDlUseOriginal(true); setDlFormat('pdf'); }}
+                    disabled={!originalPdfDataUrl}
+                    className="rounded-xl px-3 py-2.5 text-left transition-colors disabled:opacity-40"
+                    style={
+                      dlUseOriginal
+                        ? { background: 'rgba(118,77,240,0.22)', border: '1px solid rgba(167,139,250,0.5)', color: '#f5f3ff' }
+                        : { background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.7)' }
+                    }
+                  >
+                    <p className="text-[13px] font-bold">My original PDF</p>
+                    <p className="text-[11px] mt-0.5" style={{ color: 'rgba(255,255,255,0.5)' }}>
+                      Exactly what you uploaded — no AI edits, PDF only.
+                    </p>
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Filename input */}
+            <div className="px-6 pb-4">
+              <label
+                htmlFor="dl-filename"
+                className="block text-[10px] font-bold uppercase tracking-widest mb-2"
+                style={{ color: 'rgba(255,255,255,0.4)' }}
+              >
+                File name
+              </label>
+              <div className="flex items-stretch rounded-xl overflow-hidden"
+                style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)' }}
+              >
+                <input
+                  id="dl-filename"
+                  type="text"
+                  value={dlFilename}
+                  onChange={(e) => setDlFilename(e.target.value)}
+                  placeholder="my_cv"
+                  maxLength={100}
+                  className="flex-1 min-w-0 bg-transparent px-3 py-2.5 text-sm outline-none"
+                  style={{ color: '#f5f3ff' }}
+                />
+                <span
+                  className="flex items-center px-3 text-xs font-bold"
+                  style={{ color: 'rgba(255,255,255,0.4)', borderLeft: '1px solid rgba(255,255,255,0.08)' }}
+                >
+                  .{dlUseOriginal ? 'pdf' : (FORMAT_OPTIONS.find(f => f.key === dlFormat)?.ext ?? 'pdf')}
+                </span>
+              </div>
+            </div>
+
+            {/* Format selector */}
+            <div className="px-6 pb-5">
+              <p className="text-[10px] font-bold uppercase tracking-widest mb-2" style={{ color: 'rgba(255,255,255,0.4)' }}>
+                Format
+              </p>
+              <div className="grid grid-cols-3 gap-2">
+                {FORMAT_OPTIONS.map(({ key, label, Icon }) => {
+                  const selected = dlFormat === key;
+                  const disabled = dlUseOriginal && key !== 'pdf';
+                  return (
+                    <button
+                      key={key}
+                      type="button"
+                      onClick={() => !disabled && setDlFormat(key)}
+                      disabled={disabled}
+                      className="flex flex-col items-center justify-center gap-1.5 rounded-xl py-3 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                      style={
+                        selected && !disabled
+                          ? { background: 'rgba(118,77,240,0.22)', border: '1px solid rgba(167,139,250,0.5)', color: '#f5f3ff' }
+                          : { background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.7)' }
+                      }
+                    >
+                      <Icon className="h-4 w-4" />
+                      <span className="text-[12px] font-bold">{label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div
+              className="flex items-center justify-end gap-2 px-6 py-3"
+              style={{ borderTop: '1px solid rgba(255,255,255,0.06)', background: 'rgba(255,255,255,0.02)' }}
+            >
+              <button
+                type="button"
+                onClick={() => setDownloadDialogOpen(false)}
+                disabled={downloading}
+                className="rounded-lg px-3 py-2 text-[12px] font-semibold disabled:opacity-40"
+                style={{ color: 'rgba(255,255,255,0.5)' }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmDownload}
+                disabled={downloading || (dlUseOriginal && !originalPdfDataUrl)}
+                className="flex items-center gap-2 rounded-lg px-4 py-2 text-[12px] font-bold disabled:opacity-50"
+                style={{
+                  background: 'linear-gradient(135deg, rgba(118,77,240,0.32), rgba(91,33,182,0.32))',
+                  border: '1px solid rgba(167,139,250,0.5)',
+                  color: '#f5f3ff',
+                  boxShadow: '0 6px 16px rgba(118,77,240,0.25)',
+                }}
+              >
+                <Download className="h-3.5 w-3.5" />
+                {downloading ? 'Downloading…' : 'Download'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
+    </>
   );
 }
