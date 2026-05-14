@@ -991,6 +991,73 @@ function FilterDropdown<T extends string>({
 
 // ─── Job card ─────────────────────────────────────────────────────────
 
+// Color tier for the match% chip — green=strong, amber=ok, slate=weak.
+// Boundaries roughly match cosine similarities the embedding model
+// produces in this domain: <40 is essentially noise, 40-65 is "related",
+// 65+ is a real match.
+const matchTier = (pct: number) => {
+  if (pct >= 75) return { bg: 'rgba(52,211,153,0.15)', color: '#34d399', border: 'rgba(52,211,153,0.35)' };
+  if (pct >= 55) return { bg: 'rgba(167,139,250,0.18)', color: '#c4b5fd', border: 'rgba(139,92,246,0.4)' };
+  if (pct >= 35) return { bg: 'rgba(251,191,36,0.15)', color: '#fbbf24', border: 'rgba(251,191,36,0.3)' };
+  return { bg: 'rgba(255,255,255,0.05)', color: 'rgba(255,255,255,0.55)', border: 'rgba(255,255,255,0.1)' };
+};
+
+function MatchChips({ job }: { job: JobHunterJob }) {
+  const pct = typeof job.score_pct === 'number' ? job.score_pct : null;
+  const matched = job.match_reasons?.matched_skills || [];
+  const days = job.match_reasons?.days_old;
+
+  const hasAny = pct !== null || matched.length > 0 || typeof days === 'number';
+  if (!hasAny) return null;
+
+  return (
+    <div className="flex items-center gap-1.5 mt-2 flex-wrap">
+      {pct !== null && (() => {
+        const t = matchTier(pct);
+        return (
+          <span
+            className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-bold"
+            style={{ background: t.bg, color: t.color, border: `1px solid ${t.border}` }}
+            title="How closely this job matches your CV (semantic similarity)"
+          >
+            <Star className="h-2.5 w-2.5" />
+            {pct}% match
+          </span>
+        );
+      })()}
+
+      {matched.length > 0 && (
+        <span
+          className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-semibold"
+          style={{
+            background: 'rgba(118,77,240,0.12)',
+            color: '#c4b5fd',
+            border: '1px solid rgba(118,77,240,0.25)',
+          }}
+          title={`Skills from your CV found in this job: ${matched.join(', ')}`}
+        >
+          {matched.length} of your skills
+          <span className="text-white/45 font-normal">· {matched.slice(0, 3).join(', ')}{matched.length > 3 ? '…' : ''}</span>
+        </span>
+      )}
+
+      {typeof days === 'number' && (
+        <span
+          className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-semibold"
+          style={{
+            background: 'rgba(255,255,255,0.04)',
+            color: 'rgba(255,255,255,0.65)',
+            border: '1px solid rgba(255,255,255,0.08)',
+          }}
+        >
+          <Clock className="h-2.5 w-2.5" />
+          {days === 0 ? 'today' : days === 1 ? '1d ago' : `${days}d ago`}
+        </span>
+      )}
+    </div>
+  );
+}
+
 function JobCard({ job }: { job: JobHunterJob }) {
   return (
     <a
@@ -1030,6 +1097,7 @@ function JobCard({ job }: { job: JobHunterJob }) {
               </span>
             )}
           </div>
+          <MatchChips job={job} />
           {job.snippet && (
             <p className="text-xs text-muted-foreground/55 mt-2 line-clamp-2 leading-relaxed">
               {job.snippet}

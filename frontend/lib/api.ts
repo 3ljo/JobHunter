@@ -647,6 +647,12 @@ export const getInterviewHistory = () =>
 
 // ═════════════════════ Job Hunter ═════════════════════
 
+export interface JobMatchReasons {
+  matched_skills?: string[];
+  title_match_pct?: number | null;
+  days_old?: number | null;
+}
+
 export interface JobHunterJob {
   title: string;
   company: string;
@@ -656,6 +662,11 @@ export interface JobHunterJob {
   snippet?: string | null;
   posted_at?: string | null;
   score: number;
+  // Added by the backend's semantic scoring pass. Optional so older cached
+  // matches without these fields still render cleanly.
+  score_pct?: number | null;
+  semantic_score?: number | null;
+  match_reasons?: JobMatchReasons;
 }
 
 export interface JobHunterQuery {

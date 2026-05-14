@@ -55,10 +55,30 @@ const findJobs = async (req, res) => {
       ? String(req.body.location).trim() || null
       : null;
 
+    // Load the user's most recent CV so the scorer can rank by semantic
+    // similarity (embeddings) instead of pure title-token overlap. If the
+    // user hasn't run the analyzer yet, finalCv stays null and scoring
+    // degrades to keyword matching — still works, just less accurate.
+    let finalCv = null;
+    try {
+      const { data: cv } = await supabase
+        .from('cvs')
+        .select('ats_feedback')
+        .eq('user_id', req.user.id)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      finalCv = cv?.ats_feedback?.final?.final_cv || null;
+    } catch (cvErr) {
+      // Non-fatal — search still works without the CV
+      console.warn('jobHunter: could not load CV for scoring:', cvErr.message);
+    }
+
     const { query, results, sourceCounts } = await runJobSearch({
       title,
       country,
       location,
+      finalCv,
     });
 
     // No results across every source — return an empty match-set rather

@@ -8,6 +8,8 @@
 // of normalized job objects (see NORMALIZED_JOB_SHAPE below) and add it to
 // the sources[] array in findJobs.
 
+const OpenAI = require('openai');
+
 const NORMALIZED_JOB_SHAPE = {
   title: '',           // job title
   company: '',         // employer name
@@ -159,6 +161,54 @@ const detectCountry = (location) => {
   return null;
 };
 
+// True if a job whose hiring restriction is `location` can be taken by
+// someone in `country` (ISO-2). The remote-only boards (Remotive, RemoteOK,
+// WorkingNomads, Arbeitnow) stuff things like "USA Only" / "EU" / "Berlin"
+// into the location field — without this check, picking Albania still
+// shows hundreds of US-only remote roles.
+//
+//  - country = null         → user asked for "Anywhere", keep everything
+//  - location empty/"remote"→ no constraint declared, keep
+//  - "Worldwide"/"Anywhere" → keep
+//  - country name appears   → keep (e.g. "Berlin, Germany" + de)
+//  - ISO code appears as a word → keep
+//  - common aliases (US/UK)  → keep
+//  - otherwise              → reject
+const COUNTRY_ALIASES = {
+  us: /\b(usa|united\s*states|u\.s\.?|u\.s\.a\.?|america|americas|amer)\b/i,
+  gb: /\b(uk|united\s*kingdom|britain|england|scotland|wales)\b/i,
+  de: /\b(germany|deutschland|dach)\b/i,
+  nl: /\b(netherlands|holland)\b/i,
+  cz: /\b(czechia|czech\s*republic)\b/i,
+  ae: /\b(uae|united\s*arab\s*emirates)\b/i,
+};
+const WORLDWIDE_RE = /worldwide|anywhere|global|🌍|🌐/i;
+
+const isLocationCompatible = (location, country, countryName) => {
+  if (!country) return true; // "Anywhere" was selected
+  if (!location) return true; // no constraint declared
+  const loc = String(location).toLowerCase().trim();
+  if (!loc || loc === 'remote' || loc === 'remote 🌎') return true;
+  if (WORLDWIDE_RE.test(loc)) return true;
+
+  const cName = (countryName || '').toLowerCase();
+  if (cName && loc.includes(cName)) return true;
+
+  // ISO code as a whole word: avoids "de" matching inside "design"
+  if (new RegExp(`\\b${country}\\b`, 'i').test(loc)) return true;
+
+  const aliasRe = COUNTRY_ALIASES[country];
+  if (aliasRe && aliasRe.test(loc)) return true;
+
+  // "EU" / "Europe" — keep for European countries since EU-Only really means
+  // open to EU residents. List is intentionally narrow.
+  const EU_RE = /\b(eu|emea|europe|european\s*union)\b/i;
+  const EU_COUNTRIES = new Set(['at','be','bg','hr','cy','cz','dk','ee','fi','fr','de','gr','hu','ie','it','lv','lt','lu','mt','nl','pl','pt','ro','sk','si','es','se']);
+  if (EU_COUNTRIES.has(country) && EU_RE.test(loc)) return true;
+
+  return false;
+};
+
 // AbortController-based timeout wrapper. Returns null instead of throwing
 // so the parallel Promise.allSettled below treats timeouts as empty
 // results rather than poisoning the whole batch.
@@ -232,7 +282,8 @@ const fetchRemotive = async (query) => {
     source: 'remotive',
     snippet: stripHtml(j.description || '').slice(0, 400) || null,
     posted_at: j.publication_date || null,
-  })).filter((j) => j.url && j.title);
+  })).filter((j) => j.url && j.title)
+    .filter((j) => isLocationCompatible(j.location, query.country, query.country_name));
 };
 
 // Arbeitnow — EU + global remote, no key. Free-text search via ?search=
@@ -252,7 +303,8 @@ const fetchArbeitnow = async (query) => {
     source: 'arbeitnow',
     snippet: stripHtml(j.description || '').slice(0, 400) || null,
     posted_at: j.created_at ? new Date(j.created_at * 1000).toISOString() : null,
-  })).filter((j) => j.url && j.title);
+  })).filter((j) => j.url && j.title)
+    .filter((j) => isLocationCompatible(j.location, query.country, query.country_name));
 };
 
 // Adzuna — 19 countries, free key (1k calls/mo). The API requires a
@@ -362,7 +414,8 @@ const fetchRemoteOK = async (query) => {
     source: 'remoteok',
     snippet: stripHtml(stripRemoteOKHoneypot(j.description || '')).slice(0, 400) || null,
     posted_at: j.date || (j.epoch ? new Date(j.epoch * 1000).toISOString() : null),
-  })).filter((j) => j.url && j.title);
+  })).filter((j) => j.url && j.title)
+    .filter((j) => isLocationCompatible(j.location, query.country, query.country_name));
 };
 
 // Working Nomads — curated remote-jobs aggregator, no key. No server-side
@@ -395,7 +448,8 @@ const fetchWorkingNomads = async (query) => {
     source: 'workingnomads',
     snippet: stripHtml(j.description || '').slice(0, 400) || null,
     posted_at: j.pub_date || null,
-  })).filter((j) => j.url && j.title);
+  })).filter((j) => j.url && j.title)
+    .filter((j) => isLocationCompatible(j.location, query.country, query.country_name));
 };
 
 // The Muse — public jobs feed for US-focused / global startup roles. No
@@ -419,22 +473,18 @@ const fetchTheMuse = async (query) => {
   if (!all.length) return [];
 
   const variants = expandQuery(query.title);
-  const countryName = (query.country_name || '').toLowerCase();
 
   const filtered = all.filter((j) => {
     if (variants.length) {
       const haystack = `${j.name || ''} ${j.contents || ''}`;
       if (!matchesAnyVariant(haystack, variants)) return false;
     }
-    if (countryName) {
-      const locs = (j.locations || [])
-        .map((l) => (l && l.name ? l.name : '').toLowerCase())
-        .join(' ');
-      // Allow remote/flexible matches even if the country isn't named
-      if (!locs.includes(countryName) && !locs.includes('remote') && !locs.includes('flexible')) {
-        return false;
-      }
-    }
+    // Use the same country-compat helper as the remote-only sources so the
+    // "remote" loophole doesn't drag in US-only jobs when the user picked
+    // a different country.
+    const locStr = (j.locations || [])
+      .map((l) => (l && l.name ? l.name : '')).filter(Boolean).join(', ');
+    if (!isLocationCompatible(locStr, query.country, query.country_name)) return false;
     return true;
   });
 
@@ -773,7 +823,6 @@ const fetchHackerNews = async (query) => {
   const topLevel = hits.filter((c) => c.parent_id === c.story_id);
 
   const variants = expandQuery(query.title);
-  const country = (query.country_name || '').toLowerCase();
 
   const out = [];
   for (const c of topLevel) {
@@ -784,11 +833,12 @@ const fetchHackerNews = async (query) => {
       const haystack = `${parsed.title} ${parsed.company} ${c.comment_text || ''}`;
       if (!matchesAnyVariant(haystack, variants)) continue;
     }
-    if (country) {
-      const haystack = `${parsed.location || ''} ${c.comment_text || ''}`.toLowerCase();
-      if (!haystack.includes(country) && !haystack.includes('remote') && !haystack.includes('worldwide')) {
-        continue;
-      }
+    // HN postings stuff the location either in the parsed `location` field
+    // or anywhere in the raw comment. Test both against the country-compat
+    // helper so the "remote" pass-through doesn't drag in US-only jobs.
+    if (query.country) {
+      const locHay = `${parsed.location || ''} ${stripHtml(c.comment_text || '')}`;
+      if (!isLocationCompatible(locHay, query.country, query.country_name)) continue;
     }
 
     const itemUrl = `https://news.ycombinator.com/item?id=${c.objectID}`;
@@ -804,6 +854,128 @@ const fetchHackerNews = async (query) => {
     if (out.length >= PER_SOURCE_LIMIT) break;
   }
   return out;
+};
+
+// ─── Embeddings (semantic scoring) ─────────────────────────────────────
+
+// Embeddings make the score actually mean something. Without them this
+// page ranks by literal title-token overlap, which treats "Frontend
+// Coordinator" the same as "Senior React Engineer" for a React CV.
+// We use OpenAI's `text-embedding-3-small` ($0.02/M tokens, ~$0.001 per
+// 200-job search) because it's by far the cheapest decent embedding API.
+// If OPENAI_API_KEY isn't set, this path silently falls back to keyword
+// scoring — so dev environments without the key still work.
+
+let _embedClient = null;
+const getEmbeddingClient = () => {
+  if (!process.env.OPENAI_API_KEY) return null;
+  if (!_embedClient) _embedClient = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+  return _embedClient;
+};
+
+const cosineSim = (a, b) => {
+  let dot = 0, na = 0, nb = 0;
+  const len = Math.min(a.length, b.length);
+  for (let i = 0; i < len; i++) {
+    dot += a[i] * b[i];
+    na += a[i] * a[i];
+    nb += b[i] * b[i];
+  }
+  if (!na || !nb) return 0;
+  return dot / (Math.sqrt(na) * Math.sqrt(nb));
+};
+
+// Compact text that captures the candidate's profile. We use the most
+// recent role's title, top skills, and summary — the same fields a
+// recruiter would read first.
+const buildCvText = (finalCv) => {
+  if (!finalCv || typeof finalCv !== 'object') return '';
+  const title = finalCv.experience?.[0]?.title || '';
+  const skills = Array.isArray(finalCv.skills) ? finalCv.skills.slice(0, 30).join(', ') : '';
+  const summary = (finalCv.summary || '').toString().slice(0, 600);
+  return [title, skills, summary].filter(Boolean).join('\n').trim();
+};
+
+const buildJobText = (job) => {
+  const title = job.title || '';
+  const snippet = (job.snippet || '').slice(0, 600);
+  return [title, snippet].filter(Boolean).join('\n');
+};
+
+// Single batched embeddings call: [cv, job1, job2, ...]. Returns array of
+// similarities in [0..1] aligned with `jobs`, or null on any failure
+// (network error, missing key, malformed response). text-embedding-3-small
+// caps at 8192 tokens per input which is way more than we need.
+const semanticScores = async (cvText, jobs) => {
+  const client = getEmbeddingClient();
+  if (!client || !cvText || !jobs.length) return null;
+  try {
+    const inputs = [cvText, ...jobs.map(buildJobText)];
+    const res = await client.embeddings.create({
+      model: 'text-embedding-3-small',
+      input: inputs,
+    });
+    const vecs = (res.data || []).map((d) => d.embedding);
+    if (vecs.length !== inputs.length) return null;
+    const cvVec = vecs[0];
+    return jobs.map((_, i) => {
+      const sim = cosineSim(cvVec, vecs[i + 1]);
+      // For text-embedding-3-small in this domain, similar docs hit
+      // 0.5-0.85 and dissimilar 0.05-0.25. Clamp negatives to 0.
+      return Math.max(0, Math.min(1, sim));
+    });
+  } catch (err) {
+    console.warn('[jobHunter] embedding call failed:', err.message);
+    return null;
+  }
+};
+
+// ─── Match-reason metadata ─────────────────────────────────────────────
+
+// Per-job structured "why this matched" data the UI renders as chips.
+// All optional — frontend should treat each field as nullable.
+const computeMatchReasons = (job, query, cvSkills) => {
+  const title = (job.title || '').toLowerCase();
+  const snippet = (job.snippet || '').toLowerCase();
+  const haystack = `${title} ${snippet}`;
+
+  // Which of the user's CV skills literally appear anywhere in the job.
+  // Case-insensitive, whole-word for short tokens to avoid "go" matching
+  // "going". Skills are case-preserved in the output.
+  const matchedSkills = [];
+  if (Array.isArray(cvSkills)) {
+    for (const skill of cvSkills) {
+      const s = String(skill || '').trim();
+      if (!s) continue;
+      const sLower = s.toLowerCase();
+      const isShort = sLower.length <= 3;
+      const re = isShort ? new RegExp(`\\b${sLower.replace(/[.+]/g, '\\$&')}\\b`, 'i') : null;
+      const hit = re ? re.test(haystack) : haystack.includes(sLower);
+      if (hit) matchedSkills.push(s);
+      if (matchedSkills.length >= 8) break;
+    }
+  }
+
+  // Title keyword match — share of query tokens that appear in the title.
+  let titleMatchPct = null;
+  if (query.title) {
+    const qTokens = tokenize(query.title);
+    if (qTokens.length) {
+      const hits = qTokens.filter((t) => title.includes(t)).length;
+      titleMatchPct = Math.round((hits / qTokens.length) * 100);
+    }
+  }
+
+  // Days since posting (null if no posted_at).
+  let daysOld = null;
+  if (job.posted_at) {
+    const t = new Date(job.posted_at).getTime();
+    if (!Number.isNaN(t)) {
+      daysOld = Math.max(0, Math.floor((Date.now() - t) / (1000 * 60 * 60 * 24)));
+    }
+  }
+
+  return { matched_skills: matchedSkills, title_match_pct: titleMatchPct, days_old: daysOld };
 };
 
 // ─── Dedupe + score ─────────────────────────────────────────────────────
@@ -866,18 +1038,23 @@ const scoreJob = (job, query) => {
 // ─── Public entry ───────────────────────────────────────────────────────
 
 // findJobs
-//   input: { title: string, country?: string|null, location?: string|null }
+//   input: { title, country?, location?, finalCv? }
 //     - title is the keyword/role (required, e.g. "Front End Developer")
 //     - country is an ISO-2 code (e.g. "de") used for Adzuna routing and
 //       to derive a country name for Jooble. null/empty = global.
 //     - location is an optional freeform city/region passed to Adzuna's
 //       `where` and Jooble's `location`. If omitted but country is given,
 //       Jooble still receives the country name so its results stay scoped.
+//     - finalCv is the user's structured CV (ats_feedback.final.final_cv).
+//       When present, the scorer embeds CV vs each job and ranks by
+//       cosine similarity instead of pure keyword overlap. Skills from the
+//       CV also drive the per-job "matched skills" chips.
 // Returns: { query, results, sourceCounts }
 //   - query: the normalized search terms (saved alongside results so the
 //     UI can render "Searched for: Front End in Germany"). Includes a
 //     `country_name` field for display.
-//   - results: ranked + deduped list, top 200.
+//   - results: ranked + deduped list, top 200. Each job carries
+//     `score_pct` (0-100, user-facing) and `match_reasons` for the chips.
 //   - sourceCounts: per-source raw count BEFORE dedupe, for diagnostics.
 const findJobs = async (input) => {
   const title = String(input?.title || '').trim();
@@ -886,8 +1063,12 @@ const findJobs = async (input) => {
     : null;
   const location = input?.location ? String(input.location).trim() : null;
   const country_name = country ? (COUNTRY_NAMES[country] || null) : null;
+  const finalCv = input?.finalCv || null;
+  const cvSkills = Array.isArray(finalCv?.skills)
+    ? finalCv.skills.map((s) => String(s || '').trim()).filter(Boolean).slice(0, 30)
+    : [];
 
-  const query = { title, country, country_name, location };
+  const query = { title, country, country_name, location, skills: cvSkills };
 
   const sources = [
     { name: 'remotive',      fn: fetchRemotive      },
@@ -925,12 +1106,52 @@ const findJobs = async (input) => {
   });
 
   const deduped = dedupe(merged);
-  const scored = deduped
-    .map((j) => ({ ...j, score: scoreJob(j, query) }))
+
+  // Semantic pass — embed CV + each job once, score by cosine similarity.
+  // Falls back to null when OPENAI_API_KEY isn't set or the call fails,
+  // in which case scoring degrades to pure keyword overlap below.
+  const cvText = buildCvText(finalCv);
+  const sims = cvText ? await semanticScores(cvText, deduped) : null;
+
+  const scored = deduped.map((j, i) => {
+    const keyword = scoreJob(j, query);
+    const semantic = sims ? sims[i] : null; // 0..1 or null
+
+    // Composite ranking score. When semantic data is available, it
+    // dominates (semantic*100 swamps keyword's typical 0-30 range) so
+    // a "Senior React Engineer" CV correctly ranks "Staff Frontend"
+    // above "Frontend Coordinator". Keyword serves as a tiebreaker and
+    // as the sole ranker when embeddings are unavailable.
+    const composite = (semantic != null ? semantic * 100 : 0) + keyword;
+
+    const reasons = computeMatchReasons(j, query, cvSkills);
+
+    // User-facing percentage. Prefer semantic; otherwise normalize the
+    // keyword score into a roughly 0-99 range (caps at 99 so we never
+    // claim a perfect match without semantic confirmation).
+    let scorePct = null;
+    if (semantic != null) {
+      scorePct = Math.round(semantic * 100);
+    } else if (keyword > 0) {
+      scorePct = Math.min(99, Math.round(keyword * 4));
+    }
+
+    return {
+      ...j,
+      score: composite,
+      score_pct: scorePct,
+      semantic_score: semantic,
+      match_reasons: reasons,
+    };
+  })
     .sort((a, b) => b.score - a.score)
     .slice(0, 200); // cap so the JSONB blob stays small
 
-  return { query, results: scored, sourceCounts };
+  // Don't persist the CV skills array on the query blob — it's user data
+  // and not needed for UI re-render. Strip before returning.
+  const { skills: _skills, ...persistQuery } = query;
+
+  return { query: persistQuery, results: scored, sourceCounts };
 };
 
 module.exports = {
