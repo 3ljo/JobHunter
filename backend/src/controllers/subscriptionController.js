@@ -371,6 +371,28 @@ const configCheck = async (req, res) => {
   const lsPing = await ls.pingApi();
   const ppConfig = pp.inspectConfig();
   const ppPing = await pp.pingApi();
+
+  // Supabase fingerprint — proves what the live process actually loaded.
+  // If the dashboard shows the right value but this fingerprint differs
+  // from a local-side fingerprint, the env var has hidden characters
+  // (newline / trailing space) that break JWT parsing.
+  const srk = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
+  let supaProbe = { upsert: null };
+  try {
+    const probeId = '00000000-0000-0000-0000-000000000999';
+    const { error: dbErr } = await supabase.from('subscriptions').upsert({
+      user_id: probeId, plan: 'free', status: 'active', billing_interval: 'once',
+    }, { onConflict: 'user_id' });
+    if (dbErr) {
+      supaProbe.upsert = { ok: false, message: dbErr.message, code: dbErr.code, hint: dbErr.hint };
+    } else {
+      supaProbe.upsert = { ok: true };
+      await supabase.from('subscriptions').delete().eq('user_id', probeId);
+    }
+  } catch (err) {
+    supaProbe.upsert = { ok: false, threw: err.message };
+  }
+
   return res.json({
     lemonsqueezy: {
       config: lsConfig,
@@ -381,6 +403,18 @@ const configCheck = async (req, res) => {
       config: ppConfig,
       ping: ppPing,
       overall_ok: ppConfig.client_id_present && ppConfig.client_secret_present && ppPing.ok,
+    },
+    supabase: {
+      url: process.env.SUPABASE_URL || null,
+      service_role_key: srk
+        ? {
+            length: srk.length,
+            head: srk.slice(0, 12),
+            tail: srk.slice(-12),
+            has_whitespace: /\s/.test(srk),
+          }
+        : null,
+      probe: supaProbe,
     },
   });
 };
