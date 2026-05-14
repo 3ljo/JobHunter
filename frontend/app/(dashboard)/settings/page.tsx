@@ -212,8 +212,8 @@ function PasswordCard() {
       toast.error('Passwords do not match');
       return;
     }
-    if (newPassword.length < 12) {
-      toast.error('Password must be at least 12 characters');
+    if (newPassword.length < 8) {
+      toast.error('Password must be at least 8 characters');
       return;
     }
     setLoading(true);
@@ -264,7 +264,7 @@ function PasswordCard() {
             <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/60 transition-colors group-focus-within:text-violet-400" />
             <Input
               type={showNew ? 'text' : 'password'}
-              placeholder="At least 12 characters"
+              placeholder="At least 8 characters"
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
               required
