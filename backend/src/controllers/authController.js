@@ -326,19 +326,14 @@ const resetPassword = async (req, res) => {
 
   const accessToken = bearerToken(req);
   if (!accessToken) {
-    return res.status(400).json({ error: 'Invalid or expired reset link', code: 'no-token' });
+    return res.status(400).json({ error: 'Invalid or expired reset link' });
   }
 
   if (!isRecoveryToken(accessToken)) {
     // The presented token is valid as a session but not as a
     // recovery token. Refuse — only the magic link can reset the
     // password without the current one.
-    const claims = require('../utils/jwtClaims').decodeUnsafe(accessToken);
-    return res.status(400).json({
-      error: 'Invalid or expired reset link',
-      code: 'not-recovery',
-      amr: claims?.amr ?? null,
-    });
+    return res.status(400).json({ error: 'Invalid or expired reset link' });
   }
 
   const { new_password } = req.body;
@@ -350,11 +345,7 @@ const resetPassword = async (req, res) => {
   try {
     const { data: userRes, error: userErr } = await supabase.auth.getUser(accessToken);
     if (userErr || !userRes?.user) {
-      return res.status(400).json({
-        error: 'Invalid or expired reset link',
-        code: 'getuser-failed',
-        supabase_error: userErr?.message ?? null,
-      });
+      return res.status(400).json({ error: 'Invalid or expired reset link' });
     }
 
     const { error } = await supabase.auth.admin.updateUserById(userRes.user.id, {

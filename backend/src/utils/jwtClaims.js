@@ -19,14 +19,19 @@ function decodeUnsafe(token) {
   }
 }
 
-// True if the token's `amr` (Authentication Methods References) claim
-// indicates a recovery flow. Supabase issues recovery sessions when a
-// password-reset email link is clicked. amr looks like
-// [{"method":"recovery","timestamp":...}].
+// True if the token came from an email-link flow (password recovery
+// or magic-link). Newer GoTrue tags both with `amr.method = "otp"`;
+// older versions used `"recovery"` for the reset flow specifically.
+// A regular email/password session is `amr.method = "password"`, so
+// this still blocks the original threat: an attacker who lifts a
+// normal session token via XSS can't use it to rotate the password
+// without knowing the current one.
 function isRecoveryToken(token) {
   const claims = decodeUnsafe(token);
   if (!claims || !Array.isArray(claims.amr)) return false;
-  return claims.amr.some((entry) => entry && entry.method === 'recovery');
+  return claims.amr.some(
+    (entry) => entry && (entry.method === 'recovery' || entry.method === 'otp'),
+  );
 }
 
 // Assurance level — Supabase issues `aal2` once the user has cleared
