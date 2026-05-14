@@ -146,6 +146,55 @@ const findLatestSubscriptionByEmail = async (email) => {
   return active || rows[0];
 };
 
+// Find the most recent paid one-time order for a given email. Used by the
+// webhook handler and /resync as a fallback when custom_data is missing
+// (e.g. LS strips custom_data on the "Want this for free?" simplified flow).
+// Returns the order data object (with attributes) or null.
+const findLatestOrderByEmail = async (email) => {
+  if (!apiKey()) {
+    const e = new Error('LS not configured: LEMONSQUEEZY_API_KEY missing');
+    e.lsStatus = 0; e.lsHint = 'api_key_missing';
+    throw e;
+  }
+  if (!storeId()) {
+    const e = new Error('LS not configured: LEMONSQUEEZY_STORE_ID missing');
+    e.lsStatus = 0; e.lsHint = 'store_id_missing';
+    throw e;
+  }
+  if (!email) return null;
+
+  const params = new URLSearchParams();
+  params.append('filter[store_id]', String(storeId()));
+  params.append('filter[user_email]', email);
+
+  const url = `${API_BASE}/orders?${params.toString()}`;
+  const res = await fetch(url, {
+    headers: { Accept: 'application/vnd.api+json', Authorization: `Bearer ${apiKey()}` },
+  });
+
+  if (!res.ok) {
+    const body = await res.text();
+    console.error(`LS /orders lookup failed: status=${res.status} url=${url} body=${body}`);
+    const err = new Error(`LS order lookup ${res.status}`);
+    err.lsStatus = res.status;
+    err.lsBody = body;
+    throw err;
+  }
+
+  const json = await res.json();
+  const rows = Array.isArray(json?.data) ? json.data : [];
+  if (rows.length === 0) return null;
+
+  rows.sort((a, b) => {
+    const ta = new Date(a?.attributes?.created_at || 0).getTime();
+    const tb = new Date(b?.attributes?.created_at || 0).getTime();
+    return tb - ta;
+  });
+  // Prefer paid orders; fall back to the most recent regardless of status.
+  const paid = rows.find((r) => r?.attributes?.status === 'paid');
+  return paid || rows[0];
+};
+
 // Verify the `X-Signature` HMAC of a webhook request. `rawBody` must be the
 // exact raw payload bytes the request arrived with — parsing it loses the signature.
 const verifyWebhook = (rawBody, signatureHeader) => {
@@ -264,6 +313,7 @@ module.exports = {
   inspectConfig,
   pingApi,
   findLatestSubscriptionByEmail,
+  findLatestOrderByEmail,
   resolvePlanFromVariantId,
   resolveIntervalFromVariantId,
 };

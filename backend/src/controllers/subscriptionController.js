@@ -265,10 +265,53 @@ const resyncSubscription = async (req, res) => {
     }
 
     if (!lsSub) {
+      // No active subscription found — fall back to one-time order lookup.
+      // This catches users who bought the 7-Day Pass but the webhook didn't
+      // activate them (e.g. LS stripped custom_data on a free-via-discount
+      // flow, or the webhook URL was misconfigured at the time).
+      let lsOrder;
+      try {
+        lsOrder = await ls.findLatestOrderByEmail(email);
+      } catch (err) {
+        console.error(`resync: LS order lookup failed for user ${userId}:`, err.message);
+        lsOrder = null;
+      }
+      if (lsOrder && lsOrder.attributes?.status === 'paid') {
+        const oa = lsOrder.attributes;
+        const orderVariantId = oa?.first_order_item?.variant_id;
+        const orderPlan = ls.resolvePlanFromVariantId(orderVariantId);
+        if (orderPlan && orderPlan !== 'free' && PLANS[orderPlan]?.billing_type === 'one_time') {
+          const durationDays = PLANS[orderPlan].pass_duration_days || 7;
+          const start = new Date(oa.created_at || Date.now());
+          const end = new Date(start.getTime() + durationDays * 24 * 60 * 60 * 1000);
+          const { error: passErr } = await supabase.from('subscriptions').upsert({
+            user_id: userId,
+            lemonsqueezy_customer_id: oa.customer_id ? String(oa.customer_id) : null,
+            lemonsqueezy_subscription_id: null,
+            lemonsqueezy_portal_url: null,
+            plan: orderPlan,
+            billing_interval: 'once',
+            status: 'active',
+            current_period_start: start.toISOString(),
+            current_period_end: end.toISOString(),
+            cancel_at_period_end: false,
+            provider: 'lemonsqueezy',
+          }, { onConflict: 'user_id' });
+          if (passErr) {
+            console.error(`resync: one-time pass upsert failed for user ${userId}:`, passErr.message);
+            return res.status(500).json({ error: 'Could not activate pass' });
+          }
+          return res.json({
+            ok: true,
+            changed: true,
+            subscription: { plan: orderPlan, status: 'active', billing_interval: 'once', current_period_end: end.toISOString() },
+          });
+        }
+      }
       return res.json({
         ok: true,
         changed: false,
-        message: 'No Lemon Squeezy subscription found for your email.',
+        message: 'No Lemon Squeezy subscription or recent paid order found for your email.',
       });
     }
 
@@ -406,6 +449,11 @@ const handleWebhook = async (req, res) => {
   // lookup proves the caller actually owns this subscription. Fall back
   // to custom_data only for brand-new subscriptions that aren't in our
   // DB yet (the very first subscription_created event).
+  //
+  // Final fallback: if both DB lookup and custom_data fail (e.g. LS strips
+  // custom_data on certain checkout paths), look up the user by email
+  // from the order's user_email attribute. The webhook is already signature-
+  // verified at this point, so the email is trustable.
   const lookupUser = async () => {
     if (subId) {
       const { data, error } = await supabase
@@ -415,10 +463,19 @@ const handleWebhook = async (req, res) => {
         .maybeSingle();
       if (!error && data?.user_id) return data.user_id;
     }
-    // First-ever event for this sub — no DB row exists yet. Trust the
-    // custom_data we stashed at checkout creation time (same origin,
-    // signed payload).
     if (custom.user_id) return custom.user_id;
+    const email = (attrs.user_email || '').toLowerCase().trim();
+    if (email) {
+      try {
+        const uid = await supabase.findUserIdByEmail(email);
+        if (uid) {
+          console.log(`LS ${eventName}: resolved user via email fallback (${email}) → ${uid}`);
+          return uid;
+        }
+      } catch (err) {
+        console.error(`LS ${eventName}: email lookup failed for ${email}:`, err.message);
+      }
+    }
     return null;
   };
 
@@ -534,13 +591,51 @@ const handleWebhook = async (req, res) => {
         //   b) Gift-a-Pass purchase (custom.gift === true) → records a
         //      gifted_passes row and emails recipient with pass_code
         //   c) Unknown plan → ignore
-        const custom = payload?.meta?.custom_data || {};
-        const plan = custom.plan;
-        if (!plan || !PLANS[plan] || PLANS[plan].billing_type !== 'one_time') break;
+        //
+        // Robustness: LS strips `custom_data` on the "Want this for free?"
+        // simplified flow (100% discount). We fall back to:
+        //   - plan ← resolved from the order item's variant_id
+        //   - user_id ← looked up by user_email in auth.users
+        // Every break path logs explicitly so silent activation failures
+        // surface in Render logs.
+        const orderItem = attrs?.first_order_item || {};
+        const variantId = orderItem.variant_id;
+        const buyerEmail = (attrs.user_email || '').toLowerCase().trim();
 
-        const buyerId = custom.user_id;
+        // Resolve plan (prefer custom_data, fall back to variant lookup).
+        let plan = custom.plan;
+        if (!plan && variantId) {
+          plan = ls.resolvePlanFromVariantId(variantId);
+        }
+        if (!plan || plan === 'free' || !PLANS[plan]) {
+          console.error(
+            `LS order_created: cannot resolve plan — order=${subId} variant_id=${variantId} ` +
+            `custom_keys=${Object.keys(custom).join(',') || '<empty>'} email=${buyerEmail || '<none>'}`
+          );
+          break;
+        }
+        if (PLANS[plan].billing_type !== 'one_time') {
+          console.warn(`LS order_created: plan ${plan} is not one_time — order=${subId}`);
+          break;
+        }
+
+        // Resolve buyer user_id (prefer custom_data, fall back to email lookup).
+        let buyerId = custom.user_id;
+        if (!buyerId && buyerEmail) {
+          try {
+            buyerId = await supabase.findUserIdByEmail(buyerEmail);
+            if (buyerId) {
+              console.log(`LS order_created: resolved user via email fallback (${buyerEmail}) → ${buyerId}`);
+            }
+          } catch (err) {
+            console.error(`LS order_created: email lookup failed for ${buyerEmail}:`, err.message);
+          }
+        }
         if (!buyerId) {
-          console.warn(`LS order_created with no user_id in custom_data — order ${subId}`);
+          console.error(
+            `LS order_created: cannot resolve buyer user_id — order=${subId} email=${buyerEmail || '<none>'} ` +
+            `custom_keys=${Object.keys(custom).join(',') || '<empty>'}. Manual activation may be required.`
+          );
           break;
         }
 
@@ -549,20 +644,25 @@ const handleWebhook = async (req, res) => {
           const recipient = (custom.recipient_email || '').toLowerCase().trim();
           const giftMessage = custom.gift_message || null;
           if (!recipient) {
-            console.warn(`gift order ${subId} missing recipient_email`);
+            console.error(`LS order_created gift: missing recipient_email — order=${subId} buyer=${buyerId}`);
             break;
           }
           const passCode = require('crypto').randomBytes(6).toString('hex').toUpperCase();
-          await supabase.from('gifted_passes').upsert({
+          const { error: giftErr } = await supabase.from('gifted_passes').upsert({
             buyer_user_id: buyerId,
             recipient_email: recipient,
             pass_code: passCode,
             message: giftMessage,
             lemonsqueezy_order_id: subId,
           }, { onConflict: 'recipient_email' });
-          // (Email notification to recipient is a TODO — the record is
-          // the source of truth; the UI will let the buyer copy the
-          // redeem link manually until an email service is wired up.)
+          if (giftErr) {
+            console.error(
+              `LS order_created gift: gifted_passes upsert failed for buyer ${buyerId} → ${recipient}:`,
+              giftErr.message, giftErr.code, giftErr.details, giftErr.hint
+            );
+          } else {
+            console.log(`LS order_created gift: pass_code=${passCode} → ${recipient} from buyer=${buyerId}`);
+          }
           break;
         }
 
@@ -571,7 +671,7 @@ const handleWebhook = async (req, res) => {
         const now = new Date();
         const expiresAt = new Date(now.getTime() + durationDays * 24 * 60 * 60 * 1000);
 
-        await supabase.from('subscriptions').upsert({
+        const { error: passErr } = await supabase.from('subscriptions').upsert({
           user_id: buyerId,
           lemonsqueezy_customer_id: attrs.customer_id ? String(attrs.customer_id) : null,
           lemonsqueezy_subscription_id: null, // no subscription ID for one-time
@@ -582,7 +682,16 @@ const handleWebhook = async (req, res) => {
           current_period_start: now.toISOString(),
           current_period_end: expiresAt.toISOString(),
           cancel_at_period_end: false,
+          provider: 'lemonsqueezy',
         }, { onConflict: 'user_id' });
+        if (passErr) {
+          console.error(
+            `LS order_created: subscriptions upsert failed for user ${buyerId} → plan=${plan}:`,
+            passErr.message, passErr.code, passErr.details, passErr.hint
+          );
+        } else {
+          console.log(`LS order_created: ${plan} activated for user=${buyerId} expires=${expiresAt.toISOString()}`);
+        }
 
         break;
       }
@@ -593,10 +702,15 @@ const handleWebhook = async (req, res) => {
         break;
     }
   } catch (err) {
-    console.error('LS webhook processing error:', err.message);
+    console.error(
+      `LS webhook processing error — event=${eventName} sub_id=${subId} ` +
+      `custom_keys=${Object.keys(custom).join(',') || '<empty>'}: ${err.message}`,
+      err.stack
+    );
   }
 
-  // Always 200 so LS doesn't retry on an internal bug.
+  // Always 200 so LS doesn't retry on an internal bug. The error above
+  // is the source of truth — alert on it in Render logs / log drain.
   res.json({ received: true });
 };
 
@@ -644,6 +758,21 @@ const handlePaypalWebhook = async (req, res) => {
       if (data?.user_id) return data.user_id;
     }
     if (customData.user_id) return customData.user_id;
+    // Email fallback — PayPal puts the subscriber email at
+    // resource.subscriber.email_address. The webhook is already signature-
+    // verified by this point, so the email is trustable.
+    const email = (resource?.subscriber?.email_address || '').toLowerCase().trim();
+    if (email) {
+      try {
+        const uid = await supabase.findUserIdByEmail(email);
+        if (uid) {
+          console.log(`PayPal ${eventType}: resolved user via email fallback (${email}) → ${uid}`);
+          return uid;
+        }
+      } catch (err) {
+        console.error(`PayPal ${eventType}: email lookup failed for ${email}:`, err.message);
+      }
+    }
     return null;
   };
 
@@ -742,11 +871,16 @@ const handlePaypalWebhook = async (req, res) => {
         break;
     }
   } catch (err) {
-    console.error('PayPal webhook processing error:', err.message);
+    console.error(
+      `PayPal webhook processing error — event=${eventType} sub_id=${subId} ` +
+      `custom_keys=${Object.keys(customData).join(',') || '<empty>'}: ${err.message}`,
+      err.stack
+    );
   }
 
   // Always 200 so PayPal doesn't retry on internal bugs (it retries up
-  // to ~25 times over 3 days otherwise).
+  // to ~25 times over 3 days otherwise). The error above is the source
+  // of truth — alert on it in Render logs / log drain.
   res.json({ received: true });
 };
 
