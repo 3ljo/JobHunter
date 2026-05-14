@@ -97,20 +97,17 @@ const callAI = async (systemPrompt, userMessage, maxTokensOverride, meta = {}) =
 
       case 'openai': {
         const client = getOpenAIClient();
-        // JSON mode forces strict valid JSON output (no markdown wrapping, no
-        // extra prose) — every prompt in this app already says "return only
-        // JSON", and JSON mode requires the word "JSON" somewhere in the
-        // messages, which is always true here. This eliminates the retry
-        // path in callProvider() and avoids ~3-5% wasted tokens on fences.
-        // Streaming lowers time-to-first-token significantly and lets the
-        // HTTP socket flush sooner; we still accumulate the full text before
-        // returning so downstream JSON.parse stays unchanged.
+        // Enable JSON mode only when the prompt actually asks for JSON.
+        // OpenAI rejects json_object responses if the word "json" isn't in
+        // the messages, which would break plain-text features like cover
+        // letters.
+        const wantsJson = /json/i.test(systemPrompt) || /json/i.test(userMessage);
         const stream = await client.chat.completions.create({
           model,
           max_tokens: tokens,
           stream: true,
           stream_options: { include_usage: true },
-          response_format: { type: 'json_object' },
+          ...(wantsJson ? { response_format: { type: 'json_object' } } : {}),
           messages: [
             { role: 'system', content: systemPrompt },
             { role: 'user', content: userMessage },
