@@ -61,10 +61,18 @@ export default function CheckoutSuccessPage() {
     let cancelled = false;
 
     const poll = async () => {
-      // Max ~30s wall clock: 10 attempts at 1s → 3s backoff. Beats the
-      // old 500ms-hammer loop that was firing ~12 requests in 10s, and
-      // gives LS webhooks a realistic delivery window.
-      for (let attempt = 0; attempt < 10; attempt++) {
+      // Aggressive head-end so a typical successful webhook (lands within
+      // 1-2s of payment) flips the UI almost immediately, then backs off
+      // to give slow webhooks a wider window. Sequence:
+      //   attempts 1-5  → 300ms apart (first 1.5s — catches the fast path)
+      //   attempts 6-9  → 800ms apart (next 3.2s — catches the typical path)
+      //   attempts 10-14 → 2000ms apart (next 10s — handles slow LS retries)
+      // Total ~15s of polling before falling back to /resync. Total request
+      // count: 14 vs the old 10, but front-loaded so customers feel
+      // activation as instant whenever the webhook actually is.
+      const intervalFor = (n: number) => (n < 5 ? 300 : n < 9 ? 800 : 2000);
+      const MAX_ATTEMPTS = 14;
+      for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
         if (cancelled) return;
         setAttempts(attempt + 1);
         await refresh();
@@ -74,7 +82,7 @@ export default function CheckoutSuccessPage() {
           if (!cancelled) setPhase('ready');
           return;
         }
-        await new Promise((r) => setTimeout(r, Math.min(1000 + attempt * 250, 3000)));
+        await new Promise((r) => setTimeout(r, intervalFor(attempt)));
       }
       // Webhook still hadn't landed after 30s — one last attempt: pull
       // the subscription straight from Lemon Squeezy and upsert. Handles
